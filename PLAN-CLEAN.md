@@ -2,7 +2,7 @@
 
 **Purpose:** Rebuild Param’s task system as a **clearly better** ts-3: cleaner, more efficient, more robust, more agile, more versatile — **without breaking the core architecture**.
 
-**Status:** Planning + technical foundation only. Product features not built yet.  
+**Status:** Foundation + Slice 01 + Slice 02 built (`npm test` green). Waves 3+ (Google / queue / go-live) not started.  
 **ts-2:** Live production — **never modify from the ts-3 track** (non-negotiable).  
 **ts-3:** Staging rebuild until one-command go-live; then production on Pages + Render.  
 **Data:** **Same live Master + User Sheets** as ts-2. All processing in **ts-3 middleware** when traffic hits ts-3.
@@ -67,7 +67,7 @@ These are **outcomes and laws**, not file copies. Full inventory: [CAPABILITIES-
 ### P0 — Not optional
 
 1. **Task ID** format + middleware-only mint + refuse past Z99 / invalid.  
-2. **Task ID hidden** from browser JSON (opaque public `id` / ref only).  
+2. **Task ID hidden** from browser JSON (opaque client `ref` only — HMAC handle, not a second identity).  
 3. **Birth on user sheet**, then master + mapping (vehicle → depot).  
 4. **Master beats user** on conflict; board shows master-governed state.  
 5. **P1–P4** server enforcement (not UI-only).  
@@ -167,7 +167,7 @@ Every successful new task in the system, forever, walks this hallway:
               └──────────┬──────────┘
                          ▼
                    safe API shape
-              (opaque id, no raw Task ID)
+              (opaque `ref`, no raw Task ID)
 ```
 
 ### Door vs factory
@@ -247,17 +247,15 @@ middleware/
   routes.js          # mounts route modules
   routes/            # optional: auth.routes.js, tasks.routes.js, …
   auth/              # session, login, csrf helpers
-  domain/            # pure + orchestration (no HTTP)
-    roles.js
-    taskid.js
-    identity.js      # duplicate guard
-    birth.js         # birthTask orchestration
-    tasks.js         # list/scope/patch apply
-    priority.js      # later
-    classifier.js    # later counting helpers
-  store/             # adapters — THE swappable memory
+  domain/            # pure rules (no HTTP)
+    roles.js taskid.js identity.js ref.js tasks.js
+    kinds.js stages.js review.js
+    priority.js classifier.js  # later
+  use-cases/         # application actions (create-task = only birth path)
+  data/              # adapters — THE swappable memory
     memory.js        # fixtures (early slices)
-    sheets.js        # bridge-backed (Google slice)
+    side-store.js    # stages/reviews (not Sheets birth)
+    # sheets.js later — bridge-backed (Google slice)
     index.js         # picks adapter from config
   bridge/            # HTTP client to Apps Script only
   poll/              # listen loop (later)
@@ -349,7 +347,7 @@ Vinod can override in writing; until then:
 | Writer-of-record before go-live | **ts-2** for public users |
 | Writer-of-record after go-live | **ts-3 only** |
 | Queue in Slice 01 | **Off** — direct birth after validate (queue Wave 4) |
-| Task ID in browser | **Hidden** — opaque `id` only |
+| Task ID in browser | **Hidden** — opaque client `ref` only |
 | Early unit data | **Memory/fixtures** shaped like vehicle+depot |
 | WhatsApp/kiosk | **Wave 6**, not Wave 1 |
 | Copy ts-2 code | **No** by default |
@@ -417,15 +415,13 @@ Users should only notice the system got better — **no data reload story**.
 
 ## 12. Immediate next step
 
-**Build Slice 01** per [SLICE-01.md](SLICE-01.md) on the existing foundation:
+**Slice 01 + 02 are done** (memory control room + kinds/stages/review/logs). Next:
 
-1. `domain/roles.js`, `domain/taskid.js`, `domain/identity.js`, `domain/birth.js`  
-2. `data/memory` partitions (vehicle + depot + mapping)  
-3. use-cases + thin HTTP adapters  
-4. `slice01.test.js` green  
-5. Board HTML second  
+1. Commit current tree if not already  
+2. **Wave 3** Google spine (bridge + sheets adapter; same live master), **or** remaining board polish  
+3. Keep **one** mint + **one** birth; client key remains `ref`  
 
-Still: memory first. No ts-2 edits. Live Sheets later under Staging gates.
+Still: memory first until bridge lands. No ts-2 edits. Live Sheets later under Staging gates.
 
 ---
 

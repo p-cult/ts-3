@@ -2,17 +2,81 @@
 
 /**
  * HTTP process entry — outermost detail.
- * Bootstrap (self-heal) runs inside createApp before listen.
+ * Attaches actor from session; CSRF on cookie-authenticated writes.
  */
 
 const http = require('http');
 const { config: defaultConfig } = require('./config');
 const { log, setLevel } = require('./log');
-const { sendError, AppError, notFound } = require('./errors');
+const { sendError, AppError, notFound, forbidden } = require('./errors');
 const { parseRequestUrl, requestId } = require('./http');
 const { tryServeStatic } = require('./static');
 const { createContext } = require('./context');
 const { createApp } = require('./app');
+const {
+  sessionTokenFromRequest,
+  csrfFromRequest,
+  readBearer,
+} = require('./auth/sessions');
+const { permissionsFor, roleCode } = require('./domain/roles');
+const { PROFILE } = require('./domain/profiles');
+
+function attachActor(ctx, app) {
+  const token = sessionTokenFromRequest(ctx.req);
+  const session = token && app.sessions ? app.sessions.get(token) : null;
+  if (session) {
+    const profile = session.profile;
+    ctx.setActor(
+      {
+        authenticated: true,
+        profile,
+        role: roleCode(profile),
+        username: session.username,
+        displayName: session.displayName,
+        userSheet: session.userSheet,
+        employeeId: session.employeeId,
+        token: session.token,
+        csrfToken: session.csrfToken,
+      },
+      permissionsFor(profile)
+    );
+    ctx.session = session;
+  } else {
+    ctx.setActor(
+      {
+        authenticated: false,
+        profile: PROFILE.PUBLIC,
+        role: 'P1',
+        username: null,
+        displayName: null,
+        userSheet: null,
+        user: null,
+      },
+      permissionsFor(PROFILE.PUBLIC)
+    );
+    ctx.session = null;
+  }
+}
+
+function assertCsrfIfNeeded(ctx) {
+  const method = String(ctx.req.method || 'GET').toUpperCase();
+  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return;
+
+  // login is bootstrap
+  if (ctx.pathname === '/api/login') return;
+
+  // Bearer-only clients are CSRF-safe
+  if (readBearer(ctx.req)) return;
+
+  // Anonymous writes: no CSRF cookie yet
+  if (!ctx.actor.authenticated) return;
+
+  const expected = ctx.session && ctx.session.csrfToken;
+  const got = csrfFromRequest(ctx.req);
+  if (!expected || !got || expected !== got) {
+    throw forbidden('invalid or missing CSRF token');
+  }
+}
 
 function createRequestListener(opts = {}) {
   const app = opts.app || createApp({ config: opts.config || defaultConfig });
@@ -38,12 +102,15 @@ function createRequestListener(opts = {}) {
       pathname,
       query,
     });
+    ctx.app = app;
+    attachActor(ctx, app);
 
     try {
       if (pathname === '/api' || pathname.startsWith('/api/')) {
         const matched = router.match(req.method, pathname);
         if (!matched) throw notFound(`No route ${req.method} ${pathname}`);
         ctx.params = matched.params;
+        assertCsrfIfNeeded(ctx);
         await matched.handler(ctx);
       } else if (req.method === 'GET' || req.method === 'HEAD') {
         tryServeStatic(res, config.frontendDir, pathname);
@@ -76,13 +143,13 @@ function printStartupBanner(app, addr) {
   const b = app.bootstrap || {};
   const heals = (b.heals || []).length;
   console.log('');
-  console.log('  ts-3 foundation');
+  console.log('  ts-3 slice 02 (staging)');
   console.log(`  url     http://${addr.address}:${addr.port}/`);
   console.log(`  health  http://${addr.address}:${addr.port}/api/health`);
+  console.log(`  mode    ${app.config.appMode || 'staging'}`);
   console.log(`  env     ${app.config.env}`);
   console.log(`  store   ${app.data.kind}`);
-  console.log(`  bridge  ${app.config.useLiveBridge ? 'on' : 'off'}`);
-  if (heals) console.log(`  healed  ${heals} action(s) — see /api/health`);
+  if (heals) console.log(`  healed  ${heals} action(s)`);
   console.log('  stop    ctrl+c');
   console.log('');
 }
@@ -108,11 +175,8 @@ function startServer(overrides = {}) {
   return new Promise((resolve, reject) => {
     server.once('error', (err) => {
       if (err && err.code === 'EADDRINUSE') {
-        log.error('port in use', { port, host });
         console.error(
-          `\nPort ${port} is already in use.\n` +
-            `  Fix: PORT=4304 ./run.sh\n` +
-            `  Or stop the other process on ${port}.\n`
+          `\nPort ${port} is already in use.\n  Fix: PORT=4304 ./run.sh\n`
         );
       }
       reject(err);
@@ -123,7 +187,7 @@ function startServer(overrides = {}) {
         app: config.appName,
         host: addr.address,
         port: addr.port,
-        env: config.env,
+        mode: config.appMode,
         store: app.data.kind,
       });
       if (require.main === module || overrides.banner) {

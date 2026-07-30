@@ -92,6 +92,12 @@ const config = Object.freeze({
   /** Safety: never enable live bridge by accident in foundation */
   useLiveBridge: envBool('USE_LIVE_BRIDGE', false),
 
+  /** staging until go-live; production only after cutover */
+  appMode: envString('APP_MODE', 'staging'),
+
+  /** live sheet writes in staging — default off */
+  stagingWrites: envBool('STAGING_WRITES', false),
+
   /** Defaults for data/retry.withRetry on external I/O */
   retry: Object.freeze({
     attempts: envInt('RETRY_ATTEMPTS', 3),

@@ -6,7 +6,7 @@
 
 **Done when:** the checks in §7 all pass on a cold terminal, and a human can open one local URL, log in as each role, and see the right power.
 
-**Status:** Planned — not built yet.  
+**Status:** Built — automated §7 A–F verified (`npm test`).  
 **Parent plan:** [PLAN-CLEAN.md](PLAN-CLEAN.md) Wave 1  
 **Technical base:** [FOUNDATION.md](FOUNDATION.md)  
 **Entry:** [README.md](README.md)  
@@ -19,11 +19,11 @@
 | # | Question | Slice-01 default | Why |
 |---|----------|------------------|-----|
 | 1 | Queue for non-P4 creates? | **No.** P2 create → validate → identity guard → mint → **birthTask**. | One birth hallway; queue is Wave 4. |
-| 2 | Live Sheets or fresh data? | **Memory store** seeded from `store/seed.json` (or `dev-fixtures.json`). | No Drive risk; partitions mirror Sheets. |
-| 3 | Task ID in browser JSON? | **Hidden.** Opaque public `id` only; internal `taskId` stays in store. | MASTER / ARCHITECTURE. |
+| 2 | Live Sheets or fresh data? | **Memory store** seeded from `middleware/data/seed.json`. | No Drive risk; partitions mirror Sheets. |
+| 3 | Task ID in browser JSON? | **Hidden.** Opaque client `ref` (HMAC) only; internal `taskId` stays in store. | MASTER / ARCHITECTURE / ts-2. |
 | 4 | WhatsApp / kiosk? | **Out of scope.** | Board + login only. |
 | 5 | Assignee identity | **`assigneeUsername`** (= login username) for scope; store also keeps `userSheet` on user records for later Sheets. | Avoid ts-2 display-name ambiguity. |
-| 6 | Create entrypoint | **Only** `domain/birth.js` → store writes vehicle+depot+mapping. | No POST handler that writes tasks directly. |
+| 6 | Create entrypoint | **Only** `use-cases/create-task.js` → `nextTaskId` + `data.commitBirth` (vehicle+depot+mapping). | No POST handler that writes tasks directly. |
 
 If Vinod changes a default, edit this table first, then code.
 
@@ -60,6 +60,17 @@ Foundation files remain. No Apps Script. No npm frameworks.
 
 Passwords plain text on purpose (personal-scale).
 
+### Canonical Staging humans (locked — primary logins)
+
+| username | password | role | displayName | employeeId | notes |
+|----------|----------|------|-------------|------------|--------|
+| `ts3admin` | `ts3-98860` | **P4** Admin | TS3 Admin | `9001` | Primary admin; inherits to live profile on go-live |
+| `ts3usr1` | `ts3-98860` | **P2** User | TS3 User 1 | `9002` | Primary user; inherits to live profile on go-live |
+
+See also: `middleware/data/CREDENTIALS.txt`
+
+### Demo fixtures (automated tests only)
+
 | username | password | role | displayName | employeeId (last 4 used later) | notes |
 |----------|----------|------|-------------|----------------------------------|--------|
 | *(none)* | — | **P1** Public Viewer | Public | — | No login; read public tasks only |
@@ -86,8 +97,8 @@ Users pick from this list. Create with unknown project → **400**.
 | Field | Required | Who may set on create | Who may change later | Notes |
 |-------|----------|----------------------|----------------------|--------|
 | `taskId` | yes (server) | server only | never | Full atom e.g. `PRJ0011001A01`. **Never in API JSON this slice.** |
-| `id` | yes | server only | never | Opaque public id (e.g. `t_01`). Browser key. |
-| `projectCode` | yes | P2+ | P4 only | Must exist in fixture projects |
+| `ref` | yes (derived) | server only | never | Opaque client handle: HMAC-SHA256(secret, taskId) hex first 16. Browser key. **Not a second identity.** |
+| `projectCode` | yes | P2+ | P4 only | Must exist in fixture projects; denormalized from atom when valid |
 | `projectName` | yes | server fills | server | From project catalog |
 | `name` | yes | P2+ | owner P2 / P4 | Task title |
 | `description` | no | P2+ | owner P2 / P4 | |
@@ -105,7 +116,7 @@ Users pick from this list. Create with unknown project → **400**.
 
 - **vehicle** — per-user task rows (birth lands here first)  
 - **depot** — aggregate task rows (board reads depot-governed list)  
-- **mapping** — `{ taskId, publicId, userSheet, … }` ticket stub  
+- **mapping** — `{ taskId, ref, userSheet, assigneeUsername }` ticket stub  
 
 Board list reads **depot** (memory stand-in for master). Create writes all three via `birthTask`.
 
@@ -175,7 +186,7 @@ Scoped by role (§5). Each task object:
 
 ```json
 {
-  "id": "t_01",
+  "ref": "5fc806549a0db15d",
   "projectCode": "PRJ001",
   "projectName": "Sample Project",
   "name": "Draw poster",
@@ -188,14 +199,16 @@ Scoped by role (§5). Each task object:
   "assigneeUsername": "anya",
   "assigneeDisplayName": "Anya",
   "visibility": "public",
+  "parentRef": null,
   "updatedAt": "2026-07-29T12:00:00.000Z"
 }
 ```
 
-No `taskId` field. No sheet ids.
+No `taskId` field. No `publicId` / sequential `t_*` id. No sheet ids.  
+HTTP route param `:id` is the client **`ref`** value (short path name only).
 
 `GET /api/tasks/:id`  
-→ one task or `404` / `403` if out of scope  
+→ one task or `404` / `403` if out of scope (`:id` = client `ref`)  
 
 `POST /api/tasks`  
 auth: P2 or P4  
@@ -349,13 +362,13 @@ If a change is not required by §6–§7, it is not Slice 01.
 
 ## 10. Implementation order inside this slice
 
-1. `store/seed.json` — users (with userSheet + employeeId), projects, sample depot tasks  
+1. `data/seed.json` — users (with userSheet + employeeId), projects, sample depot tasks  
 2. `domain/taskid.js` — compose / parse / next / validate  
 3. `domain/roles.js` — permissionsFor + authorizeTaskPatch  
 4. `domain/identity.js` — duplicate key guard  
-5. `store/memory.js` — load seed; vehicle/depot/mapping; get/list/update/delete  
-6. `domain/birth.js` — mint + write three partitions (only create path)  
-7. `domain/tasks.js` — scope list, patch apply, public DTO (strip taskId)  
+5. `data/memory.js` — load seed; vehicle/depot/mapping; get/list/update/delete  
+6. `use-cases/create-task.js` + `commitBirth` — mint + write three partitions (only create path)  
+7. `domain/tasks.js` + `domain/ref.js` — scope list, public DTO (`ref`, strip taskId)  
 8. `auth/*` — login, session token, csrf  
 9. Wire routes in `routes.js` (or `routes/*.js`) — handlers call domain only  
 10. `slice01.test.js` — §7 A–F including 13b/13c  
@@ -392,10 +405,9 @@ Per [PLAN-CLEAN.md](PLAN-CLEAN.md) waves:
 
 | Item | State |
 |------|--------|
-| Plan written | yes (refined with architecture + capabilities) |
-| Vinod agreed defaults §1 | pending |
-| Code built | no |
-| §7 A–F verified | no |
-| §7 G human smoke | no |
+| Plan written | yes |
+| Code built | **yes** |
+| §7 A–F verified | **yes** — `node middleware/slice01.test.js` (24 passed) + foundation green |
+| §7 G human smoke | pending Vinod browser walkthrough |
 
-**Next action after Vinod says go:** implement §10 steps 1–10 in `ts-3` only until tests green.
+**Next:** Wave 2 board polish, or Wave 3 Google spine when ready.

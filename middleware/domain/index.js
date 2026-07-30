@@ -1,25 +1,33 @@
 'use strict';
 
-/**
- * domain/ — innermost circle (Clean Architecture).
- *
- * Holds pure business concepts and rules.
- * Depends on: nothing in this app (no data/, no adapters/, no http).
- *
- * Slice 01+ will add: taskid, identity, birth rules, roles gates, entities.
- * Outer layers import domain — domain never imports outer layers.
- */
-
 const profiles = require('./profiles');
 const awareness = require('./awareness');
+const roles = require('./roles');
+const taskid = require('./taskid');
+const identity = require('./identity');
+const tasks = require('./tasks');
+const kinds = require('./kinds');
+const stages = require('./stages');
+const review = require('./review');
 
 module.exports = {
   profiles,
   awareness,
+  roles,
+  taskid,
+  identity,
+  tasks,
+  kinds,
+  stages,
+  review,
   PROFILE: profiles.PROFILE,
   roleCode: profiles.roleCode,
   roleName: profiles.roleName,
   normalizeProfile: profiles.normalizeProfile,
   evaluateOverall: awareness.evaluateOverall,
   LEVEL: awareness.LEVEL,
+  permissionsFor: roles.permissionsFor,
+  authorizeTaskPatch: roles.authorizeTaskPatch,
+  normName: identity.normName,
+  guardDuplicate: identity.guardDuplicate,
 };

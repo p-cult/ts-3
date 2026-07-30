@@ -1,8 +1,7 @@
 'use strict';
 
 /**
- * Composition root — wires circles once + runs bootstrap self-heal.
- * Dependencies point inward. domain never imports this file.
+ * Composition root — wires circles once + bootstrap self-heal.
  */
 
 const { config: defaultConfig } = require('./config');
@@ -12,6 +11,7 @@ const { createUseCases } = require('./use-cases');
 const { buildHttpRouter } = require('./adapters');
 const { createRuntimeState } = require('./runtime/state');
 const { bootstrap } = require('./runtime/bootstrap');
+const { createSessionStore } = require('./auth/sessions');
 
 /**
  * @param {{ config?: object, log?: object, skipBootstrap?: boolean }} [overrides]
@@ -36,8 +36,21 @@ function createApp(overrides = {}) {
   }
 
   const data = createDataAccess({ config, log: appLog });
-  const useCases = createUseCases({ config, data, runtime, log: appLog });
-  const router = buildHttpRouter({ config, useCases, data, log: appLog });
+  const sessions = createSessionStore();
+  const useCases = createUseCases({
+    config,
+    data,
+    runtime,
+    sessions,
+    log: appLog,
+  });
+  const router = buildHttpRouter({
+    config,
+    useCases,
+    data,
+    sessions,
+    log: appLog,
+  });
 
   runtime.markStarted();
 
@@ -45,6 +58,7 @@ function createApp(overrides = {}) {
     config,
     log: appLog,
     data,
+    sessions,
     useCases,
     services: useCases,
     router,

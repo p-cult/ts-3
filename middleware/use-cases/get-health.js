@@ -106,10 +106,12 @@ function createGetHealth(deps) {
         app: config.appName,
         version: config.appVersion,
         foundation: true,
+        slice: '02',
         time: new Date().toISOString(),
         startedAt: rt.startedAt,
         mode: {
           env: config.env,
+          appMode: config.appMode || 'staging',
           storeAdapter: config.storeAdapter || data.kind,
           liveBridge: !!config.useLiveBridge,
           isDev: !!config.isDev,

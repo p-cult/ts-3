@@ -263,8 +263,8 @@ async function main() {
 
     {
       const r = await request(port, 'POST', '/api/login', { username: 'x', password: 'y' });
-      assert.strictEqual(r.status, 404);
-      ok('POST /api/login not implemented (404)');
+      assert.strictEqual(r.status, 401);
+      ok('POST /api/login rejects bad credentials (401)');
     }
 
     {
@@ -289,9 +289,10 @@ async function main() {
 
     {
       const r = await request(port, 'GET', '/api/health');
-      // bridge still disabled — no product leak
       assert.strictEqual(r.json.foundation, true);
-      ok('foundation still product-free');
+      assert.strictEqual(r.json.slice, '02');
+      assert.ok(r.json.mode && r.json.mode.appMode === 'staging');
+      ok('health reports slice 02 + staging mode');
     }
   } finally {
     await new Promise((resolve) => server.close(resolve));

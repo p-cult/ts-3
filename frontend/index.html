@@ -3,95 +3,816 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Param Task — ts-3 foundation</title>
+  <title>Param Task — ts-3 Staging</title>
   <style>
     :root {
-      --bg: #f6f4f1;
-      --ink: #1c1b19;
-      --muted: #6b6560;
-      --card: #ffffff;
-      --line: #e4dfd8;
-      --accent: #2f5d50;
+      --bg: #f4f1ec; --ink: #1c1b19; --muted: #6b6560; --card: #fff;
+      --line: #e0dbd3; --accent: #2f5d50; --accent-soft: #e8f2ee;
+      --danger: #8a3030; --warn: #8a6d1d; --radius: 12px;
       --font: "Segoe UI", system-ui, sans-serif;
-      --space: 1rem;
-      --radius: 12px;
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: var(--font);
-      color: var(--ink);
-      background: var(--bg);
-      line-height: 1.5;
+    body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.45; }
+    header {
+      display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between;
+      padding: .85rem 1rem; background: var(--card); border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 5;
     }
-    main {
-      max-width: 40rem;
-      margin: 0 auto;
-      padding: calc(var(--space) * 2);
+    h1 { margin: 0; font-size: 1.1rem; }
+    .badge { font-size: .72rem; padding: .12rem .45rem; border-radius: 999px; background: #f0e6c8; color: var(--warn); font-weight: 600; }
+    .muted { color: var(--muted); font-size: .88rem; }
+    main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+    .tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .85rem; }
+    .tab { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: .35rem .75rem; cursor: pointer; font: inherit; }
+    .tab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: .4rem .75rem; font: inherit; cursor: pointer; }
+    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn.danger { color: var(--danger); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+    .task, .log-row {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: .75rem .9rem; margin-bottom: .55rem;
     }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      padding: calc(var(--space) * 1.5);
+    .task.sub { margin-left: 1.1rem; border-left: 3px solid var(--accent-soft); }
+    .task h3 { margin: 0 0 .2rem; font-size: .98rem; }
+    .meta { font-size: .82rem; color: var(--muted); }
+    .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+    .chip { font-size: .72rem; padding: .08rem .4rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+    .chip.kind { background: #efe8ff; color: #4b3f72; font-weight: 700; }
+    .bar { height: 6px; background: #ece7e0; border-radius: 99px; margin-top: .4rem; overflow: hidden; max-width: 12rem; }
+    .bar > i { display: block; height: 100%; background: var(--accent); }
+    .link-ico { display: inline-flex; width: 1.4rem; height: 1.4rem; align-items: center; justify-content: center;
+      border-radius: 6px; background: var(--accent-soft); color: var(--accent); text-decoration: none; font-size: .85rem; margin-left: .25rem; }
+    .actions { margin-top: .45rem; display: flex; flex-wrap: wrap; gap: .35rem; }
+    .empty { color: var(--muted); padding: 1rem 0; }
+    dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 0; width: min(26rem, calc(100% - 1.5rem)); }
+    dialog::backdrop { background: rgba(0,0,0,.35); }
+    .dlg { padding: 1rem 1.1rem; }
+    label { display: block; font-size: .82rem; margin: .45rem 0 .15rem; }
+    input, select, textarea { width: 100%; font: inherit; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: 8px; }
+    textarea { min-height: 3.2rem; }
+    .row { display: flex; gap: .4rem; margin-top: .8rem; flex-wrap: wrap; }
+    .err { color: var(--danger); font-size: .85rem; min-height: 1.1em; }
+    .filters { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+    .filters input, .filters select { width: auto; min-width: 6rem; }
+    .review-box { margin-top: .4rem; padding: .45rem .55rem; background: #faf7f2; border-radius: 8px; font-size: .85rem; }
+    .banner {
+      background: #fff6e5; border: 1px solid #f0d9a8; color: #6a5318;
+      border-radius: 8px; padding: .5rem .65rem; font-size: .85rem; margin-bottom: .65rem;
     }
-    h1 {
-      margin: 0 0 0.35rem;
-      font-size: 1.35rem;
-      font-weight: 650;
+    .fld { margin-bottom: .15rem; }
+    .stage-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin: .35rem 0 .25rem; min-height: 1.6rem; }
+    .stage-chip {
+      border: 1px solid var(--line); background: #fff; border-radius: 999px;
+      padding: .25rem .65rem; font: inherit; font-size: .82rem; cursor: pointer;
     }
-    p { margin: 0.5rem 0; color: var(--muted); }
-    .status {
-      margin-top: var(--space);
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      background: #eef6f3;
-      color: var(--accent);
-      font-family: ui-monospace, monospace;
-      font-size: 0.9rem;
-      white-space: pre-wrap;
+    .stage-chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .stage-chip:disabled { opacity: .55; cursor: default; }
+    .hint-sm { font-size: .78rem; color: var(--muted); margin: 0 0 .35rem; }
+    .ro-name { font-weight: 650; margin: 0 0 .5rem; }
+    @media (max-width: 560px) {
+      .task.sub { margin-left: .5rem; }
+      header { padding: .65rem .75rem; }
     }
-    .status.bad {
-      background: #f8eeee;
-      color: #8a3030;
+    @media print {
+      header .toolbar, .tabs, .btn, dialog, .filters { display: none !important; }
+      body { background: #fff; }
+      .task, .log-row { break-inside: avoid; box-shadow: none; }
+      a[href]::after { content: " (" attr(href) ")"; font-size: .75rem; color: #444; }
     }
-    code { font-family: ui-monospace, monospace; font-size: 0.9em; }
   </style>
 </head>
 <body>
+  <header>
+    <div>
+      <h1>Param Task <span class="badge">STAGING</span></h1>
+      <div class="muted" id="whoLine">Public (P1)</div>
+    </div>
+    <div class="toolbar">
+      <button class="btn" type="button" id="btnLogin">Log in</button>
+      <button class="btn" type="button" id="btnLogout" hidden>Log out</button>
+      <button class="btn primary" type="button" id="btnNew" hidden>New task</button>
+    </div>
+  </header>
   <main>
-    <div class="card">
-      <h1>ts-3 foundation</h1>
-      <p>
-        Clean rebuild shell. No login, no tasks yet.
-        Middleware is up if the health line below is green.
-      </p>
-      <div id="status" class="status">Checking /api/health…</div>
-      <p style="margin-top: 1.25rem">
-        Next product work lives in <code>SLICE-01.md</code>.
-        How the stack is wired: <code>FOUNDATION.md</code>.
-      </p>
+    <div class="tabs" id="tabs">
+      <button type="button" class="tab on" data-view="board">Board</button>
+      <button type="button" class="tab" data-view="needs" id="tabNeeds" hidden>Needs review</button>
+      <button type="button" class="tab" data-view="completed" id="tabDone">Completed</button>
+      <button type="button" class="tab" data-view="logs" id="tabLogs" hidden>Logs</button>
+    </div>
+    <div id="boardView">
+      <p class="muted" id="hint">Loading…</p>
+      <div id="taskList"></div>
+      <div class="empty" id="empty" hidden>No tasks.</div>
+    </div>
+    <div id="logsView" hidden>
+      <div class="filters">
+        <input id="logQ" placeholder="Search" />
+        <select id="logStatus"><option value="">Status</option></select>
+        <button class="btn" type="button" id="logRefresh">Refresh</button>
+        <button class="btn" type="button" id="logCsv">Export CSV</button>
+        <button class="btn" type="button" onclick="window.print()">Print</button>
+      </div>
+      <div id="logList"></div>
     </div>
   </main>
+
+  <dialog id="loginDlg">
+    <form class="dlg" id="loginForm" method="dialog">
+      <h2>Log in</h2>
+      <p class="muted">Primary: ts3admin / ts3-98860 (P4) · ts3usr1 / ts3-98860 (P2)</p>
+      <label>Username</label><input id="lu" autocomplete="username" required />
+      <label>Password</label><input id="lp" type="password" autocomplete="current-password" required />
+      <div class="err" id="loginErr"></div>
+      <div class="row">
+        <button class="btn primary" type="submit">Sign in</button>
+        <button class="btn" type="button" id="loginCancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="editDlg">
+    <form class="dlg" id="editForm" method="dialog">
+      <h2 id="editTitle">Task</h2>
+      <input type="hidden" id="editId" />
+      <input type="hidden" id="eStageIdx" value="0" />
+      <div class="banner" id="editBanner" hidden></div>
+      <p class="ro-name" id="eNameRo" hidden></p>
+
+      <div class="fld" data-fld="project"><label>Project</label><select id="eProject"></select></div>
+      <div class="fld" data-fld="name"><label>Name</label><input id="eName" /></div>
+      <div class="fld" data-fld="desc"><label>Description</label><textarea id="eDesc"></textarea></div>
+      <div class="fld" data-fld="notes"><label>Notes</label><textarea id="eNotes"></textarea></div>
+      <div class="fld" data-fld="link"><label>Link (URL)</label><input id="eLink" placeholder="https://…" /></div>
+      <div class="fld" data-fld="status"><label>Status</label><select id="eStatus"></select></div>
+      <div class="fld" data-fld="priority"><label>Priority</label>
+        <select id="ePriority"><option>low</option><option selected>normal</option><option>high</option></select>
+      </div>
+      <div class="fld" data-fld="vis"><label>Visibility</label>
+        <select id="eVis"><option value="public">public</option><option value="private">private</option></select>
+      </div>
+      <div class="fld" data-fld="kind"><label>Kind (admin)</label>
+        <select id="eKind">
+          <option value="main">main</option><option value="sub">sub</option>
+          <option value="pseudo">pseudo</option><option value="routine">routine</option>
+          <option value="not_a_task">not_a_task</option>
+        </select>
+      </div>
+      <div class="fld" data-fld="parent">
+        <label>Parent Main task</label>
+        <select id="eParent"><option value="">— Select a Main —</option></select>
+        <p class="hint-sm" id="eParentHint" hidden>Create a Main task first.</p>
+      </div>
+
+      <div class="fld" data-fld="stages">
+        <label>Stages</label>
+        <p class="hint-sm">Add #tokens like #design #build #ship (no spaces inside a token)</p>
+        <input id="eStages" placeholder="#Design #Build #Ship" />
+        <p class="hint-sm" id="stagePickHint" hidden>Tap a stage to mark progress up to that point:</p>
+        <div class="stage-chips" id="stageChips" aria-label="Stage picker"></div>
+        <div class="bar" id="stageBarEdit" hidden title="Progress"><i id="stageBarFill" style="width:0%"></i></div>
+      </div>
+
+      <div class="err" id="editErr"></div>
+      <div class="row">
+        <button class="btn primary" type="submit">Save</button>
+        <button class="btn" type="button" id="editCancel">Cancel</button>
+        <button class="btn danger" type="button" id="editDelete" hidden>Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="reviewDlg">
+    <form class="dlg" id="reviewForm" method="dialog">
+      <h2>Review</h2>
+      <input type="hidden" id="revId" />
+      <p class="muted" id="revMeta"></p>
+      <p id="revLinkRow" class="muted" hidden>
+        <a id="revOpenLink" class="btn" href="#" target="_blank" rel="noopener">Open link in new tab</a>
+      </p>
+      <div id="revOwnerFields">
+        <label>Link (required to submit)</label>
+        <input id="revLink" placeholder="https://…" />
+        <label>Notes (optional)</label>
+        <textarea id="revNotesOwner"></textarea>
+      </div>
+      <div id="revModFields" hidden>
+        <label>Notes (required for Re-work)</label>
+        <textarea id="revNotes"></textarea>
+      </div>
+      <div class="err" id="revErr"></div>
+      <div class="row">
+        <button class="btn primary" type="button" id="revSubmit">Submit for review</button>
+        <button class="btn" type="button" id="revFeedback" hidden>Feedback</button>
+        <button class="btn" type="button" id="revRework" hidden>Re-work</button>
+        <button class="btn primary" type="button" id="revApprove" hidden>Approve</button>
+        <button class="btn" type="button" id="revClose">Close</button>
+      </div>
+    </form>
+  </dialog>
+
   <script>
-    (async function () {
-      const el = document.getElementById('status');
+  (function () {
+    const TOKEN_KEY = 'ts3_token', CSRF_KEY = 'ts3_csrf';
+    const state = { me: null, permissions: null, tasks: [], hierarchy: null, projects: [], view: 'board', logs: [], allForParent: [] };
+    const $ = (id) => document.getElementById(id);
+
+    function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
+    function getCsrf() { try { return localStorage.getItem(CSRF_KEY); } catch (e) { return null; } }
+    function setAuth(token, csrf) {
       try {
-        const res = await fetch('/api/health');
-        const data = await res.json();
-        if (!res.ok || !data.ok) throw new Error(data.error && data.error.message || res.status);
-        el.textContent =
-          'ok  app=' + data.app +
-          '\n    version=' + data.version +
-          '\n    foundation=' + data.foundation +
-          '\n    env=' + data.env +
-          '\n    time=' + data.time;
-      } catch (err) {
-        el.classList.add('bad');
-        el.textContent = 'health check failed: ' + (err && err.message ? err.message : err);
+        if (token) localStorage.setItem(TOKEN_KEY, token); else localStorage.removeItem(TOKEN_KEY);
+        if (csrf) localStorage.setItem(CSRF_KEY, csrf); else localStorage.removeItem(CSRF_KEY);
+      } catch (e) {}
+    }
+
+    async function api(method, path, body) {
+      const headers = { Accept: 'application/json' };
+      const tok = getToken();
+      if (tok) headers.Authorization = 'Bearer ' + tok;
+      if (body !== undefined) headers['Content-Type'] = 'application/json';
+      if (method !== 'GET' && method !== 'HEAD' && path !== '/api/login') {
+        const c = getCsrf(); if (c) headers['X-CSRF-Token'] = c;
       }
-    })();
+      const res = await fetch(path, { method, headers, credentials: 'same-origin', body: body !== undefined ? JSON.stringify(body) : undefined });
+      let data = null;
+      try { data = await res.json(); } catch (e) {}
+      if (!res.ok) {
+        const err = new Error((data && data.error && data.error.message) || res.statusText);
+        err.status = res.status; throw err;
+      }
+      return data;
+    }
+
+    function role() { return (state.me && state.me.role) || 'P1'; }
+    function perms() { return state.permissions || {}; }
+
+    function nest(tasks) {
+      const byId = new Map((tasks || []).map((t) => [t.ref, { ...t, children: [] }]));
+      const roots = [];
+      byId.forEach((t) => {
+        if (t.parentRef && byId.has(t.parentRef)) byId.get(t.parentRef).children.push(t);
+        else roots.push(t);
+      });
+      return roots;
+    }
+
+    function renderBar(st) {
+      if (!st || !st.total) return '';
+      const pct = Math.round((st.ratio || 0) * 100);
+      return '<div class="bar" title="Stages ' + st.currentIndex + '/' + st.total + '"><i style="width:' + pct + '%"></i></div>';
+    }
+
+    function renderTask(t, isSub) {
+      const el = document.createElement('article');
+      el.className = 'task' + (isSub ? ' sub' : '');
+      const link = t.hasLink && t.link
+        ? '<a class="link-ico" href="' + t.link.replace(/"/g, '') + '" target="_blank" rel="noopener" title="Open link">🔗</a>'
+        : '';
+      const kindChip = t.kindIcon ? '<span class="chip kind">' + t.kindIcon + '</span>' : '';
+      let reviewHtml = '';
+      const rState = (t.review && t.review.state) || t.reviewState || 'none';
+      const iter = (t.review && t.review.iteration != null) ? t.review.iteration : (t.reviewIteration || 0);
+      if (rState === 'approved') {
+        reviewHtml = '<div class="muted" style="font-size:.8rem;margin-top:.3rem"><span class="chip">Approved</span>'
+          + (iter ? ' · iteration ' + iter : '') + ' · see Logs for history</div>';
+      } else if (t.review && t.review.showOnDetail !== false && rState && rState !== 'none') {
+        reviewHtml = '<div class="review-box">Review: <strong>' + escapeHtml(rState) + '</strong>'
+          + (iter ? ' · iteration ' + iter : '')
+          + (t.review.version ? ' · link v' + t.review.version : '')
+          + (t.review.lastNotes ? '<br>' + escapeHtml(t.review.lastNotes) : '')
+          + '</div>';
+      }
+      el.innerHTML = '<h3></h3><div class="meta"></div><div class="chips"></div>'
+        + renderBar(t.stages) + reviewHtml + '<div class="actions"></div>';
+      el.querySelector('h3').innerHTML = escapeHtml(t.name) + link;
+      el.querySelector('.meta').textContent =
+        (t.projectName || t.projectCode) + ' · ' + (t.assigneeDisplayName || t.assigneeUsername || '')
+        + (t.endDate ? ' · ' + t.endDate : '');
+      const chips = el.querySelector('.chips');
+      if (kindChip) chips.insertAdjacentHTML('beforeend', kindChip);
+      ['status:' + t.status, t.visibility, t.reviewState && t.reviewState !== 'none' ? 'rev:' + t.reviewState : '']
+        .filter(Boolean).forEach((c) => {
+          const s = document.createElement('span'); s.className = 'chip'; s.textContent = c; chips.appendChild(s);
+        });
+      const actions = el.querySelector('.actions');
+      const scope = perms().editScope || 'none';
+      const mine = state.me && t.assigneeUsername === state.me.username;
+      const canEdit = scope === 'all' || scope === 'status' || (scope === 'own' && mine);
+      if (canEdit) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
+        b.textContent = scope === 'status' ? 'Status' : 'Edit';
+        b.onclick = () => openEdit(t); actions.appendChild(b);
+      }
+      if (role() !== 'P1' && (t.kind === 'main' || t.kind === 'sub' || !t.kindIcon)) {
+        const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn';
+        rb.textContent = 'Review'; rb.onclick = () => openReview(t); actions.appendChild(rb);
+      }
+      return el;
+    }
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    function renderBoard() {
+      const box = $('taskList'); box.innerHTML = '';
+      const roots = nest(state.tasks);
+      $('empty').hidden = !!roots.length;
+      $('hint').textContent = role() === 'P1'
+        ? 'Public: main tasks with nested subs. Link icon opens file when present.'
+        : role() === 'P2' ? 'Your tasks. Stages + submit review on main/sub.'
+        : role() === 'P3' ? 'All tasks. Feedback / send-back / approve.'
+        : 'Admin: kinds P/R/N, bulk via API, full review, logs.';
+      function walk(list, sub) {
+        list.forEach((t) => {
+          box.appendChild(renderTask(t, sub));
+          if (t.children && t.children.length) walk(t.children, true);
+        });
+      }
+      walk(roots, false);
+    }
+
+    function renderLogs() {
+      const box = $('logList'); box.innerHTML = '';
+      (state.logs || []).forEach((l) => {
+        const el = document.createElement('div'); el.className = 'log-row';
+        el.innerHTML = '<strong></strong> <span class="meta"></span><div class="chips"></div>';
+        el.querySelector('strong').textContent = l.name;
+        el.querySelector('.meta').textContent =
+          l.projectCode + ' · ' + l.assigneeDisplayName + ' · ' + l.status
+          + (l.stagesSummary ? ' · stages ' + l.stagesSummary : '')
+          + (l.reviewState && l.reviewState !== 'none' ? ' · ' + l.reviewState : '');
+        if (l.kindIcon) {
+          const c = document.createElement('span'); c.className = 'chip kind'; c.textContent = l.kindIcon;
+          el.querySelector('.chips').appendChild(c);
+        }
+        if (l.hasLink) {
+          const a = document.createElement('a'); a.className = 'link-ico'; a.href = l.link; a.target = '_blank'; a.textContent = '🔗';
+          el.querySelector('.chips').appendChild(a);
+        }
+        box.appendChild(el);
+      });
+    }
+
+    async function refreshMe() {
+      const m = await api('GET', '/api/me');
+      state.me = m.user; state.permissions = m.permissions;
+      if (m.user) {
+        $('whoLine').textContent = m.user.displayName + ' · ' + m.role;
+        $('btnLogin').hidden = true; $('btnLogout').hidden = false;
+        $('btnNew').hidden = !perms().canCreate;
+        $('tabLogs').hidden = !perms().canViewLogs;
+        $('tabNeeds').hidden = !perms().canViewNeedsReview;
+        $('tabDone').hidden = false;
+      } else {
+        $('whoLine').textContent = 'Public (P1)';
+        $('btnLogin').hidden = false; $('btnLogout').hidden = true;
+        $('btnNew').hidden = true; $('tabLogs').hidden = true;
+        $('tabNeeds').hidden = true;
+        $('tabDone').hidden = true;
+        if (state.view !== 'board') switchView('board');
+      }
+    }
+
+    function boardQuery() {
+      if (state.view === 'needs') return 'board=needs_review';
+      if (state.view === 'completed') return 'board=completed';
+      if (state.view === 'board') return 'board=active&nested=1';
+      return 'nested=1';
+    }
+
+    async function refreshTasks() {
+      if (state.view === 'logs') return;
+      const r = await api('GET', '/api/tasks?' + boardQuery());
+      state.tasks = r.tasks || [];
+      state.hierarchy = r.hierarchy || null;
+      // cache mains for parent picker (full active list for actor)
+      try {
+        const all = await api('GET', '/api/tasks?board=active');
+        state.allForParent = all.tasks || [];
+      } catch (e) { state.allForParent = state.tasks.slice(); }
+      renderBoard();
+    }
+
+    function fillParentOptions(selectedId, excludeId) {
+      const sel = $('eParent');
+      sel.innerHTML = '';
+      const opt0 = document.createElement('option');
+      opt0.value = ''; opt0.textContent = '— Select a Main —';
+      sel.appendChild(opt0);
+      const mains = (state.allForParent || []).filter((t) => {
+        const k = t.kind || 'main';
+        return k === 'main' && t.ref !== excludeId;
+      });
+      $('eParentHint').hidden = mains.length > 0;
+      mains.forEach((t) => {
+        const o = document.createElement('option');
+        o.value = t.ref;
+        o.textContent = t.name + ' (' + t.ref + ')';
+        sel.appendChild(o);
+      });
+      if (selectedId) sel.value = selectedId;
+    }
+
+    async function refreshProjects() {
+      if (!state.me) { state.projects = []; return; }
+      try { state.projects = (await api('GET', '/api/projects')).projects || []; }
+      catch (e) { state.projects = []; }
+    }
+
+    async function refreshLogs() {
+      const q = new URLSearchParams();
+      if ($('logQ').value.trim()) q.set('q', $('logQ').value.trim());
+      if ($('logStatus').value) q.set('status', $('logStatus').value);
+      const r = await api('GET', '/api/logs?' + q.toString());
+      state.logs = r.logs || [];
+      renderLogs();
+    }
+
+    function switchView(v) {
+      state.view = v;
+      document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.view === v));
+      const boardish = v === 'board' || v === 'needs' || v === 'completed';
+      $('boardView').hidden = !boardish;
+      $('logsView').hidden = v !== 'logs';
+      if (v === 'logs') refreshLogs().catch((e) => alert(e.message));
+      else refreshTasks().catch((e) => { $('hint').textContent = e.message; });
+    }
+
+    function parseStageTokensClient(text) {
+      const raw = String(text || '').trim();
+      if (!raw) return { ok: true, tokens: [] };
+      if (/#\s/.test(raw)) {
+        return { ok: false, error: 'invalid stage token — no spaces after #; use #take or #fill-and-sign (not "# tak")' };
+      }
+      const re = /^#[A-Za-z0-9][A-Za-z0-9._\-]*$/;
+      const parts = raw.split(/\s+/).filter(Boolean);
+      const tokens = [];
+      for (const p of parts) {
+        if (p === '#') return { ok: false, error: 'invalid stage token "#" — no spaces after #; use #take or #fill-and-sign' };
+        if (!p.startsWith('#')) return { ok: false, error: 'invalid stage token "' + p + '" — each stage must start with #' };
+        if (!re.test(p)) return { ok: false, error: 'invalid stage token "' + p + '" — use #Name with letters/numbers/._- only (no spaces after #)' };
+        tokens.push(p);
+      }
+      return { ok: true, tokens };
+    }
+
+    function isRestrictedKindVal(k) {
+      return k === 'pseudo' || k === 'routine' || k === 'not_a_task';
+    }
+
+    function setFld(name, visible) {
+      const el = document.querySelector('[data-fld="' + name + '"]');
+      if (el) el.hidden = !visible;
+    }
+
+    function renderStageChips(tokens, currentIndex, interactive) {
+      const box = $('stageChips');
+      box.innerHTML = '';
+      const toks = tokens || [];
+      const idx = Number(currentIndex) || 0;
+      $('stagePickHint').hidden = !toks.length;
+      $('stageBarEdit').hidden = !toks.length;
+      const fill = toks.length ? Math.round((idx / toks.length) * 100) : 0;
+      $('stageBarFill').style.width = fill + '%';
+      if (!toks.length) {
+        box.innerHTML = '<span class="hint-sm">No stages yet — type #tokens above, then Save.</span>';
+        return;
+      }
+      toks.forEach((tok, i) => {
+        const pos = i + 1; // currentIndex means "completed through this many"
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'stage-chip' + (pos <= idx ? ' on' : '');
+        b.textContent = tok;
+        b.disabled = !interactive;
+        b.title = interactive ? 'Set progress through ' + tok : tok;
+        if (interactive) {
+          b.onclick = async () => {
+            $('eStageIdx').value = String(pos);
+            renderStageChips(toks, pos, true);
+            const id = $('editId').value;
+            if (!id) return; // create: applied on Save
+            $('editErr').textContent = '';
+            try {
+              await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
+                text: toks.join(' '),
+                currentIndex: pos,
+              });
+              await refreshTasks();
+            } catch (err) {
+              $('editErr').textContent = err.message;
+            }
+          };
+        }
+        box.appendChild(b);
+      });
+      // allow reset to 0
+      if (interactive) {
+        const z = document.createElement('button');
+        z.type = 'button'; z.className = 'stage-chip'; z.textContent = 'Clear';
+        z.title = 'Reset progress to start';
+        z.onclick = async () => {
+          $('eStageIdx').value = '0';
+          renderStageChips(toks, 0, true);
+          const id = $('editId').value;
+          if (!id) return;
+          try {
+            await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
+              text: toks.join(' '), currentIndex: 0,
+            });
+            await refreshTasks();
+          } catch (err) { $('editErr').textContent = err.message; }
+        };
+        box.appendChild(z);
+      }
+    }
+
+    function openEdit(t) {
+      $('editTitle').textContent = t ? 'Edit task' : 'New task';
+      $('editId').value = t ? t.ref : '';
+      $('editErr').textContent = '';
+      $('editBanner').hidden = true;
+      $('editBanner').textContent = '';
+      $('eNameRo').hidden = true;
+
+      const proj = $('eProject'); proj.innerHTML = '';
+      state.projects.forEach((p) => {
+        const o = document.createElement('option'); o.value = p.code; o.textContent = p.name; proj.appendChild(o);
+      });
+      const statuses = role() === 'P2' ? ['Draft','Active','Done'] : ['Draft','Active','Blocked','Done'];
+      $('eStatus').innerHTML = statuses.map((s) => '<option>' + s + '</option>').join('');
+
+      let kindVal = 'main';
+      if (t) {
+        kindVal = t.kind || (t.kindIcon === 'P' ? 'pseudo' : t.kindIcon === 'R' ? 'routine' : t.kindIcon === 'N' ? 'not_a_task' : (t.kind || 'main'));
+        if (t.kindIcon && !t.kind) {
+          kindVal = t.kindIcon === 'P' ? 'pseudo' : t.kindIcon === 'R' ? 'routine' : t.kindIcon === 'N' ? 'not_a_task' : 'main';
+        }
+        proj.value = t.projectCode; $('eName').value = t.name || '';
+        $('eDesc').value = t.description || ''; $('eNotes').value = t.notes || '';
+        $('eLink').value = t.link || ''; $('eStatus').value = t.status || 'Draft';
+        $('ePriority').value = t.priority || 'normal'; $('eVis').value = t.visibility || 'public';
+        $('eKind').value = kindVal;
+        fillParentOptions(t.parentRef || '', t.ref);
+        if (t.stages && t.stages.tokens) {
+          $('eStages').value = t.stages.tokens.join(' ');
+          $('eStageIdx').value = t.stages.currentIndex || 0;
+          renderStageChips(t.stages.tokens, t.stages.currentIndex || 0, true);
+        } else {
+          $('eStages').value = ''; $('eStageIdx').value = 0;
+          renderStageChips([], 0, false);
+        }
+      } else {
+        if (state.projects[0]) proj.value = state.projects[0].code;
+        ['eName','eDesc','eNotes','eLink','eStages'].forEach((id) => $(id).value = '');
+        $('eStatus').value = 'Draft'; $('ePriority').value = 'normal'; $('eVis').value = 'public';
+        $('eKind').value = 'main'; $('eStageIdx').value = 0;
+        fillParentOptions('', '');
+        renderStageChips([], 0, false);
+      }
+      syncParentVisibility();
+
+      const scope = perms().editScope || 'none';
+      const isCreate = !t;
+      const statusOnlyRole = !isCreate && scope === 'status';
+      const restricted = !isCreate && isRestrictedKindVal(kindVal);
+      const full = isCreate || scope === 'all' || scope === 'own';
+
+      // Field visibility
+      if (restricted) {
+        $('editBanner').hidden = false;
+        $('editBanner').textContent = 'This kind only allows status changes.';
+        $('eNameRo').hidden = false;
+        $('eNameRo').textContent = t.name || '';
+        ['project','name','desc','notes','link','priority','vis','parent','stages'].forEach((f) => setFld(f, false));
+        setFld('status', true);
+        setFld('kind', !!perms().canSetKind); // admin may still see kind to change away via bulk; hide for clarity
+        setFld('kind', false);
+        $('eStatus').disabled = false;
+      } else {
+        setFld('project', true); setFld('name', true); setFld('desc', true); setFld('notes', true);
+        setFld('link', true); setFld('status', true); setFld('priority', true); setFld('vis', true);
+        setFld('kind', !!perms().canSetKind); setFld('parent', true); setFld('stages', true);
+        function en(el, on) { el.disabled = !on; }
+        en(proj, isCreate);
+        en($('eName'), full && !statusOnlyRole);
+        en($('eDesc'), full && !statusOnlyRole);
+        en($('eNotes'), full && !statusOnlyRole);
+        en($('eLink'), full && !statusOnlyRole);
+        en($('eStatus'), full || statusOnlyRole);
+        en($('ePriority'), scope === 'all');
+        en($('eVis'), scope === 'all');
+        en($('eKind'), !!perms().canSetKind);
+        en($('eParent'), full && !statusOnlyRole);
+        en($('eStages'), full && !statusOnlyRole);
+        const stageInteractive = full && !statusOnlyRole;
+        if (t && t.stages && t.stages.tokens) {
+          renderStageChips(t.stages.tokens, t.stages.currentIndex || 0, stageInteractive);
+        }
+      }
+
+      $('editDelete').hidden = !(t && perms().canDelete);
+      $('editDlg').showModal();
+    }
+
+    function syncParentVisibility() {
+      if (!$('editBanner').hidden) return; // P/R/N status-only
+      const adminKind = perms().canSetKind && !$('eKind').disabled;
+      const show = adminKind ? ($('eKind').value === 'sub') : true; // P2: parent optional → becomes sub
+      const parentFld = document.querySelector('[data-fld="parent"]');
+      if (parentFld) {
+        parentFld.hidden = adminKind ? !show : false;
+        const lab = parentFld.querySelector('label');
+        if (lab) lab.textContent = adminKind ? 'Parent Main task' : 'Parent Main (optional — makes this a sub)';
+      }
+      if (adminKind && $('eKind').value !== 'sub') $('eParent').value = '';
+      fillParentOptions($('eParent').value, $('editId').value);
+    }
+
+    $('eKind').addEventListener('change', () => syncParentVisibility());
+
+    // Rebuild chips when tokens text changes (blur)
+    $('eStages').addEventListener('change', () => {
+      const parsed = parseStageTokensClient($('eStages').value);
+      if (!parsed.ok) {
+        $('editErr').textContent = parsed.error;
+        return;
+      }
+      $('editErr').textContent = '';
+      let idx = Number($('eStageIdx').value) || 0;
+      if (idx > parsed.tokens.length) idx = parsed.tokens.length;
+      $('eStageIdx').value = String(idx);
+      renderStageChips(parsed.tokens, idx, true);
+    });
+
+    function openReview(t) {
+      $('revId').value = t.ref;
+      $('revNotes').value = '';
+      $('revNotesOwner').value = '';
+      $('revLink').value = t.link || '';
+      $('revErr').textContent = '';
+      const st = t.reviewState || (t.review && t.review.state) || 'none';
+      const iter = t.reviewIteration || (t.review && t.review.iteration) || 0;
+      $('revMeta').textContent = t.name + ' · ' + st + (iter ? ' · iteration ' + iter : '') + (t.linkVersion ? ' · link v' + t.linkVersion : '');
+      const hasLink = !!(t.link && String(t.link).trim());
+      $('revLinkRow').hidden = !hasLink;
+      if (hasLink) {
+        $('revOpenLink').href = t.link;
+      }
+      const mod = !!perms().canReviewModerate;
+      $('revModFields').hidden = !mod;
+      $('revOwnerFields').hidden = mod && st === 'under_review'; // mods act; owner fields for submit/resubmit
+      if (!mod) $('revOwnerFields').hidden = false;
+      $('revFeedback').hidden = !mod;
+      $('revRework').hidden = !mod;
+      $('revApprove').hidden = !mod;
+      $('revSubmit').hidden = !perms().canReviewSubmit;
+      $('reviewDlg').showModal();
+    }
+
+    // events
+    $('btnLogin').onclick = () => { $('loginErr').textContent = ''; $('loginDlg').showModal(); };
+    $('loginCancel').onclick = () => $('loginDlg').close();
+    $('loginForm').onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const r = await api('POST', '/api/login', { username: $('lu').value.trim(), password: $('lp').value });
+        setAuth(r.token, r.csrfToken); $('loginDlg').close(); await boot();
+      } catch (err) { $('loginErr').textContent = err.message; }
+    };
+    $('btnLogout').onclick = async () => {
+      try { await api('POST', '/api/logout', {}); } catch (e) {}
+      setAuth(null, null); await boot();
+    };
+    $('btnNew').onclick = async () => { await refreshProjects(); openEdit(null); };
+    $('editCancel').onclick = () => $('editDlg').close();
+    $('editDelete').onclick = async () => {
+      if (!confirm('Delete?')) return;
+      try { await api('DELETE', '/api/tasks/' + encodeURIComponent($('editId').value)); $('editDlg').close(); await refreshTasks(); }
+      catch (err) { $('editErr').textContent = err.message; }
+    };
+    $('editForm').onsubmit = async (e) => {
+      e.preventDefault(); $('editErr').textContent = '';
+      const id = $('editId').value;
+      const restrictedMode = !$('editBanner').hidden;
+      try {
+        if (!id) {
+          const body = {
+            projectCode: $('eProject').value, name: $('eName').value.trim(),
+            description: $('eDesc').value, notes: $('eNotes').value,
+            link: $('eLink').value.trim(), visibility: $('eVis').value,
+          };
+          if (perms().canSetKind && !$('eKind').disabled) body.kind = $('eKind').value;
+          if ($('eParent').value) {
+            body.parentRef = $('eParent').value;
+            body.kind = 'sub';
+          } else if (body.kind === 'sub') {
+            $('editErr').textContent = 'Select a Main parent task.'; return;
+          }
+          const created = await api('POST', '/api/tasks', body);
+          if ($('eStages').value.trim() && !$('eStages').disabled) {
+            const parsed = parseStageTokensClient($('eStages').value);
+            if (!parsed.ok) { $('editErr').textContent = parsed.error; return; }
+            await api('PATCH', '/api/tasks/' + created.task.ref + '/stages', {
+              text: parsed.tokens.join(' '),
+              currentIndex: Number($('eStageIdx').value) || 0,
+            });
+          }
+        } else if (restrictedMode) {
+          // P/R/N: status only
+          await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
+            status: $('eStatus').value,
+          });
+        } else {
+          const body = {};
+          if (!$('eStatus').disabled) body.status = $('eStatus').value;
+          if (!$('eName').disabled) body.name = $('eName').value.trim();
+          if (!$('eDesc').disabled) body.description = $('eDesc').value;
+          if (!$('eNotes').disabled) body.notes = $('eNotes').value;
+          if (!$('eLink').disabled) body.link = $('eLink').value.trim();
+          if (!$('ePriority').disabled) body.priority = $('ePriority').value;
+          if (!$('eVis').disabled) body.visibility = $('eVis').value;
+          if (!$('eKind').disabled && perms().canSetKind) body.kind = $('eKind').value;
+          if ($('eParent').value) {
+            body.parentRef = $('eParent').value;
+            body.kind = 'sub';
+          } else if (body.kind === 'sub') {
+            $('editErr').textContent = 'Select a Main parent task.'; return;
+          } else if (!$('eKind').disabled && perms().canSetKind && body.kind !== 'sub') {
+            body.parentRef = null;
+          }
+
+          // Admin kind → P/R/N: send kind (+ status) only so server accepts cleanly
+          if (body.kind && isRestrictedKindVal(body.kind)) {
+            await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
+              kind: body.kind,
+              status: body.status || $('eStatus').value,
+            });
+          } else {
+            await api('PATCH', '/api/tasks/' + encodeURIComponent(id), body);
+            if (!$('eStages').disabled) {
+              const parsed = parseStageTokensClient($('eStages').value);
+              if (!parsed.ok) { $('editErr').textContent = parsed.error; return; }
+              await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
+                text: parsed.tokens.join(' '),
+                currentIndex: Number($('eStageIdx').value) || 0,
+              });
+            }
+          }
+        }
+        $('editDlg').close(); await refreshTasks();
+      } catch (err) { $('editErr').textContent = err.message; }
+    };
+
+    async function revAct(path, opts) {
+      opts = opts || {};
+      $('revErr').textContent = '';
+      const notes = (opts.owner ? $('revNotesOwner').value : $('revNotes').value).trim();
+      if (opts.needNotes && !notes) { $('revErr').textContent = 'Notes are required for re-work.'; return; }
+      const body = {};
+      if (notes) body.notes = notes;
+      if (opts.withLink) {
+        const link = $('revLink').value.trim();
+        if (link) body.link = link;
+      }
+      try {
+        await api('POST', '/api/tasks/' + encodeURIComponent($('revId').value) + path, body);
+        $('reviewDlg').close(); await refreshTasks();
+      } catch (err) { $('revErr').textContent = err.message; }
+    }
+    $('revClose').onclick = () => $('reviewDlg').close();
+    $('revSubmit').onclick = () => revAct('/review/submit', { owner: true, withLink: true });
+    $('revFeedback').onclick = () => revAct('/review/feedback', { needNotes: true });
+    $('revRework').onclick = () => revAct('/review/rework', { needNotes: true });
+    $('revApprove').onclick = () => revAct('/review/approve', {});
+
+    document.getElementById('tabs').onclick = (e) => {
+      const t = e.target.closest('.tab'); if (t) switchView(t.dataset.view);
+    };
+    $('logRefresh').onclick = () => refreshLogs().catch((e) => alert(e.message));
+    $('logCsv').onclick = () => {
+      const rows = state.logs || [];
+      const cols = ['ref','name','projectCode','assigneeUsername','status','reviewState','stagesSummary','link','updatedAt'];
+      const lines = [cols.join(',')].concat(rows.map((r) => cols.map((c) => JSON.stringify(r[c] == null ? '' : r[c])).join(',')));
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'logs.csv'; a.click();
+    };
+
+    ['Draft','Active','Blocked','Done'].forEach((s) => {
+      const o = document.createElement('option'); o.value = s; o.textContent = s; $('logStatus').appendChild(o);
+    });
+
+    async function boot() {
+      try {
+        await refreshMe(); await refreshProjects(); await refreshTasks();
+      } catch (err) { $('hint').textContent = 'Could not load: ' + err.message; }
+    }
+    boot();
+  })();
   </script>
 </body>
 </html>

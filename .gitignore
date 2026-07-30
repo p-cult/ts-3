@@ -5,6 +5,7 @@ node_modules/
 .DS_Store
 .pid
 data/local/
+data/side/
 tmp/
 .idea/
 .vscode/

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Param Task — ts-3 foundation</title>
+  <style>
+    :root {
+      --bg: #f6f4f1;
+      --ink: #1c1b19;
+      --muted: #6b6560;
+      --card: #ffffff;
+      --line: #e4dfd8;
+      --accent: #2f5d50;
+      --font: "Segoe UI", system-ui, sans-serif;
+      --space: 1rem;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 40rem;
+      margin: 0 auto;
+      padding: calc(var(--space) * 2);
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: calc(var(--space) * 1.5);
+    }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.35rem;
+      font-weight: 650;
+    }
+    p { margin: 0.5rem 0; color: var(--muted); }
+    .status {
+      margin-top: var(--space);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      background: #eef6f3;
+      color: var(--accent);
+      font-family: ui-monospace, monospace;
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+    }
+    .status.bad {
+      background: #f8eeee;
+      color: #8a3030;
+    }
+    code { font-family: ui-monospace, monospace; font-size: 0.9em; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1>ts-3 foundation</h1>
+      <p>
+        Clean rebuild shell. No login, no tasks yet.
+        Middleware is up if the health line below is green.
+      </p>
+      <div id="status" class="status">Checking /api/health…</div>
+      <p style="margin-top: 1.25rem">
+        Next product work lives in <code>SLICE-01.md</code>.
+        How the stack is wired: <code>FOUNDATION.md</code>.
+      </p>
+    </div>
+  </main>
+  <script>
+    (async function () {
+      const el = document.getElementById('status');
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error && data.error.message || res.status);
+        el.textContent =
+          'ok  app=' + data.app +
+          '\n    version=' + data.version +
+          '\n    foundation=' + data.foundation +
+          '\n    env=' + data.env +
+          '\n    time=' + data.time;
+      } catch (err) {
+        el.classList.add('bad');
+        el.textContent = 'health check failed: ' + (err && err.message ? err.message : err);
+      }
+    })();
+  </script>
+</body>
+</html>

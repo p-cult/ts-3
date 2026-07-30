@@ -1,0 +1,18 @@
+{
+  "name": "param-task-ts3",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Clean rebuild of Param task system (ts-3). Plain Node.js + one HTML file.",
+  "main": "middleware/server.js",
+  "scripts": {
+    "start": "node middleware/server.js",
+    "test": "node middleware/foundation.test.js",
+    "foundation-test": "node middleware/foundation.test.js",
+    "health": "node -e \"const h=process.env.HOST||'127.0.0.1';const p=process.env.PORT||4303;require('http').get('http://'+h+':'+p+'/api/health',r=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>{console.log(d);process.exit(r.statusCode>=400?1:0);})}).on('error',e=>{console.error(e.message);process.exit(1);})\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

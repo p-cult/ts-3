@@ -45,9 +45,12 @@ Public DTO: never `taskId` / raw parentTaskId; client uses `ref` + `parentRef`; 
 
 ## Parent Main picker (sub)
 
-- UI: **dropdown of Main tasks** (name + `ref`), not free-text Task ID.  
-- Sets `parentRef`. Empty mains → “Create a Main task first.”  
-- Parent only when kind/sub; cleared when not sub.
+- UI: **dropdown of Main tasks the actor can see** — label = **name + short `ref`**.  
+- **Never** free-text Task ID / parent id field.  
+- Selecting one sets client `parentRef` (API also accepts legacy body alias `parentPublicId` → same handle).  
+- Empty mains → disabled select + **“Create a Main task first.”**  
+- Parent only when kind = **sub** (admin); P2 optional parent → creates as sub.  
+- Clear parent when kind is not sub.
 
 ## Review (main + sub only)
 
@@ -56,23 +59,32 @@ States: `none | under_review | rework | approved`
 
 | Action | Who | Rule |
 |--------|-----|------|
-| submit | owner P2+ | **link required** (body or on task) |
+| submit / resubmit | owner P2+ | **link required** (body or on task); notes optional |
 | feedback | P3+P4 | notes required |
-| **re-work** | P3+P4 | **notes mandatory**; `reviewIteration++` |
-| approve | P3+P4 | → Completed |
+| **Re-work** | P3+P4 | **notes mandatory**; `reviewIteration++`; state → `rework` |
+| Approve | P3+P4 | state → `approved` → Completed tab |
 
 **Tabs / filters**
 
 | Tab | Who | Query |
 |-----|-----|--------|
 | Board | all | `board=active` (hides approved) |
-| Needs review | P3+P4 | `board=needs_review` |
-| Completed | logged-in | `board=completed` (approved) |
+| **Needs review** | **P3+P4 only** | `board=needs_review` (`under_review`) |
+| **Completed** | logged-in (P2+) | `board=completed` (`approved`) |
 | Logs | P2+ | `/api/logs` |
 
-- Link opens in a **new browser tab**; Approve / Re-work stay **in-app**.  
-- Notes + history: side-store only. Iteration on task row (`reviewIteration`).  
-- After approve: badge on Completed; history in Logs, not full notes on detail card.  
+**Needs review UX (locked):** each row shows name, link button (opens **new browser tab**), iteration, and **in-app** Review actions. Approve / Re-work never live inside the external page.
+
+**Visibility**
+
+| Data | P1 | P2+ | P3/P4 |
+|------|----|-----|-------|
+| Link icon (if public task) | yes | yes | yes |
+| reviewState / iteration / notes | no | yes | yes |
+| Needs review tab | no | no | yes |
+
+- Notes + history: **side-store only**. Iteration counter on task row (`reviewIteration`).  
+- After approve: **Approved** badge on Completed; full history in Logs — not dumped on detail card.  
 
 API:
 
@@ -80,6 +92,7 @@ API:
 - `POST .../review/feedback` `{ notes }`  
 - `POST .../review/rework` `{ notes }` (alias: `send-back`)  
 - `POST .../review/approve` `{ notes? }`  
+- List also accepts `reviewState=under_review|rework|approved`  
 
 ## Logs
 

@@ -65,9 +65,6 @@ function toPublicTask(row, displayNames, opts = {}) {
     parentRef: row.parentTaskId
       ? refFor(row.parentTaskId, opts.refSecret)
       : null,
-    reviewState: normalizeReviewState(row.reviewState),
-    linkVersion: Number(row.linkVersion) || 0,
-    reviewIteration: Number(row.reviewIteration) || 0,
   };
 
   if (profile >= PROFILE.SUPER_ADMIN) {
@@ -94,8 +91,14 @@ function toPublicTask(row, displayNames, opts = {}) {
     dto.stages = null;
   }
 
-  if (profile >= PROFILE.USER && opts.reviewSummary) {
-    dto.review = opts.reviewSummary;
+  // Review state / notes / iteration: P2+ only (P1 public: link icon only)
+  if (profile >= PROFILE.USER) {
+    dto.reviewState = normalizeReviewState(row.reviewState);
+    dto.linkVersion = Number(row.linkVersion) || 0;
+    dto.reviewIteration = Number(row.reviewIteration) || 0;
+    if (opts.reviewSummary) {
+      dto.review = opts.reviewSummary;
+    }
   }
 
   // Hard law: never leak Task ID or sheet keys

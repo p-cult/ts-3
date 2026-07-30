@@ -130,6 +130,7 @@ async function main() {
       // default kind main — P2 dto may show main
       assert.ok(main.json.task.kind === 'main' || main.json.task.kind === undefined);
 
+      // Parent is client ref from Main list (parentRef); legacy alias parentPublicId also accepted
       const sub = await request(port, 'POST', '/api/tasks', {
         token: usr.token,
         body: {
@@ -142,6 +143,21 @@ async function main() {
       assert.strictEqual(sub.status, 201);
       assert.strictEqual(sub.json.task.parentRef, main.json.task.ref);
       assert.strictEqual(sub.json.task.kind, 'sub');
+      // never exposes internal Task ID as parent
+      assert.strictEqual(sub.json.task.parentTaskId, undefined);
+      assert.strictEqual(sub.json.task.taskId, undefined);
+
+      const subAlias = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: {
+          projectCode: 'PRJ001',
+          name: 'Sub Alias ' + Date.now(),
+          parentPublicId: main.json.task.ref, // legacy alias = same opaque ref
+          visibility: 'public',
+        },
+      });
+      assert.strictEqual(subAlias.status, 201);
+      assert.strictEqual(subAlias.json.task.parentRef, main.json.task.ref);
 
       // public list includes main+sub, nested
       const pub = await request(port, 'GET', '/api/tasks?nested=1');
@@ -367,15 +383,19 @@ async function main() {
       });
       assert.ok(done.json.tasks.some((x) => x.ref === id));
 
-      // public list: link ok, no review notes
+      // public list: link ok; no review notes / state / iteration (P1)
       const pub = await request(port, 'GET', '/api/tasks');
       const pt = pub.json.tasks.find((x) => x.ref === id);
-      // approved hidden from active public board filter — public default has no board=active
-      // public scope still includes approved if public visibility
       if (pt) {
         assert.ok(pt.hasLink);
-        assert.ok(!pt.review || pt.review === undefined);
+        assert.ok(pt.review === undefined);
+        assert.ok(pt.reviewState === undefined);
+        assert.ok(pt.reviewIteration === undefined);
       }
+
+      // P1 cannot open completed tab
+      const doneP1 = await request(port, 'GET', '/api/tasks?board=completed');
+      assert.strictEqual(doneP1.status, 403);
 
       const det = await request(port, 'GET', '/api/tasks/' + id, { token: usr.token });
       assert.ok(det.json.task.review);

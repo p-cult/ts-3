@@ -30,6 +30,9 @@ function createListTasks({ data }) {
         }
         reviewFilter = 'under_review';
       } else if (board === 'completed') {
+        if (profile < PROFILE.USER) {
+          throw forbidden('completed tab requires sign-in');
+        }
         reviewFilter = 'approved';
       } else if (board === 'active') {
         // main board: hide approved (still in completed tab)

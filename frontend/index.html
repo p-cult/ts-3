@@ -265,50 +265,78 @@
       return '<div class="bar" title="Stages ' + st.currentIndex + '/' + st.total + '"><i style="width:' + pct + '%"></i></div>';
     }
 
+    function shortRef(ref) {
+      const r = String(ref || '');
+      return r.length > 10 ? r.slice(0, 8) + '…' : r;
+    }
+
     function renderTask(t, isSub) {
       const el = document.createElement('article');
       el.className = 'task' + (isSub ? ' sub' : '');
-      const link = t.hasLink && t.link
-        ? '<a class="link-ico" href="' + t.link.replace(/"/g, '') + '" target="_blank" rel="noopener" title="Open link">🔗</a>'
+      const safeHref = (t.hasLink && t.link) ? String(t.link).replace(/"/g, '') : '';
+      const link = safeHref
+        ? '<a class="link-ico" href="' + safeHref + '" target="_blank" rel="noopener" title="Open link in new tab">🔗</a>'
         : '';
       const kindChip = t.kindIcon ? '<span class="chip kind">' + t.kindIcon + '</span>' : '';
       let reviewHtml = '';
       const rState = (t.review && t.review.state) || t.reviewState || 'none';
       const iter = (t.review && t.review.iteration != null) ? t.review.iteration : (t.reviewIteration || 0);
-      if (rState === 'approved') {
+      const isNeeds = state.view === 'needs';
+      const isDone = state.view === 'completed' || rState === 'approved';
+
+      // P1: no review notes / iteration / state detail — link icon only
+      if (role() === 'P1') {
+        reviewHtml = '';
+      } else if (rState === 'approved' || isDone) {
         reviewHtml = '<div class="muted" style="font-size:.8rem;margin-top:.3rem"><span class="chip">Approved</span>'
-          + (iter ? ' · iteration ' + iter : '') + ' · see Logs for history</div>';
+          + (iter ? ' · iteration ' + iter : '') + ' · history in Logs</div>';
       } else if (t.review && t.review.showOnDetail !== false && rState && rState !== 'none') {
         reviewHtml = '<div class="review-box">Review: <strong>' + escapeHtml(rState) + '</strong>'
           + (iter ? ' · iteration ' + iter : '')
           + (t.review.version ? ' · link v' + t.review.version : '')
           + (t.review.lastNotes ? '<br>' + escapeHtml(t.review.lastNotes) : '')
+          + (isNeeds ? '<br><span class="muted">Open the link in a new tab; Approve / Re-work stay in this app.</span>' : '')
           + '</div>';
+      } else if (isNeeds && iter) {
+        reviewHtml = '<div class="review-box">Iteration ' + iter + '</div>';
       }
+
       el.innerHTML = '<h3></h3><div class="meta"></div><div class="chips"></div>'
         + renderBar(t.stages) + reviewHtml + '<div class="actions"></div>';
       el.querySelector('h3').innerHTML = escapeHtml(t.name) + link;
       el.querySelector('.meta').textContent =
         (t.projectName || t.projectCode) + ' · ' + (t.assigneeDisplayName || t.assigneeUsername || '')
-        + (t.endDate ? ' · ' + t.endDate : '');
+        + (t.endDate ? ' · ' + t.endDate : '')
+        + (iter && role() !== 'P1' && isNeeds ? ' · iter ' + iter : '');
       const chips = el.querySelector('.chips');
       if (kindChip) chips.insertAdjacentHTML('beforeend', kindChip);
-      ['status:' + t.status, t.visibility, t.reviewState && t.reviewState !== 'none' ? 'rev:' + t.reviewState : '']
-        .filter(Boolean).forEach((c) => {
-          const s = document.createElement('span'); s.className = 'chip'; s.textContent = c; chips.appendChild(s);
-        });
+      const chipBits = ['status:' + t.status, t.visibility];
+      if (role() !== 'P1' && t.reviewState && t.reviewState !== 'none') {
+        chipBits.push('rev:' + t.reviewState);
+      }
+      chipBits.filter(Boolean).forEach((c) => {
+        const s = document.createElement('span'); s.className = 'chip'; s.textContent = c; chips.appendChild(s);
+      });
       const actions = el.querySelector('.actions');
       const scope = perms().editScope || 'none';
       const mine = state.me && t.assigneeUsername === state.me.username;
       const canEdit = scope === 'all' || scope === 'status' || (scope === 'own' && mine);
-      if (canEdit) {
+
+      // Needs review: link opens new tab; Approve/Re-work stay in-app via Review panel
+      if (isNeeds && safeHref) {
+        const lb = document.createElement('a');
+        lb.className = 'btn'; lb.href = safeHref; lb.target = '_blank'; lb.rel = 'noopener';
+        lb.textContent = 'Open link'; actions.appendChild(lb);
+      }
+      if (canEdit && !isNeeds) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
         b.textContent = scope === 'status' ? 'Status' : 'Edit';
         b.onclick = () => openEdit(t); actions.appendChild(b);
       }
       if (role() !== 'P1' && (t.kind === 'main' || t.kind === 'sub' || !t.kindIcon)) {
-        const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn';
-        rb.textContent = 'Review'; rb.onclick = () => openReview(t); actions.appendChild(rb);
+        const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn' + (isNeeds ? ' primary' : '');
+        rb.textContent = isNeeds ? 'Review actions' : 'Review';
+        rb.onclick = () => openReview(t); actions.appendChild(rb);
       }
       return el;
     }
@@ -321,11 +349,19 @@
       const box = $('taskList'); box.innerHTML = '';
       const roots = nest(state.tasks);
       $('empty').hidden = !!roots.length;
-      $('hint').textContent = role() === 'P1'
-        ? 'Public: main tasks with nested subs. Link icon opens file when present.'
-        : role() === 'P2' ? 'Your tasks. Stages + submit review on main/sub.'
-        : role() === 'P3' ? 'All tasks. Feedback / send-back / approve.'
-        : 'Admin: kinds P/R/N, bulk via API, full review, logs.';
+      if (state.view === 'needs') {
+        $('hint').textContent = 'Needs review: open the submission link in a new tab; Approve / Re-work stay in the app.';
+      } else if (state.view === 'completed') {
+        $('hint').textContent = 'Completed (approved). Badge only here; full history is under Logs.';
+      } else if (role() === 'P1') {
+        $('hint').textContent = 'Public: main tasks with nested subs. Link icon opens work in a new tab when present.';
+      } else if (role() === 'P2') {
+        $('hint').textContent = 'Your tasks. Stages + submit for review on main/sub. After re-work, revise link and resubmit.';
+      } else if (role() === 'P3') {
+        $('hint').textContent = 'All tasks. Needs review tab: link out, then Re-work (notes required) or Approve in-app.';
+      } else {
+        $('hint').textContent = 'Admin: kinds P/R/N, full review, logs. Parent Main is a dropdown (not free-text id).';
+      }
       function walk(list, sub) {
         list.forEach((t) => {
           box.appendChild(renderTask(t, sub));
@@ -404,17 +440,23 @@
       opt0.value = ''; opt0.textContent = '— Select a Main —';
       sel.appendChild(opt0);
       const mains = (state.allForParent || []).filter((t) => {
-        const k = t.kind || 'main';
-        return k === 'main' && t.ref !== excludeId;
+        // only Main — exclude sub and P/R/N (kindIcon)
+        if (t.ref === excludeId) return false;
+        if (t.kindIcon) return false; // P / R / N
+        if (t.kind === 'sub') return false;
+        if (t.kind && t.kind !== 'main') return false;
+        return true; // kind main or omitted (non-admin main)
       });
       $('eParentHint').hidden = mains.length > 0;
+      sel.disabled = mains.length === 0;
       mains.forEach((t) => {
         const o = document.createElement('option');
-        o.value = t.ref;
-        o.textContent = t.name + ' (' + t.ref + ')';
+        o.value = t.ref; // client handle (ref); never Task ID
+        o.textContent = t.name + ' (' + shortRef(t.ref) + ')';
         sel.appendChild(o);
       });
-      if (selectedId) sel.value = selectedId;
+      if (selectedId && mains.some((m) => m.ref === selectedId)) sel.value = selectedId;
+      else sel.value = '';
     }
 
     async function refreshProjects() {
@@ -622,14 +664,21 @@
     function syncParentVisibility() {
       if (!$('editBanner').hidden) return; // P/R/N status-only
       const adminKind = perms().canSetKind && !$('eKind').disabled;
-      const show = adminKind ? ($('eKind').value === 'sub') : true; // P2: parent optional → becomes sub
+      // Parent picker only when creating/editing a sub (admin kind=sub, or P2 optional parent → sub)
+      const show = adminKind ? ($('eKind').value === 'sub') : true;
       const parentFld = document.querySelector('[data-fld="parent"]');
       if (parentFld) {
         parentFld.hidden = adminKind ? !show : false;
         const lab = parentFld.querySelector('label');
-        if (lab) lab.textContent = adminKind ? 'Parent Main task' : 'Parent Main (optional — makes this a sub)';
+        if (lab) {
+          lab.textContent = adminKind
+            ? 'Parent Main task (dropdown)'
+            : 'Parent Main (optional — selecting one makes this a sub)';
+        }
       }
-      if (adminKind && $('eKind').value !== 'sub') $('eParent').value = '';
+      if (adminKind && $('eKind').value !== 'sub') {
+        $('eParent').value = '';
+      }
       fillParentOptions($('eParent').value, $('editId').value);
     }
 
@@ -662,15 +711,20 @@
       $('revLinkRow').hidden = !hasLink;
       if (hasLink) {
         $('revOpenLink').href = t.link;
+        $('revOpenLink').target = '_blank';
+        $('revOpenLink').rel = 'noopener';
       }
       const mod = !!perms().canReviewModerate;
-      $('revModFields').hidden = !mod;
-      $('revOwnerFields').hidden = mod && st === 'under_review'; // mods act; owner fields for submit/resubmit
-      if (!mod) $('revOwnerFields').hidden = false;
-      $('revFeedback').hidden = !mod;
-      $('revRework').hidden = !mod;
-      $('revApprove').hidden = !mod;
-      $('revSubmit').hidden = !perms().canReviewSubmit;
+      const canSubmitRole = !!perms().canReviewSubmit;
+      // Owner form for submit/resubmit (none | rework); mods on under_review use Re-work / Approve only
+      const showOwnerSubmit =
+        canSubmitRole && st !== 'approved' && !(mod && st === 'under_review');
+      $('revModFields').hidden = !mod || st === 'approved';
+      $('revOwnerFields').hidden = !showOwnerSubmit;
+      $('revSubmit').hidden = !showOwnerSubmit;
+      $('revFeedback').hidden = !mod || st === 'approved';
+      $('revRework').hidden = !mod || st === 'approved';
+      $('revApprove').hidden = !mod || st === 'approved';
       $('reviewDlg').showModal();
     }
 

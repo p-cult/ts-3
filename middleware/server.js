@@ -21,6 +21,21 @@ const {
 const { permissionsFor, roleCode } = require('./domain/roles');
 const { PROFILE } = require('./domain/profiles');
 
+function applyCors(req, res, config) {
+  const origin = config.corsOrigin;
+  if (!origin) return;
+  const reqOrigin = req.headers.origin;
+  if (reqOrigin && reqOrigin !== origin) return;
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'Content-Type, Authorization, X-CSRF-Token, X-Request-Id'
+  );
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Vary', 'Origin');
+}
+
 function attachActor(ctx, app) {
   const token = sessionTokenFromRequest(ctx.req);
   const session = token && app.sessions ? app.sessions.get(token) : null;
@@ -107,6 +122,19 @@ function createRequestListener(opts = {}) {
 
     try {
       if (pathname === '/api' || pathname.startsWith('/api/')) {
+        applyCors(req, res, config);
+        if (String(req.method || 'GET').toUpperCase() === 'OPTIONS') {
+          res.statusCode = 204;
+          res.end();
+          reqLog.info('request', {
+            method: req.method,
+            path: pathname,
+            status: 204,
+            ms: Date.now() - started,
+            role: ctx.actor && ctx.actor.role,
+          });
+          return;
+        }
         const matched = router.match(req.method, pathname);
         if (!matched) throw notFound(`No route ${req.method} ${pathname}`);
         ctx.params = matched.params;
@@ -143,7 +171,7 @@ function printStartupBanner(app, addr) {
   const b = app.bootstrap || {};
   const heals = (b.heals || []).length;
   console.log('');
-  console.log('  ts-3 slice 10 (staging)');
+  console.log('  ts-3 slice 11 (staging)');
   console.log(`  url     http://${addr.address}:${addr.port}/`);
   console.log(`  health  http://${addr.address}:${addr.port}/api/health`);
   console.log(`  mode    ${app.config.appMode || 'staging'}`);

@@ -107,6 +107,9 @@ const config = Object.freeze({
   /** Queue untrusted creates (P2) — default off until Vinod enables */
   queueMode: envString('QUEUE_MODE', 'off'),
 
+  /** Production split: GitHub Pages UI origin allowed on API (empty = same-origin only) */
+  corsOrigin: envString('CORS_ORIGIN', ''),
+
   /** Defaults for data/retry.withRetry on external I/O */
   retry: Object.freeze({
     attempts: envInt('RETRY_ATTEMPTS', 3),

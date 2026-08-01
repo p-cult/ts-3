@@ -3,8 +3,11 @@
 const path = require('path');
 const { createMemoryData } = require('./memory');
 const { createSideStores } = require('./side-store');
+const { createSheetWriter } = require('./sheet-writer');
+const { createHistoryWriter } = require('./history-writer');
 const { withRetry, isRetryable } = require('./retry');
 const { notImplemented } = require('../errors');
+const { joinVisibleAndHistory } = require('../domain/field-class');
 
 function createDataAccess(deps) {
   const config = deps.config;
@@ -16,13 +19,15 @@ function createDataAccess(deps) {
     'side'
   );
   const side = createSideStores({ dataDir: sideDir });
+  const sheets = createSheetWriter(inner);
+  const history = createHistoryWriter(side);
 
   function deleteByTaskId(id) {
     const row = inner.findByTaskId(id);
     const ok = inner.deleteByTaskId(id);
     if (ok && row) {
-      side.clearStages(row.taskId);
-      side.clearReviews(row.taskId);
+      history.clearStages(row.taskId);
+      history.clearReviews(row.taskId);
     }
     return ok;
   }
@@ -67,9 +72,12 @@ function createDataAccess(deps) {
     findUser: (u) => inner.findUser(u),
     listProjects: () => inner.listProjects(),
     findProject: (c) => inner.findProject(c),
-    commitBirth: (row) => inner.commitBirth(row),
-    updateByTaskId: (id, p) => inner.updateByTaskId(id, p),
-    updateByRef: (r, p) => inner.updateByRef(r, p),
+
+    // Visible-only birth / update (sheetWriter)
+    commitBirth: (row) => sheets.commitBirth(row),
+    updateByTaskId: (id, p) => sheets.updateByTaskId(id, p),
+    updateByRef: (r, p) => sheets.updateByRef(r, p),
+
     reassignByTaskId: (id, a, u) => inner.reassignByTaskId(id, a, u),
     deleteByTaskId,
     deleteByRef,
@@ -77,11 +85,22 @@ function createDataAccess(deps) {
     partitionsFor: (id) => inner.partitionsFor(id),
     refFor: (tid) => inner.refFor(tid),
 
-    getStages: (taskId) => side.getStages(taskId),
-    setStages: (taskId, s) => side.setStages(taskId, s),
-    getReviews: (taskId) => side.getReviews(taskId),
-    appendReview: (taskId, e) => side.appendReview(taskId, e),
+    // Invisible history (historyWriter / side-store)
+    getStages: (taskId) => history.getStages(taskId),
+    setStages: (taskId, s) => history.setStages(taskId, s),
+    getReviews: (taskId) => history.getReviews(taskId),
+    appendReview: (taskId, e) => history.appendReview(taskId, e),
+
+    /** Join depot row + side history for reports/logs. */
+    joinHistory(taskId) {
+      const row = inner.findByTaskId(taskId);
+      if (!row) return null;
+      return joinVisibleAndHistory(row, history.snapshot(taskId));
+    },
+
     _side: side,
+    _sheetWriter: sheets,
+    _historyWriter: history,
     _unsafeMemory: () => inner._state,
   };
 }

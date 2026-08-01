@@ -12,7 +12,7 @@ This folder stays **lean**. Cutover law: [ARCHITECTURE.md](ARCHITECTURE.md) §14
 | 1 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Core model + laws (Task ID, vehicle, depot, control room) |
 | 2 | **[PLAN-CLEAN.md](PLAN-CLEAN.md)** | Rebuild plan: preserve / drop / one birth path / waves |
 | 3 | **[FOUNDATION.md](FOUNDATION.md)** | Technical spine (server, config, log, errors, layout) |
-| 4 | **[SLICE-01.md](SLICE-01.md)** · **[SLICE-02.md](SLICE-02.md)** | Control room + kinds/stages/review (built) |
+| 4 | **[SLICE-01.md](SLICE-01.md)** · **[SLICE-02.md](SLICE-02.md)** · **[SLICE-03.md](SLICE-03.md)** | Control room + kinds/stages/review + dual writers |
 | 5 | **[CAPABILITIES-FROM-TS2.md](CAPABILITIES-FROM-TS2.md)** | What live ts-2 actually does |
 
 That’s the whole working brain. Everything else is reference or archive.
@@ -77,7 +77,8 @@ data/              local runtime
 
 - Planning + foundation: **yes**
 - Staging / cutover strategy: **documented**
-- **Slice 01 + 02:** built + automated tests green (`npm test`)
+- **Slice 01–03:** built + automated tests green (`npm test`)
+- Dual writers: visible → vehicle/depot; invisible stages/reviews → side-store only
 - Board: hierarchy, stages bar, review, logs (print/CSV)
 - Try: `./run.sh` → primary Staging logins:
   - **ts3admin** / `ts3-98860` (P4 Admin)

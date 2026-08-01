@@ -290,9 +290,9 @@ async function main() {
     {
       const r = await request(port, 'GET', '/api/health');
       assert.strictEqual(r.json.foundation, true);
-      assert.strictEqual(r.json.slice, '02');
+      assert.strictEqual(r.json.slice, '03');
       assert.ok(r.json.mode && r.json.mode.appMode === 'staging');
-      ok('health reports slice 02 + staging mode');
+      ok('health reports slice 03 + staging mode');
     }
   } finally {
     await new Promise((resolve) => server.close(resolve));

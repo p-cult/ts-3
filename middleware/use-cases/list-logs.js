@@ -2,6 +2,7 @@
 
 const { scopeTasks } = require('../domain/tasks');
 const { normalizeKind, kindIcon } = require('../domain/kinds');
+const { joinVisibleAndHistory } = require('../domain/field-class');
 const { unauthorized } = require('../errors');
 const { PROFILE, normalizeProfile } = require('../domain/profiles');
 
@@ -50,30 +51,30 @@ function createListLogs({ data }) {
       );
 
       const entries = rows.map((t) => {
-        const stages = data.getStages(t.taskId);
-        const reviews = data.getReviews(t.taskId);
+        const joined = joinVisibleAndHistory(t, {
+          stages: data.getStages(t.taskId),
+          reviews: data.getReviews(t.taskId),
+        });
         return {
           ref: data.refFor(t.taskId),
-          name: t.name,
-          projectCode: t.projectCode,
-          projectName: t.projectName,
-          assigneeUsername: t.assigneeUsername,
-          assigneeDisplayName: nameMap.get(t.assigneeUsername) || t.assigneeUsername,
-          status: t.status,
-          kind: profile >= PROFILE.SUPER_ADMIN ? normalizeKind(t.kind) : undefined,
-          kindIcon: profile >= PROFILE.SUPER_ADMIN ? kindIcon(t.kind) : '',
-          link: t.link || '',
-          hasLink: !!(t.link && String(t.link).trim()),
-          reviewState: t.reviewState || 'none',
-          linkVersion: t.linkVersion || 0,
-          reviewIteration: Number(t.reviewIteration) || 0,
-          stagesSummary: stages
-            ? stages.currentIndex + '/' + (stages.tokens || []).length
-            : '',
-          stagesTokens: stages ? stages.tokens : [],
-          reviewCount: reviews.length,
-          lastReview: reviews.length ? reviews[reviews.length - 1] : null,
-          updatedAt: t.updatedAt,
+          name: joined.name,
+          projectCode: joined.projectCode,
+          projectName: joined.projectName,
+          assigneeUsername: joined.assigneeUsername,
+          assigneeDisplayName: nameMap.get(joined.assigneeUsername) || joined.assigneeUsername,
+          status: joined.status,
+          kind: profile >= PROFILE.SUPER_ADMIN ? normalizeKind(joined.kind) : undefined,
+          kindIcon: profile >= PROFILE.SUPER_ADMIN ? kindIcon(joined.kind) : '',
+          link: joined.link || '',
+          hasLink: !!(joined.link && String(joined.link).trim()),
+          reviewState: joined.reviewState || 'none',
+          linkVersion: joined.linkVersion || 0,
+          reviewIteration: Number(joined.reviewIteration) || 0,
+          stagesSummary: joined.stagesSummary,
+          stagesTokens: joined.stagesTokens,
+          reviewCount: joined.reviewCount,
+          lastReview: joined.lastReview,
+          updatedAt: joined.updatedAt,
         };
       });
 

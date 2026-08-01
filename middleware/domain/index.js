@@ -9,6 +9,7 @@ const tasks = require('./tasks');
 const kinds = require('./kinds');
 const stages = require('./stages');
 const review = require('./review');
+const fieldClass = require('./field-class');
 
 module.exports = {
   profiles,
@@ -20,6 +21,7 @@ module.exports = {
   kinds,
   stages,
   review,
+  fieldClass,
   PROFILE: profiles.PROFILE,
   roleCode: profiles.roleCode,
   roleName: profiles.roleName,

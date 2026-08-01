@@ -10,6 +10,7 @@ const projects = require('./projects');
 const users = require('./users');
 const logs = require('./logs');
 const queue = require('./queue');
+const dropdown = require('./dropdown');
 
 function buildRouter(_deps) {
   const router = createRouter();
@@ -23,6 +24,7 @@ function buildRouter(_deps) {
   projects.register(router, _deps);
   users.register(router, _deps);
   logs.register(router, _deps);
+  dropdown.register(router, _deps);
 
   return router;
 }

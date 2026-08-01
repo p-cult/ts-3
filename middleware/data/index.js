@@ -28,6 +28,8 @@ function createDataAccess(deps) {
     inner = createSheetsData({
       refSecret,
       stagingWrites: !!config.stagingWrites,
+      appMode: config.appMode || 'staging',
+      writerOfRecord: config.writerOfRecord || 'ts2',
       useLiveBridge: !!config.useLiveBridge,
       bridge,
       fixturePath: config.sheetsFixturePath,

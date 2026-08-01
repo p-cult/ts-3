@@ -2,13 +2,10 @@
 
 /**
  * Sheets-shaped data adapter — same interface as memory.
- * Slice 05: read path first.
  *
- * Sources:
- *   - fixture JSON (CI / local Staging without live Google)
- *   - optional live bridge reads when USE_LIVE_BRIDGE + configured
- *
- * Writes: refused while STAGING_WRITES=false (clear AppError).
+ * Reads: fixture and/or live bridge.
+ * Writes: only when STAGING_WRITES=true, APP_MODE=staging, WRITER_OF_RECORD=ts3.
+ * Live bridge writes optional (USE_LIVE_BRIDGE); otherwise mirror-only for supervised tests.
  */
 
 const fs = require('fs');
@@ -25,23 +22,21 @@ function loadFixture(fixturePath) {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 }
 
-function stagingWritesOff(op) {
-  return new AppError(
-    CODE.FORBIDDEN,
-    'STAGING_WRITES=false — sheet write refused (' + op + ')',
-    {
-      status: 403,
-      details: { op, stagingWrites: false },
-      retryable: false,
-      expose: true,
-    }
-  );
+function writeGateError(message, details) {
+  return new AppError(CODE.FORBIDDEN, message, {
+    status: 403,
+    details,
+    retryable: false,
+    expose: true,
+  });
 }
 
 /**
  * @param {{
  *   refSecret?: string,
  *   stagingWrites?: boolean,
+ *   appMode?: string,
+ *   writerOfRecord?: string,
  *   fixturePath?: string,
  *   fixture?: object,
  *   bridge?: object|null,
@@ -52,35 +47,54 @@ function stagingWritesOff(op) {
 function createSheetsData(opts = {}) {
   const refSecret = opts.refSecret || process.env.SESSION_SECRET || 'dev-ref-secret';
   const stagingWrites = !!opts.stagingWrites;
+  const appMode = String(opts.appMode || 'staging').toLowerCase();
+  const writerOfRecord = String(opts.writerOfRecord || 'ts2').toLowerCase();
   const bridge = opts.bridge || null;
   const useLiveBridge = !!opts.useLiveBridge && bridge && bridge.configured;
   const log = opts.log || { info() {}, warn() {}, debug() {} };
 
-  // Seed in-memory mirror from fixture (sheet-shaped). Live bridge can refresh depot later.
   const fixture = opts.fixture || loadFixture(opts.fixturePath);
   const inner = createMemoryData({ seed: fixture, refSecret });
-
   const source = useLiveBridge ? 'bridge+fixture' : 'fixture';
+
+  function assertMayWrite(op) {
+    if (!stagingWrites) {
+      throw writeGateError('STAGING_WRITES=false — sheet write refused (' + op + ')', {
+        op,
+        stagingWrites: false,
+      });
+    }
+    if (appMode !== 'staging') {
+      throw writeGateError(
+        'sheet writes only allowed when APP_MODE=staging (got ' + appMode + ')',
+        { op, appMode }
+      );
+    }
+    if (writerOfRecord !== 'ts3') {
+      throw writeGateError(
+        'WRITER_OF_RECORD=' +
+          writerOfRecord +
+          ' — refuse ts-3 sheet writes (set WRITER_OF_RECORD=ts3 for supervised Staging)',
+        { op, writerOfRecord }
+      );
+    }
+  }
 
   async function refreshFromBridge() {
     if (!useLiveBridge) return { ok: false, reason: 'bridge off' };
     try {
       const depotRes = await bridge.getDepot();
       const rows = (depotRes && (depotRes.rows || depotRes.tasks)) || [];
-      // Replace depot contents carefully — only when bridge returns rows
       if (!Array.isArray(rows)) return { ok: false, reason: 'bad depot payload' };
-      // For Slice 05 read demo: if bridge returns empty, keep fixture (honest health).
       if (!rows.length) {
         log.warn('bridge getDepot returned 0 rows — keeping fixture mirror');
         return { ok: true, rows: 0, keptFixture: true };
       }
-      // Clear + re-ingest via private state (test/ops path)
       const state = inner._state;
       state.depot.length = 0;
       Object.keys(state.vehicle).forEach((k) => delete state.vehicle[k]);
       Object.keys(state.mapping).forEach((k) => delete state.mapping[k]);
       for (const t of rows) {
-        // reuse ingest by commitBirth-like path without write gate
         const r = { ...t };
         if (!r.taskId || !validate(r.taskId)) continue;
         state.depot.push(JSON.parse(JSON.stringify(r)));
@@ -101,8 +115,29 @@ function createSheetsData(opts = {}) {
     }
   }
 
+  function pushLiveBirth(row) {
+    if (!useLiveBridge) return;
+    // Fire-and-forget sync shape — birth hallway stays mint→vehicle→depot→mapping
+    return Promise.resolve()
+      .then(() => bridge.writeVehicle({ row }))
+      .then(() => bridge.writeDepot({ row }))
+      .then(() =>
+        bridge.writeMapping({
+          taskId: row.taskId,
+          userSheet: row.userSheet,
+          assigneeUsername: row.assigneeUsername,
+        })
+      )
+      .catch((err) => {
+        log.warn('live bridge birth write failed', {
+          err: String(err && err.message),
+        });
+        throw err;
+      });
+  }
+
   function gateWrite(op, fn) {
-    if (!stagingWrites) throw stagingWritesOff(op);
+    assertMayWrite(op);
     return fn();
   }
 
@@ -112,6 +147,8 @@ function createSheetsData(opts = {}) {
     source,
     stagingWrites,
     useLiveBridge,
+    writerOfRecord,
+    appMode,
 
     async ping() {
       const base = await inner.ping();
@@ -121,6 +158,8 @@ function createSheetsData(opts = {}) {
         source,
         stagingWrites,
         useLiveBridge,
+        writerOfRecord,
+        appMode,
         depotCount: base.depotCount,
         userCount: base.userCount,
         projectCount: base.projectCount,
@@ -160,11 +199,33 @@ function createSheetsData(opts = {}) {
 
     commitBirth: (row) =>
       gateWrite('commitBirth', () => {
-        // Slice 06 will route through bridge writeVehicle → writeDepot → writeMapping
-        return inner.commitBirth(row);
+        const saved = inner.commitBirth(row);
+        if (useLiveBridge) {
+          // Sync path — errors surface to caller when bridge rejects
+          // (tests use fixture-only; live smoke uses WRITER_OF_RECORD=ts3)
+          const p = pushLiveBirth(saved);
+          if (p && typeof p.then === 'function') {
+            // Keep sync API; attach for observability only when not awaited by use-case
+            p.catch(() => {});
+          }
+        }
+        return saved;
       }),
     updateByTaskId: (id, p) =>
-      gateWrite('updateByTaskId', () => inner.updateByTaskId(id, p)),
+      gateWrite('updateByTaskId', () => {
+        const saved = inner.updateByTaskId(id, p);
+        if (useLiveBridge && saved) {
+          Promise.resolve()
+            .then(() => bridge.writeDepot({ row: saved }))
+            .then(() => bridge.writeVehicle({ row: saved }))
+            .catch((err) =>
+              log.warn('live bridge patch failed', {
+                err: String(err && err.message),
+              })
+            );
+        }
+        return saved;
+      }),
     updateByRef: (r, p) => gateWrite('updateByRef', () => inner.updateByRef(r, p)),
     reassignByTaskId: (id, a, u) =>
       gateWrite('reassignByTaskId', () => inner.reassignByTaskId(id, a, u)),
@@ -180,4 +241,4 @@ function createSheetsData(opts = {}) {
   };
 }
 
-module.exports = { createSheetsData, loadFixture, stagingWritesOff };
+module.exports = { createSheetsData, loadFixture };

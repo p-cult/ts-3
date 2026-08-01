@@ -22,6 +22,14 @@
     .badge { font-size: .72rem; padding: .12rem .45rem; border-radius: 999px; background: #f0e6c8; color: var(--warn); font-weight: 600; }
     .muted { color: var(--muted); font-size: .88rem; }
     main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
+    .staging-banner {
+      margin: 0 0 .75rem; padding: .55rem .75rem; border-radius: 8px;
+      font-size: .82rem; font-weight: 650; border: 1px solid #e0c48a;
+      background: #fff8e8; color: #6b4e00;
+    }
+    .staging-banner.is-writes {
+      border-color: #e8a0a0; background: #fdecea; color: #8a1f1f;
+    }
     .tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .85rem; }
     .tab { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: .35rem .75rem; cursor: pointer; font: inherit; }
     .tab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
@@ -383,6 +391,7 @@
     </div>
   </header>
   <main>
+    <div id="stagingBanner" class="staging-banner" hidden role="status"></div>
     <div class="tabs" id="tabs">
       <button type="button" class="tab on" data-view="board">Board</button>
       <button type="button" class="tab" data-view="needs" id="tabNeeds" hidden>
@@ -4146,8 +4155,27 @@
       $('logStatus').appendChild(o);
     });
 
+    async function syncStagingBanner() {
+      const el = $('stagingBanner');
+      if (!el) return;
+      try {
+        const h = await api('GET', '/api/health');
+        const b = h && h.banner;
+        if (!b || !b.staging) {
+          el.hidden = true;
+          return;
+        }
+        el.hidden = false;
+        el.textContent = b.message || 'Staging';
+        el.classList.toggle('is-writes', !!b.stagingWrites);
+      } catch (err) {
+        el.hidden = true;
+      }
+    }
+
     async function boot() {
       try {
+        await syncStagingBanner();
         await refreshMe(); await refreshProjects();
         if (!state.me) clearAllDummies();
         await refreshTasks();

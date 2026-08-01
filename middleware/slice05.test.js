@@ -120,6 +120,8 @@ async function main() {
   try {
     const sheets = createSheetsData({
       stagingWrites: true,
+      writerOfRecord: 'ts3',
+      appMode: 'staging',
       useLiveBridge: false,
       fixturePath: path.join(__dirname, 'data', 'fixtures', 'sheets-depot.json'),
     });
@@ -145,11 +147,11 @@ async function main() {
   const memPort = memServer.address().port;
   try {
     const h = await request(memPort, 'GET', '/api/health');
-    assert.strictEqual(h.json.slice, '05');
+    assert.strictEqual(h.json.slice, '06');
     assert.strictEqual(h.json.mode.storeAdapter, 'memory');
     assert.strictEqual(h.json.mode.stagingWrites, false);
     assert.strictEqual(h.json.dependencies.bridge.state, 'disabled');
-    ok('default memory health slice 05');
+    ok('default memory health slice 06');
 
     const admin = await login(memPort, 'ts3admin', 'ts3-98860');
     const list = await request(memPort, 'GET', '/api/tasks', { token: admin.token });

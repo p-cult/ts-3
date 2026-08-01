@@ -98,6 +98,12 @@ const config = Object.freeze({
   /** live sheet writes in staging — default off */
   stagingWrites: envBool('STAGING_WRITES', false),
 
+  /**
+   * Who may mint/write on live sheets before go-live.
+   * Default ts2 = public writer-of-record; ts3 only for supervised Staging tests.
+   */
+  writerOfRecord: envString('WRITER_OF_RECORD', 'ts2'),
+
   /** Defaults for data/retry.withRetry on external I/O */
   retry: Object.freeze({
     attempts: envInt('RETRY_ATTEMPTS', 3),

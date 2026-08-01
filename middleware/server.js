@@ -143,7 +143,7 @@ function printStartupBanner(app, addr) {
   const b = app.bootstrap || {};
   const heals = (b.heals || []).length;
   console.log('');
-  console.log('  ts-3 slice 05 (staging)');
+  console.log('  ts-3 slice 06 (staging)');
   console.log(`  url     http://${addr.address}:${addr.port}/`);
   console.log(`  health  http://${addr.address}:${addr.port}/api/health`);
   console.log(`  mode    ${app.config.appMode || 'staging'}`);

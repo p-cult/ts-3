@@ -19,6 +19,7 @@ const { createListUsers } = require('./list-users');
 const { createDecideQueue } = require('./decide-queue');
 const { createMakeTask } = require('./make-task');
 const { createGetDropdownData } = require('./get-dropdown-data');
+const { createGetJourneyReport } = require('./get-journey-report');
 
 function createUseCases(deps) {
   const { config, data, runtime, sessions, log } = deps;
@@ -54,6 +55,7 @@ function createUseCases(deps) {
     rejectQueue: { execute: (i) => decideQueue.reject(i) },
     makeTask: createMakeTask({ data }),
     getDropdownData: createGetDropdownData({ data }),
+    getJourneyReport: createGetJourneyReport({ data }),
   };
 }
 

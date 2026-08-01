@@ -412,6 +412,12 @@
       <div class="empty" id="empty" hidden>No tasks.</div>
     </div>
     <div id="logsView" hidden>
+      <div id="reportsPanel" class="filters" hidden>
+        <strong>Reports</strong>
+        <input id="journeyRef" placeholder="Task ref" />
+        <button class="btn" type="button" id="journeyFetch">Load journey</button>
+        <pre id="journeyOut" class="muted" style="max-height:12rem;overflow:auto;font-size:0.75rem"></pre>
+      </div>
       <div class="filters">
         <input id="logQ" placeholder="Search" />
         <select id="logStatus"><option value="">Status</option></select>
@@ -1924,6 +1930,7 @@
         $('whoLine').textContent = m.user.displayName + ' · ' + m.role;
         $('btnLogin').hidden = true; $('btnLogout').hidden = false;
         $('tabLogs').hidden = !perms().canViewLogs;
+        $('reportsPanel').hidden = !perms().canViewReports;
         // Needs attention: P2 + P3/P4 (any signed-in user)
         $('tabNeeds').hidden = false;
         $('tabDone').hidden = false;
@@ -1931,6 +1938,7 @@
         $('whoLine').textContent = 'Public (P1)';
         $('btnLogin').hidden = false; $('btnLogout').hidden = true;
         $('tabLogs').hidden = true;
+        $('reportsPanel').hidden = true;
         $('tabNeeds').hidden = true;
         $('tabDone').hidden = true;
         syncNeedsAttentionBadge(0);
@@ -4140,6 +4148,17 @@
       const t = e.target.closest('.tab'); if (t) switchView(t.dataset.view);
     };
     $('logRefresh').onclick = () => refreshLogs().catch((e) => alert(e.message));
+    $('journeyFetch').onclick = async () => {
+      const ref = ($('journeyRef').value || '').trim();
+      if (!ref) { alert('Enter a task ref'); return; }
+      $('journeyOut').textContent = 'Loading…';
+      try {
+        const r = await api('GET', '/api/reports/journey?ref=' + encodeURIComponent(ref));
+        $('journeyOut').textContent = JSON.stringify(r, null, 2);
+      } catch (e) {
+        $('journeyOut').textContent = e.message || 'Failed';
+      }
+    };
     $('logCsv').onclick = () => {
       const rows = state.logs || [];
       const cols = ['ref','name','projectCode','assigneeUsername','status','reviewState','stagesSummary','link','updatedAt'];

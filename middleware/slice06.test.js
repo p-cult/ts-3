@@ -146,7 +146,7 @@ async function main() {
   const port = server.address().port;
   try {
     const h = await request(port, 'GET', '/api/health');
-    assert.strictEqual(h.json.slice, '09');
+    assert.strictEqual(h.json.slice, '10');
     assert.strictEqual(h.json.mode.stagingWrites, true);
     assert.strictEqual(h.json.mode.writerOfRecord, 'ts3');
     assert.ok(h.json.banner && h.json.banner.stagingWrites);

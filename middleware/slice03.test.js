@@ -214,10 +214,10 @@ async function main() {
   try {
     {
       const r = await request(port, 'GET', '/api/health');
-      assert.strictEqual(r.json.slice, '03');
+      assert.strictEqual(r.json.slice, '04');
       assert.strictEqual(r.json.mode.appMode, 'staging');
     }
-    ok('health slice 03 staging');
+    ok('health slice 04 staging');
 
     const admin = await login(port, 'ts3admin', 'ts3-98860');
     const token = admin.token;

@@ -2110,14 +2110,22 @@
       opts = opts || {};
       const stagesEl = dq(card, '[data-f="stages"]');
       const idxEl = dq(card, '[data-f="stageIdx"]');
-      const cleaned = cleanStageTokens(stagesEl.value);
-      if (opts.rewrite) stagesEl.value = cleaned.join(' ');
+      const errEl = dq(card, '[data-f="err"]');
+      const parsed = parseStageTokensClient(stagesEl.value);
+      if (!parsed.ok) {
+        if (errEl && opts.showError !== false) errEl.textContent = parsed.error;
+        // Keep chips from last good rewrite; do not silently strip bad input
+        renderDummyStageChips(card, [], Number(idxEl.value) || 0);
+        return [];
+      }
+      if (errEl && opts.clearError) errEl.textContent = '';
+      if (opts.rewrite) stagesEl.value = parsed.tokens.join(' ');
       let idx = Number(idxEl.value) || 0;
       if (idx < 0) idx = 0;
-      if (idx > cleaned.length) idx = cleaned.length;
+      if (idx > parsed.tokens.length) idx = parsed.tokens.length;
       idxEl.value = String(idx);
-      renderDummyStageChips(card, cleaned, idx);
-      return cleaned;
+      renderDummyStageChips(card, parsed.tokens, idx);
+      return parsed.tokens;
     }
 
     function refreshDummyProjects(card) {
@@ -2298,10 +2306,18 @@
         body.parentRef = dq(card, '[data-f="parent"]').value;
       }
       try {
+        if (dummyStagesAllowed(card)) {
+          const stageCheck = parseStageTokensClient(dq(card, '[data-f="stages"]').value);
+          if (!stageCheck.ok) {
+            errEl.textContent = stageCheck.error;
+            setDummyCollapsed(card, false);
+            return;
+          }
+        }
         const created = await api('POST', '/api/tasks', body);
         const createdRef = created && created.task && created.task.ref;
         if (dummyStagesAllowed(card)) {
-          const tokens = syncDummyStagesUi(card, { rewrite: true });
+          const tokens = syncDummyStagesUi(card, { rewrite: true, clearError: true });
           if (tokens.length && createdRef) {
             await api('PATCH', '/api/tasks/' + createdRef + '/stages', {
               text: tokens.join(' '),
@@ -2476,14 +2492,69 @@
      * Extract valid stage tokens; strip/ignore malformed pieces
      * (lone "#", "# tak", spaces inside a token, empty, non-# junk).
      */
-    function cleanStageTokens(text) {
-      const raw = String(text == null ? '' : text);
-      if (!raw.trim()) return [];
-      const re = /#[A-Za-z0-9][A-Za-z0-9._\-]*/g;
-      const tokens = [];
-      let m;
-      while ((m = re.exec(raw)) !== null) tokens.push(m[0]);
-      return tokens;
+    /**
+     * Stage token parse — mirrors middleware/domain/stages.js (never throws).
+     * @returns {{ ok: true, tokens: string[] } | { ok: false, error: string }}
+     */
+    function parseStageTokensClient(input) {
+      try {
+        let parts = [];
+        if (Array.isArray(input)) {
+          parts = input.map((s) => String(s || '').trim()).filter(Boolean);
+        } else {
+          const trimmed = String(input == null ? '' : input).trim();
+          if (!trimmed) return { ok: true, tokens: [] };
+          if (/#\s/.test(trimmed)) {
+            return {
+              ok: false,
+              error: 'invalid stage token — no spaces after #; use #take or #fill-and-sign (not "# tak")',
+            };
+          }
+          if (/(^|\s)#$/.test(trimmed)) {
+            return {
+              ok: false,
+              error: 'invalid stage token "#" — trailing or lone # is incomplete (at end of input); use #take or #fill-and-sign',
+            };
+          }
+          parts = trimmed.split(/\s+/).filter(Boolean);
+        }
+        const TOKEN_RE = /^#[A-Za-z0-9][A-Za-z0-9._\-]*$/;
+        const tokens = [];
+        for (let i = 0; i < parts.length; i++) {
+          const p = parts[i];
+          if (/\s/.test(p)) {
+            return {
+              ok: false,
+              error: 'invalid stage token "' + p + '" — no spaces inside a token; use #fill-and-sign',
+            };
+          }
+          if (p === '#') {
+            return {
+              ok: false,
+              error: 'invalid stage token "#" — trailing or lone # is incomplete; use #take or #fill-and-sign',
+            };
+          }
+          if (!p.startsWith('#')) {
+            return {
+              ok: false,
+              error: 'invalid stage token "' + p + '" — each stage must start with # (e.g. #design)',
+            };
+          }
+          if (!TOKEN_RE.test(p)) {
+            return {
+              ok: false,
+              error: 'invalid stage token "' + p + '" — use #Name with letters/numbers/._- only (no spaces after #)',
+            };
+          }
+          tokens.push(p);
+        }
+        return { ok: true, tokens };
+      } catch (err) {
+        return {
+          ok: false,
+          error: 'invalid stage tokens — could not parse',
+        };
+      }
     }
 
     function isRestrictedKindVal(k) {
@@ -2532,6 +2603,81 @@
     function setEditFld(card, name, visible) {
       const el = eq(card, '[data-efld="' + name + '"]');
       if (el) el.hidden = !visible;
+    }
+
+    /**
+     * Kind-aware edit form: pseudo/routine/not_a_task → status (+ admin kind) only.
+     * Called on open and when admin flips kind radios.
+     */
+    function applyEditModeFromKind(card, t) {
+      const kindVal = resolvedEditKind(card);
+      const scope = perms().editScope || 'none';
+      const statusOnlyRole = scope === 'status';
+      const useRestricted = isRestrictedKindVal(kindVal);
+      const full = scope === 'all' || scope === 'own';
+      const showAdminKind = isAdminKindUi();
+      const banner = eq(card, '[data-f="banner"]');
+      const nameEl = eq(card, '[data-f="name"]');
+      const nameRo = eq(card, '[data-f="nameRo"]');
+      const stSel = eq(card, '[data-f="status"]');
+      const curStatus = String((t && t.status) || '');
+      const p2DoneLocked = role() === 'P2' && curStatus === 'Done';
+      function en(node, on) { if (node) node.disabled = !on; }
+
+      if (useRestricted) {
+        if (banner) {
+          banner.hidden = false;
+          banner.textContent = 'This kind only allows status changes.';
+        }
+        ['project','desc','notes','links','priority','parent','stages','start','end'].forEach((f) => setEditFld(card, f, false));
+        setEditFld(card, 'ms', showAdminKind);
+        setEditFld(card, 'kind', showAdminKind);
+        setEditFld(card, 'name', true);
+        if (nameEl) nameEl.hidden = true;
+        if (nameRo) nameRo.hidden = false;
+        setEditFld(card, 'status', true);
+        en(stSel, !p2DoneLocked);
+        setEditKindControlsEnabled(card, showAdminKind);
+        if (p2DoneLocked && banner) {
+          banner.textContent = isTaskCompletionApproved(t)
+            ? 'Done — task Approved by admin (status locked).'
+            : 'Done — Waiting for approval (status locked).';
+        }
+        return;
+      }
+
+      if (banner && !p2DoneLocked) banner.hidden = true;
+      setEditFld(card, 'project', false);
+      setEditFld(card, 'name', !statusOnlyRole);
+      setEditFld(card, 'desc', !statusOnlyRole);
+      setEditFld(card, 'notes', !statusOnlyRole);
+      setEditFld(card, 'links', !statusOnlyRole);
+      setEditFld(card, 'start', true);
+      setEditFld(card, 'end', true);
+      setEditFld(card, 'status', true);
+      setEditFld(card, 'priority', scope === 'all');
+      setEditFld(card, 'ms', showAdminKind && !statusOnlyRole);
+      setEditFld(card, 'kind', showAdminKind && !statusOnlyRole);
+      setEditFld(card, 'parent', !statusOnlyRole);
+      setEditFld(card, 'stages', !statusOnlyRole);
+      if (nameEl) nameEl.hidden = false;
+      if (nameRo) nameRo.hidden = true;
+      en(nameEl, full && !statusOnlyRole);
+      en(eq(card, '[data-f="desc"]'), full && !statusOnlyRole);
+      setNotesEnabled(card.querySelector('.edit-body') || card, full && !statusOnlyRole);
+      en(stSel, (full || statusOnlyRole) && !p2DoneLocked);
+      en(eq(card, '[data-f="priority"]'), scope === 'all');
+      const endEditable = full && !statusOnlyRole && curStatus !== 'Done';
+      const endEl = eq(card, '[data-f="end"]');
+      const endRo = eq(card, '[data-f="endRo"]');
+      if (endEl) endEl.hidden = !endEditable;
+      if (endRo) endRo.hidden = endEditable;
+      en(endEl, endEditable);
+      setEditKindControlsEnabled(card, showAdminKind && !statusOnlyRole && (full || !!perms().canSetKind));
+      en(eq(card, '[data-f="parent"]'), full && !statusOnlyRole);
+      en(eq(card, '[data-f="stages"]'), full && !statusOnlyRole);
+      const stageInteractive = full && !statusOnlyRole;
+      syncEditStagesUi(card, { interactive: stageInteractive, rewrite: false, showError: false });
     }
 
     function applyKindToEditCard(card, t) {
@@ -2586,8 +2732,11 @@
     }
 
     function syncEditParentVisibility(card, preferredParent) {
-      const banner = eq(card, '[data-f="banner"]');
-      if (banner && !banner.hidden) return;
+      if (isRestrictedKindVal(resolvedEditKind(card))) {
+        const parentFld = eq(card, '[data-efld="parent"]');
+        if (parentFld) parentFld.hidden = true;
+        return;
+      }
       const admin = isAdminKindUi();
       const msFld = eq(card, '[data-efld="ms"]');
       const parentFld = eq(card, '[data-efld="parent"]');
@@ -2613,13 +2762,17 @@
     }
 
     function syncEditStagesVisibility(card) {
-      const banner = eq(card, '[data-f="banner"]');
-      if (banner && !banner.hidden) return;
       const fld = eq(card, '[data-efld="stages"]');
       if (!fld) return;
+      if (isRestrictedKindVal(resolvedEditKind(card))) {
+        fld.hidden = true;
+        return;
+      }
       const msFld = eq(card, '[data-efld="ms"]');
       if (isAdminKindUi() && msFld && !msFld.hidden) {
         fld.hidden = !editStagesAllowed(card);
+      } else {
+        fld.hidden = false;
       }
     }
 
@@ -2692,18 +2845,25 @@
       opts = opts || {};
       const stagesEl = eq(card, '[data-f="stages"]');
       const idxEl = eq(card, '[data-f="stageIdx"]');
+      const errEl = eq(card, '[data-f="err"]');
       if (!stagesEl) return [];
       const interactive = opts.interactive != null
         ? !!opts.interactive
         : !stagesEl.disabled;
-      const cleaned = cleanStageTokens(stagesEl.value);
-      if (opts.rewrite) stagesEl.value = cleaned.join(' ');
+      const parsed = parseStageTokensClient(stagesEl.value);
+      if (!parsed.ok) {
+        if (errEl && opts.showError !== false) errEl.textContent = parsed.error;
+        renderEditStageChips(card, [], Number(idxEl && idxEl.value) || 0, interactive);
+        return [];
+      }
+      if (errEl && opts.clearError) errEl.textContent = '';
+      if (opts.rewrite) stagesEl.value = parsed.tokens.join(' ');
       let idx = Number(idxEl && idxEl.value) || 0;
       if (idx < 0) idx = 0;
-      if (idx > cleaned.length) idx = cleaned.length;
+      if (idx > parsed.tokens.length) idx = parsed.tokens.length;
       if (idxEl) idxEl.value = String(idx);
-      renderEditStageChips(card, cleaned, idx, interactive);
-      return cleaned;
+      renderEditStageChips(card, parsed.tokens, idx, interactive);
+      return parsed.tokens;
     }
 
     function fillEditAssigneeOptions(card, selectedUsername) {
@@ -3455,12 +3615,16 @@
       if (restricted) {
         banner.hidden = false;
         banner.textContent = 'This kind only allows status changes.';
-        ['project','desc','notes','links','priority','parent','stages','ms','kind','start','end'].forEach((f) => setEditFld(el, f, false));
+        // Hide content fields; keep admin kind/ms so they can switch back to Normal
+        ['project','desc','notes','links','priority','parent','stages','start','end'].forEach((f) => setEditFld(el, f, false));
+        setEditFld(el, 'ms', showAdminKind);
+        setEditFld(el, 'kind', showAdminKind);
         setEditFld(el, 'name', true);
         nameEl.hidden = true;
         nameRo.hidden = false;
         setEditFld(el, 'status', true);
         en(stSel, true);
+        setEditKindControlsEnabled(el, showAdminKind);
         if (p2DoneLocked) {
           en(stSel, false);
           banner.hidden = false;
@@ -3568,9 +3732,17 @@
       const taskRow = (state.tasks || []).find((x) => x.ref === id)
         || (state.allForParent || []).find((x) => x.ref === id)
         || null;
-      const banner = eq(card, '[data-f="banner"]');
-      const restrictedMode = banner && !banner.hidden;
       const stSel = eq(card, '[data-f="status"]');
+      const liveKind = isAdminKindUi() ? resolvedEditKind(card) : null;
+      let origKind = 'main';
+      if (taskRow) {
+        if (taskRow.kind) origKind = taskRow.kind;
+        else if (taskRow.kindIcon === 'P') origKind = 'pseudo';
+        else if (taskRow.kindIcon === 'R') origKind = 'routine';
+        else if (taskRow.kindIcon === 'N') origKind = 'not_a_task';
+        else if (taskRow.parentRef) origKind = 'sub';
+      }
+      const restrictedMode = isRestrictedKindVal(liveKind || origKind);
       try {
         if (restrictedMode) {
           const st = statusPayloadFromSel(stSel, taskRow);
@@ -3578,9 +3750,9 @@
             errEl.textContent = p2StatusPickHint(taskRow);
             return;
           }
-          await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
-            status: st || stSel.value,
-          });
+          const patch = { status: st || stSel.value };
+          if (liveKind && liveKind !== origKind) patch.kind = liveKind;
+          await api('PATCH', '/api/tasks/' + encodeURIComponent(id), patch);
         } else {
           const body = {};
           if (stSel && !stSel.disabled) {
@@ -3657,7 +3829,12 @@
             await api('PATCH', '/api/tasks/' + encodeURIComponent(id), body);
             const stagesEl = eq(card, '[data-f="stages"]');
             if (stagesEl && !stagesEl.disabled && editStagesAllowed(card)) {
-              const tokens = syncEditStagesUi(card, { rewrite: true, interactive: true });
+              const check = parseStageTokensClient(stagesEl.value);
+              if (!check.ok) {
+                errEl.textContent = check.error;
+                return;
+              }
+              const tokens = syncEditStagesUi(card, { rewrite: true, interactive: true, clearError: true });
               await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
                 text: tokens.join(' '),
                 currentIndex: Number(eq(card, '[data-f="stageIdx"]').value) || 0,
@@ -3854,6 +4031,10 @@
       if (!card) return;
       if (!card.querySelector('.edit-body').contains(e.target)) return;
       if (e.target.matches('input[data-f="kind"]')) {
+        const t = (state.tasks || []).find((x) => x.ref === card.dataset.ref)
+          || (state.allForParent || []).find((x) => x.ref === card.dataset.ref)
+          || null;
+        applyEditModeFromKind(card, t);
         syncEditParentVisibility(card);
         syncEditStagesVisibility(card);
       }

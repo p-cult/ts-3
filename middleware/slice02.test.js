@@ -75,9 +75,9 @@ async function main() {
   try {
     {
       const r = await request(port, 'GET', '/api/health');
-      assert.strictEqual(r.json.slice, '03');
+      assert.strictEqual(r.json.slice, '04');
       assert.strictEqual(r.json.mode.appMode, 'staging');
-      ok('health slice 03 staging');
+      ok('health slice 04 staging');
     }
 
     // A — duplicate never mints
@@ -235,7 +235,10 @@ async function main() {
       );
       const bare = parseStageTokens('#');
       assert.strictEqual(bare.ok, false);
-      assert.ok(/"#"/.test(bare.error) && /no spaces after #/i.test(bare.error));
+      assert.ok(
+        /#/.test(bare.error) && (/incomplete|lone|trailing|no spaces after #/i.test(bare.error)),
+        'clear error for lone #, got: ' + bare.error
+      );
       const good = parseStageTokens('#Design #Build #Ship');
       assert.strictEqual(good.ok, true);
       assert.deepStrictEqual(good.tokens, ['#Design', '#Build', '#Ship']);

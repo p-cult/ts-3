@@ -33,7 +33,7 @@ Birth order (locked):
 - Bulk admin: `POST /api/tasks/bulk` `{ action, ids, kind?, status? }`.
 
 Internal: `kind`, `parentTaskId`.  
-Public DTO: never `taskId` / raw parentTaskId; client uses `ref` + `parentRef`; `kind`/`kindIcon` for **P4 only** (subs expose `kind: sub` for nesting). Legacy body alias `parentPublicId` is accepted and mapped to parentRef only.
+Public DTO: never `taskId` / raw parentTaskId; client uses `ref` + `parentRef`; `kind`/`kindIcon` for **P4 only** (subs expose `kind: sub` for nesting).
 
 ## Stages (main + sub only)
 
@@ -47,15 +47,14 @@ Public DTO: never `taskId` / raw parentTaskId; client uses `ref` + `parentRef`; 
 
 - UI: **dropdown of Main tasks the actor can see** — label = **name + short `ref`**.  
 - **Never** free-text Task ID / parent id field.  
-- Selecting one sets client `parentRef` (API also accepts legacy body alias `parentPublicId` → same handle).  
+- Selecting one sets client `parentRef`.  
 - Empty mains → disabled select + **“Create a Main task first.”**  
 - Parent only when kind = **sub** (admin); P2 optional parent → creates as sub.  
 - Clear parent when kind is not sub.
 
 ## Review (main + sub only)
 
-States: `none | under_review | rework | approved`  
-(Legacy `sent_back` maps to **rework**; `/review/send-back` aliases `/review/rework`.)
+States: `none | under_review | rework | approved`
 
 | Action | Who | Rule |
 |--------|-----|------|
@@ -90,7 +89,7 @@ API:
 
 - `POST .../review/submit` `{ link?, notes? }`  
 - `POST .../review/feedback` `{ notes }`  
-- `POST .../review/rework` `{ notes }` (alias: `send-back`)  
+- `POST .../review/rework` `{ notes }`  
 - `POST .../review/approve` `{ notes? }`  
 - List also accepts `reviewState=under_review|rework|approved`  
 

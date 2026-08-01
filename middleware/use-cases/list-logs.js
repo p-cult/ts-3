@@ -62,10 +62,9 @@ function createListLogs({ data }) {
           status: t.status,
           kind: profile >= PROFILE.SUPER_ADMIN ? normalizeKind(t.kind) : undefined,
           kindIcon: profile >= PROFILE.SUPER_ADMIN ? kindIcon(t.kind) : '',
-          visibility: t.visibility,
           link: t.link || '',
           hasLink: !!(t.link && String(t.link).trim()),
-          reviewState: t.reviewState === 'sent_back' ? 'rework' : (t.reviewState || 'none'),
+          reviewState: t.reviewState || 'none',
           linkVersion: t.linkVersion || 0,
           reviewIteration: Number(t.reviewIteration) || 0,
           stagesSummary: stages

@@ -20,7 +20,10 @@ function createDataAccess(deps) {
   function deleteByTaskId(id) {
     const row = inner.findByTaskId(id);
     const ok = inner.deleteByTaskId(id);
-    if (ok && row) side.clearStages(row.taskId);
+    if (ok && row) {
+      side.clearStages(row.taskId);
+      side.clearReviews(row.taskId);
+    }
     return ok;
   }
 
@@ -67,6 +70,7 @@ function createDataAccess(deps) {
     commitBirth: (row) => inner.commitBirth(row),
     updateByTaskId: (id, p) => inner.updateByTaskId(id, p),
     updateByRef: (r, p) => inner.updateByRef(r, p),
+    reassignByTaskId: (id, a, u) => inner.reassignByTaskId(id, a, u),
     deleteByTaskId,
     deleteByRef,
     getMapping: (id) => inner.getMapping(id),

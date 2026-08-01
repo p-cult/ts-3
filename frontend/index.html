@@ -25,6 +25,13 @@
     .tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .85rem; }
     .tab { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: .35rem .75rem; cursor: pointer; font: inherit; }
     .tab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .tab-count {
+      display: inline-block; min-width: 1.15rem; margin-left: .3rem;
+      padding: .05rem .35rem; border-radius: 999px; font-size: .7rem; font-weight: 700;
+      background: #f0e6c8; color: var(--warn); vertical-align: middle;
+    }
+    .tab.on .tab-count { background: rgba(255,255,255,.25); color: #fff; }
+    .tab-count[hidden] { display: none !important; }
     .btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: .4rem .75rem; font: inherit; cursor: pointer; }
     .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
     .btn.danger { color: var(--danger); }
@@ -37,13 +44,243 @@
     .task.sub { margin-left: 1.1rem; border-left: 3px solid var(--accent-soft); }
     .task h3 { margin: 0 0 .2rem; font-size: .98rem; }
     .meta { font-size: .82rem; color: var(--muted); }
+    .subs-line { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
     .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
     .chip { font-size: .72rem; padding: .08rem .4rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
     .chip.kind { background: #efe8ff; color: #4b3f72; font-weight: 700; }
+    .chip.chip-status { background: #eef1f4; color: #3a4450; font-weight: 650; }
+    .chip.chip-waiting { background: #fff3e0; color: #9a5b00; font-weight: 650; }
+    .chip.chip-task-approved { background: #e7f6ec; color: #1b6b3a; font-weight: 700; }
+    .chip.rev-needs { background: #fff3e0; color: #9a5b00; font-weight: 650; }
+    .chip.rev-rework { background: #fde8e8; color: #a32020; font-weight: 700; }
+    .rework-notes {
+      margin-top: .45rem; padding: .5rem .65rem;
+      background: #fdf2f2; border: 1px solid #f0c4c4; border-radius: 8px;
+      font-size: .85rem; line-height: 1.4; color: var(--ink);
+    }
+    .rework-notes .rework-notes-label {
+      display: block; font-size: .75rem; font-weight: 700; color: #a32020; margin-bottom: .2rem;
+    }
+    .rework-notes .rework-notes-body { white-space: pre-wrap; word-break: break-word; }
     .bar { height: 6px; background: #ece7e0; border-radius: 99px; margin-top: .4rem; overflow: hidden; max-width: 12rem; }
     .bar > i { display: block; height: 100%; background: var(--accent); }
     .link-ico { display: inline-flex; width: 1.4rem; height: 1.4rem; align-items: center; justify-content: center;
       border-radius: 6px; background: var(--accent-soft); color: var(--accent); text-decoration: none; font-size: .85rem; margin-left: .25rem; }
+    .notes-smart {
+      position: relative; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+      overflow: hidden; min-height: 5rem;
+    }
+    .notes-backdrop, .notes-smart textarea[data-f="notes"] {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 15px; font-weight: 400; font-style: normal;
+      line-height: 22px; letter-spacing: 0; word-spacing: 0;
+      padding: 8px 10px !important; margin: 0; border: 0 !important; border-radius: 8px;
+      white-space: pre-wrap; word-break: normal; overflow-wrap: break-word;
+      tab-size: 4; box-sizing: border-box; width: 100%;
+    }
+    .notes-backdrop {
+      display: none; position: absolute; left: 0; top: 0;
+      pointer-events: none !important; user-select: none !important;
+      color: var(--ink); background: #fff; overflow: hidden; z-index: 0;
+    }
+    .notes-smart textarea[data-f="notes"] {
+      position: relative; z-index: 1; display: block;
+      background: #fff !important; color: var(--ink) !important;
+      caret-color: var(--ink); resize: vertical; min-height: 5rem;
+      overflow-x: hidden; overflow-y: auto;
+    }
+    /* While blurred: show decorative mirror; hide live text (caret not needed) */
+    .notes-smart:not(.notes-editing) .notes-backdrop { display: block; }
+    .notes-smart:not(.notes-editing) textarea[data-f="notes"] {
+      color: transparent !important; background: transparent !important;
+    }
+    .notes-smart textarea[data-f="notes"]::selection {
+      background: rgba(196, 92, 38, .28);
+    }
+    .notes-smart textarea[data-f="notes"]:disabled { opacity: .7; cursor: not-allowed; }
+    /* Same chars as textarea; • is paint-only (blurred view) */
+    .note-bullet-mark { position: relative; display: inline; }
+    .note-bullet-src { color: transparent; }
+    .note-bullet-mark::after {
+      content: "•"; position: absolute; left: 0; top: 0;
+      color: var(--accent); pointer-events: none; line-height: 22px;
+    }
+    .task-links-fld { margin-top: .15rem; }
+    .task-link-list { display: flex; flex-direction: column; gap: .4rem; margin: .25rem 0 .4rem; }
+    .task-link-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .5rem;
+      padding: .35rem .45rem; border: 1px solid var(--line); border-radius: 8px; background: #faf8f5;
+    }
+    .task-link-open {
+      display: inline-flex; align-items: center; gap: .35rem; text-decoration: none;
+      color: var(--accent); font-weight: 600; font-size: .85rem; max-width: 12rem;
+    }
+    .task-link-open:hover .task-link-label { text-decoration: underline; }
+    .task-link-ft {
+      width: 16px; height: 16px; flex: 0 0 16px; display: inline-block;
+      background: center / contain no-repeat;
+    }
+    .task-link-ft.is-pdf { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='3' y='1' width='10' height='14' rx='1.5' fill='%23fff' stroke='%23c45c26'/%3E%3Ctext x='8' y='11' text-anchor='middle' font-size='5' font-family='sans-serif' fill='%23c45c26'%3EPDF%3C/text%3E%3C/svg%3E"); }
+    .task-link-ft.is-img { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23c45c26' stroke-width='1.4'%3E%3Crect x='2' y='3' width='12' height='10' rx='1.5'/%3E%3Ccircle cx='5.5' cy='6.5' r='1.2'/%3E%3Cpath d='M2 11l3.5-3 2.5 2 2-1.5L14 11'/%3E%3C/svg%3E"); }
+    .task-link-ft.is-doc { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23c45c26' stroke-width='1.4'%3E%3Cpath d='M4 2h6l3 3v9H4V2z'/%3E%3Cpath d='M10 2v3h3'/%3E%3Cpath d='M6 8h5M6 10.5h5M6 13h3'/%3E%3C/svg%3E"); }
+    .task-link-ft.is-link { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23c45c26' stroke-width='1.5'%3E%3Cpath d='M6.5 9.5l3-3'/%3E%3Cpath d='M7 11.5l-.8.8a2.5 2.5 0 01-3.5-3.5l.8-.8'/%3E%3Cpath d='M9 4.5l.8-.8a2.5 2.5 0 013.5 3.5l-.8.8'/%3E%3C/svg%3E"); }
+    .task-link-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .task-link-tag {
+      flex: 1 1 8rem; min-width: 6rem; max-width: 14rem;
+      font: inherit; font-size: .82rem; padding: .28rem .4rem;
+      border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    }
+    .task-link-row .btn[data-act="rmLink"] { flex: 0 0 auto; padding: .25rem .5rem; }
+    .task-links-compact { display: flex; flex-direction: column; gap: .4rem; margin-top: .35rem; }
+    .task-links-compact-row {
+      display: flex; flex-wrap: wrap; align-items: flex-start; gap: .35rem .5rem;
+      padding: .3rem .4rem; border-radius: 8px; border: 1px solid transparent;
+    }
+    .task-links-compact .task-link-open { max-width: 11rem; font-size: .8rem; }
+    .task-links-compact .task-link-tag-ro {
+      font-size: .75rem; color: var(--muted); max-width: 10rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .task-link-iter {
+      font-size: .72rem; font-weight: 600; color: var(--muted);
+      letter-spacing: .02em;
+    }
+    .link-outcome {
+      flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: .25rem .45rem;
+      font-size: .78rem; line-height: 1.35; margin: 0;
+    }
+    .link-outcome-status { font-weight: 700; }
+    .link-outcome-tag {
+      font-weight: 600; padding: .1rem .35rem; border-radius: 4px;
+      background: #f0ebe4; color: var(--ink);
+    }
+    .link-outcome-comment { color: var(--ink); word-break: break-word; }
+    .link-outcome.is-3 .link-outcome-status { color: #1b6b3a; }
+    .link-outcome.is-2 .link-outcome-status { color: #8a5a12; }
+    .link-outcome.is-2 .link-outcome-tag { background: #fff3d6; color: #8a5a12; }
+    .link-outcome.is-1 .link-outcome-status { color: #a32020; }
+    .link-outcome.is-1 .link-outcome-tag { background: #fde8e8; color: #a32020; }
+    .task-links-compact-row.is-1 {
+      background: #fdf2f2; border-color: #f0c4c4;
+    }
+    .task-links-compact-row.is-1.is-rework {
+      background: #fce8e8; border-color: #e8a0a0;
+      box-shadow: inset 3px 0 0 #c62828;
+    }
+    .task-links-compact-row.is-2 { background: #fffaf0; border-color: #f0d9a8; }
+    .task-links-compact-row.is-3 { background: #f3faf5; border-color: #c6e6d0; }
+    .link-approved-line {
+      flex: 1 1 100%; margin: 0; font-size: .82rem; line-height: 1.4;
+      color: var(--ink); word-break: break-word;
+    }
+    .link-approved-line .la-status { font-weight: 700; color: #1b6b3a; }
+    .link-replace-inline {
+      flex: 1 1 100%; display: flex; flex-direction: column; gap: .35rem;
+      margin-top: .2rem; padding-top: .35rem; border-top: 1px solid #ece7e0;
+    }
+    .link-replace-inline[hidden] { display: none !important; }
+    .link-replace-inline input {
+      font: inherit; font-size: .82rem; padding: .35rem .45rem;
+      border: 1px solid var(--line); border-radius: 6px; background: #fff; width: 100%;
+      box-sizing: border-box;
+    }
+    .link-replace-inline .lri-actions {
+      display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+    }
+    .link-replace-inline .lri-err { color: #a32020; font-size: .75rem; margin: 0; }
+    .add-link-inline {
+      display: flex; flex-wrap: wrap; gap: .35rem; align-items: center;
+      margin-top: .35rem;
+    }
+    .add-link-inline[hidden] { display: none !important; }
+    .add-link-inline input {
+      flex: 1 1 12rem; min-width: 8rem; font: inherit; font-size: .82rem;
+      padding: .35rem .45rem; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    }
+    .add-link-inline input[data-f="addLinkName"] { flex: 1 1 8rem; min-width: 6rem; }
+    .link-approved-line .task-link-open { max-width: none; font-size: inherit; }
+    .task-link-row .link-outcome { margin-top: .25rem; padding-left: .1rem; }
+    .link-user-actions { display: inline-flex; gap: .3rem; align-items: center; flex: 0 0 auto; }
+    .link-user-actions .btn { padding: .2rem .5rem; font-size: .78rem; }
+    .link-comment-hist {
+      flex: 1 1 100%; margin: .15rem 0 0; padding: 0; list-style: none;
+      font-size: .72rem; color: var(--muted); max-width: 100%;
+    }
+    .link-comment-hist li {
+      padding: .12rem 0; border-top: 1px solid #ece7e0;
+      display: flex; flex-wrap: wrap; gap: .15rem .35rem; align-items: baseline;
+    }
+    .link-comment-hist li:first-child { border-top: 0; }
+    .link-comment-hist .lch-who { font-weight: 650; color: var(--ink); }
+    .link-comment-hist .lch-text { color: var(--ink); word-break: break-word; }
+    .link-comment-hist .lch-kind-admin { color: #a32020; }
+    .link-comment-hist .lch-kind-user { color: #2a4a7a; }
+    .history-body {
+      margin-top: .45rem; padding-top: .4rem; border-top: 1px dashed var(--line);
+    }
+    .hist-list { display: flex; flex-direction: column; gap: .45rem; max-height: 18rem; overflow: auto; }
+    .hist-entry {
+      border: 1px solid var(--line); border-radius: 8px; padding: .4rem .5rem;
+      background: #faf8f5; font-size: .8rem; line-height: 1.35;
+    }
+    .hist-entry-head {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .45rem;
+      margin-bottom: .25rem;
+    }
+    .hist-iter { font-weight: 700; color: var(--accent); }
+    .hist-action {
+      font-weight: 650; text-transform: uppercase; font-size: .7rem;
+      letter-spacing: .03em; padding: .08rem .35rem; border-radius: 4px;
+      background: #efeae3; color: var(--ink);
+    }
+    .hist-action.is-approve { background: #e7f6ec; color: #1b6b3a; }
+    .hist-action.is-rework { background: #fde8e8; color: #a32020; }
+    .hist-action.is-submit { background: #eef2f8; color: #2a4a7a; }
+    .hist-action.is-feedback { background: #fff3d6; color: #8a5a12; }
+    .hist-meta { color: var(--muted); font-size: .72rem; }
+    .hist-ratings { margin: .25rem 0 0; padding: 0; list-style: none; }
+    .hist-ratings li {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .4rem;
+      padding: .15rem 0; border-top: 1px solid #ece7e0;
+    }
+    .hist-ratings li:first-child { border-top: 0; }
+    .hist-stars { color: var(--accent); font-weight: 700; letter-spacing: .02em; }
+    .hist-notes {
+      margin: .3rem 0 0; white-space: pre-wrap; word-break: break-word;
+      color: var(--ink); font-size: .78rem;
+    }
+    .hist-empty { color: var(--muted); font-size: .82rem; margin: 0; }
+    .rev-links { display: flex; flex-direction: column; gap: .55rem; margin: .35rem 0 .5rem; }
+    .rev-link-row {
+      border: 1px solid var(--line); border-radius: 8px; padding: .45rem .55rem;
+      background: #faf8f5;
+    }
+    .rev-link-head {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .5rem;
+      margin-bottom: .35rem;
+    }
+    .rev-link-head .task-link-open { max-width: 12rem; }
+    .star-row { display: inline-flex; gap: .15rem; align-items: center; }
+    .star-btn {
+      appearance: none; border: 0; background: transparent; padding: 0 .1rem;
+      font-size: 1.35rem; line-height: 1; cursor: pointer; color: #d5cfc6;
+    }
+    .star-btn.on { color: var(--accent); }
+    .star-btn:hover { color: #a86a3f; }
+    .star-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 4px; }
+    .rev-link-row .rev-tag,
+    .rev-link-row .rev-comment {
+      width: 100%; margin-top: .3rem; font: inherit; font-size: .82rem;
+      padding: .28rem .4rem; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+    }
+    .rev-link-row .rev-comment { min-height: 2.4rem; resize: vertical; }
+    .rev-link-row .rev-tag:disabled,
+    .rev-link-row .rev-comment:disabled {
+      opacity: .45; background: #f3f1ee; cursor: not-allowed;
+    }
+    .rev-link-row .rev-rule {
+      margin: .25rem 0 0; font-size: .72rem; color: var(--muted);
+    }
     .actions { margin-top: .45rem; display: flex; flex-wrap: wrap; gap: .35rem; }
     .empty { color: var(--muted); padding: 1rem 0; }
     dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 0; width: min(26rem, calc(100% - 1.5rem)); }
@@ -70,13 +307,64 @@
     .stage-chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
     .stage-chip:disabled { opacity: .55; cursor: default; }
     .hint-sm { font-size: .78rem; color: var(--muted); margin: 0 0 .35rem; }
+    .ok-msg { color: var(--accent); font-size: .85rem; min-height: 1.1em; margin: .25rem 0 0; }
     .ro-name { font-weight: 650; margin: 0 0 .5rem; }
+    .ro-time { margin: 0; font-size: .92rem; font-weight: 550; }
+    /* LOCKED: Main | Sub segmented toggle — do not replace with select/radios */
+    .seg {
+      display: inline-flex; border: 1px solid var(--line); border-radius: 8px;
+      overflow: hidden; background: var(--card);
+    }
+    .seg-btn {
+      border: 0; background: transparent; padding: .4rem .95rem; font: inherit;
+      cursor: pointer; border-right: 1px solid var(--line); color: var(--ink);
+    }
+    .seg-btn:last-child { border-right: 0; }
+    .seg-btn.on { background: var(--accent); color: #fff; }
+    .seg-btn:disabled { opacity: .45; cursor: not-allowed; }
+    /* LOCKED: admin kind radios — Normal | Pseudo | Routine only (no not_a_task) */
+    .kind-radios { display: flex; flex-wrap: wrap; gap: .55rem 1rem; margin-top: .15rem; }
+    .kind-radios .radio {
+      display: inline-flex; align-items: center; gap: .35rem; margin: 0;
+      font-size: .88rem; cursor: pointer; font-weight: 500;
+    }
+    .kind-radios input[type="radio"] { width: auto; margin: 0; accent-color: var(--accent); }
+    .task.draft {
+      border-style: dashed; background: #faf8f5; border-color: #cfc8bc;
+    }
+    .task.draft.collapsed { padding-top: .55rem; padding-bottom: .55rem; }
+    .draft-head {
+      display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+    }
+    .draft-plus {
+      display: inline-flex; width: 1.45rem; height: 1.45rem; align-items: center; justify-content: center;
+      border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 1rem;
+    }
+    .draft-summary { font-size: .9rem; color: var(--muted); flex: 1; min-width: 6rem; }
+    .draft-body { margin-top: .55rem; }
+    .draft-body .fld { margin-bottom: .35rem; }
+    .draft-body label { margin-top: .25rem; }
+    .pill {
+      border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent);
+      border-radius: 999px; padding: .35rem .85rem; font: inherit; font-weight: 600; cursor: pointer;
+    }
+    .pill:hover { background: var(--accent); color: #fff; }
+    #draftBar { margin-bottom: .65rem; }
+    .task.editing { border-color: var(--accent); }
+    .task .edit-body { margin-top: .55rem; padding-top: .45rem; border-top: 1px dashed var(--line); }
+    .task .edit-body .fld { margin-bottom: .35rem; }
+    .task .edit-body label { margin-top: .25rem; }
+    .task.editing .task-compact .actions [data-act="edit"] { display: none; }
+    .task.reviewing { border-color: var(--accent); }
+    .task .review-body { margin-top: .55rem; padding-top: .45rem; border-top: 1px dashed var(--line); }
+    .task .review-body .fld { margin-bottom: .35rem; }
+    .task.reviewing .task-compact .actions [data-act="review"] { display: none; }
     @media (max-width: 560px) {
       .task.sub { margin-left: .5rem; }
       header { padding: .65rem .75rem; }
     }
     @media print {
-      header .toolbar, .tabs, .btn, dialog, .filters { display: none !important; }
+      header .toolbar, .tabs, .btn, dialog, .filters, .task.draft, #draftBar { display: none !important; }
       body { background: #fff; }
       .task, .log-row { break-inside: avoid; box-shadow: none; }
       a[href]::after { content: " (" attr(href) ")"; font-size: .75rem; color: #444; }
@@ -92,18 +380,25 @@
     <div class="toolbar">
       <button class="btn" type="button" id="btnLogin">Log in</button>
       <button class="btn" type="button" id="btnLogout" hidden>Log out</button>
-      <button class="btn primary" type="button" id="btnNew" hidden>New task</button>
     </div>
   </header>
   <main>
     <div class="tabs" id="tabs">
       <button type="button" class="tab on" data-view="board">Board</button>
-      <button type="button" class="tab" data-view="needs" id="tabNeeds" hidden>Needs review</button>
+      <button type="button" class="tab" data-view="needs" id="tabNeeds" hidden>
+        Needs attention<span class="tab-count" id="tabNeedsCount" hidden>0</span>
+      </button>
       <button type="button" class="tab" data-view="completed" id="tabDone">Completed</button>
       <button type="button" class="tab" data-view="logs" id="tabLogs" hidden>Logs</button>
     </div>
     <div id="boardView">
       <p class="muted" id="hint">Loading…</p>
+
+      <div id="draftBar" hidden>
+        <button type="button" class="pill" id="btnAddDraft">+ Add task</button>
+      </div>
+      <div id="draftList"></div>
+
       <div id="taskList"></div>
       <div class="empty" id="empty" hidden>No tasks.</div>
     </div>
@@ -133,90 +428,13 @@
     </form>
   </dialog>
 
-  <dialog id="editDlg">
-    <form class="dlg" id="editForm" method="dialog">
-      <h2 id="editTitle">Task</h2>
-      <input type="hidden" id="editId" />
-      <input type="hidden" id="eStageIdx" value="0" />
-      <div class="banner" id="editBanner" hidden></div>
-      <p class="ro-name" id="eNameRo" hidden></p>
-
-      <div class="fld" data-fld="project"><label>Project</label><select id="eProject"></select></div>
-      <div class="fld" data-fld="name"><label>Name</label><input id="eName" /></div>
-      <div class="fld" data-fld="desc"><label>Description</label><textarea id="eDesc"></textarea></div>
-      <div class="fld" data-fld="notes"><label>Notes</label><textarea id="eNotes"></textarea></div>
-      <div class="fld" data-fld="link"><label>Link (URL)</label><input id="eLink" placeholder="https://…" /></div>
-      <div class="fld" data-fld="status"><label>Status</label><select id="eStatus"></select></div>
-      <div class="fld" data-fld="priority"><label>Priority</label>
-        <select id="ePriority"><option>low</option><option selected>normal</option><option>high</option></select>
-      </div>
-      <div class="fld" data-fld="vis"><label>Visibility</label>
-        <select id="eVis"><option value="public">public</option><option value="private">private</option></select>
-      </div>
-      <div class="fld" data-fld="kind"><label>Kind (admin)</label>
-        <select id="eKind">
-          <option value="main">main</option><option value="sub">sub</option>
-          <option value="pseudo">pseudo</option><option value="routine">routine</option>
-          <option value="not_a_task">not_a_task</option>
-        </select>
-      </div>
-      <div class="fld" data-fld="parent">
-        <label>Parent Main task</label>
-        <select id="eParent"><option value="">— Select a Main —</option></select>
-        <p class="hint-sm" id="eParentHint" hidden>Create a Main task first.</p>
-      </div>
-
-      <div class="fld" data-fld="stages">
-        <label>Stages</label>
-        <p class="hint-sm">Add #tokens like #design #build #ship (no spaces inside a token)</p>
-        <input id="eStages" placeholder="#Design #Build #Ship" />
-        <p class="hint-sm" id="stagePickHint" hidden>Tap a stage to mark progress up to that point:</p>
-        <div class="stage-chips" id="stageChips" aria-label="Stage picker"></div>
-        <div class="bar" id="stageBarEdit" hidden title="Progress"><i id="stageBarFill" style="width:0%"></i></div>
-      </div>
-
-      <div class="err" id="editErr"></div>
-      <div class="row">
-        <button class="btn primary" type="submit">Save</button>
-        <button class="btn" type="button" id="editCancel">Cancel</button>
-        <button class="btn danger" type="button" id="editDelete" hidden>Delete</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="reviewDlg">
-    <form class="dlg" id="reviewForm" method="dialog">
-      <h2>Review</h2>
-      <input type="hidden" id="revId" />
-      <p class="muted" id="revMeta"></p>
-      <p id="revLinkRow" class="muted" hidden>
-        <a id="revOpenLink" class="btn" href="#" target="_blank" rel="noopener">Open link in new tab</a>
-      </p>
-      <div id="revOwnerFields">
-        <label>Link (required to submit)</label>
-        <input id="revLink" placeholder="https://…" />
-        <label>Notes (optional)</label>
-        <textarea id="revNotesOwner"></textarea>
-      </div>
-      <div id="revModFields" hidden>
-        <label>Notes (required for Re-work)</label>
-        <textarea id="revNotes"></textarea>
-      </div>
-      <div class="err" id="revErr"></div>
-      <div class="row">
-        <button class="btn primary" type="button" id="revSubmit">Submit for review</button>
-        <button class="btn" type="button" id="revFeedback" hidden>Feedback</button>
-        <button class="btn" type="button" id="revRework" hidden>Re-work</button>
-        <button class="btn primary" type="button" id="revApprove" hidden>Approve</button>
-        <button class="btn" type="button" id="revClose">Close</button>
-      </div>
-    </form>
-  </dialog>
-
   <script>
   (function () {
     const TOKEN_KEY = 'ts3_token', CSRF_KEY = 'ts3_csrf';
-    const state = { me: null, permissions: null, tasks: [], hierarchy: null, projects: [], view: 'board', logs: [], allForParent: [] };
+    const state = {
+      me: null, permissions: null, tasks: [], hierarchy: null, projects: [], users: [],
+      view: 'board', logs: [], allForParent: [], attentionCount: 0,
+    };
     const $ = (id) => document.getElementById(id);
 
     function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
@@ -248,6 +466,280 @@
 
     function role() { return (state.me && state.me.role) || 'P1'; }
     function perms() { return state.permissions || {}; }
+    function canReassignRole() { const r = role(); return r === 'P3' || r === 'P4'; }
+    /** LOCKED: Main|Sub toggle + kind radios visible for P3/P4 only */
+    function isAdminKindUi() { const r = role(); return r === 'P3' || r === 'P4'; }
+
+    const IST_MONTH_IX = Object.freeze({
+      Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+      Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+    });
+
+    /** Exact display: "DD-MMM | HH:MM" in Asia/Kolkata. */
+    function formatIstStamp(date) {
+      const d = date instanceof Date ? date : new Date(date);
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(d);
+      const get = (t) => {
+        const p = parts.find((x) => x.type === t);
+        return p ? p.value : '';
+      };
+      let hour = get('hour');
+      if (hour === '24') hour = '00';
+      return get('day') + '-' + get('month') + ' | ' + hour + ':' + get('minute');
+    }
+
+    function istNowStamp() { return formatIstStamp(new Date()); }
+
+    function istYearNow() {
+      return Number(new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata', year: 'numeric',
+      }).format(new Date()));
+    }
+
+    function parseIstStamp(str) {
+      const m = String(str || '').trim().match(/^(\d{2})-([A-Za-z]{3})\s*\|\s*(\d{2}):(\d{2})$/);
+      if (!m) return null;
+      const mon = IST_MONTH_IX[m[2]];
+      if (mon == null) return null;
+      const y = istYearNow();
+      const mm = String(mon + 1).padStart(2, '0');
+      const iso = y + '-' + mm + '-' + m[1] + 'T' + m[3] + ':' + m[4] + ':00+05:30';
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function addHoursToIstStamp(stamp, hours) {
+      const d = parseIstStamp(stamp);
+      const base = d || new Date();
+      return formatIstStamp(new Date(base.getTime() + hours * 3600000));
+    }
+
+    function defaultEndFromStart(startStamp) {
+      return addHoursToIstStamp(startStamp || istNowStamp(), 24);
+    }
+
+    /**
+     * Done is allowed only when every link is rated 2★ or 3★.
+     * No links → Done stays off (nothing rated).
+     */
+    function taskAllLinksReadyForDone(t) {
+      const links = linksFromTask(t);
+      if (!links.length) return false;
+      return links.every((l) => {
+        const r = latestRatingForUrl(t, l.url);
+        const stars = r ? Number(r.stars) || 0 : 0;
+        return stars === 2 || stars === 3;
+      });
+    }
+
+    /** API status token for “working / resumed” — never show this string in the UI. */
+    const STATUS_API_RESUME = 'Resume';
+
+    /**
+     * User-visible status label. Maps the API resume token → “Active”.
+     */
+    function statusDisplayLabel(status) {
+      const st = String(status || '').trim();
+      if (st === STATUS_API_RESUME) return 'Active';
+      return st || '—';
+    }
+
+    /** Append a <option> whose visible text never exposes the API resume token. */
+    function appendStatusOption(sel, apiValue, extraLabel) {
+      if (!sel) return null;
+      const o = document.createElement('option');
+      o.value = apiValue;
+      o.textContent = statusDisplayLabel(apiValue) + (extraLabel || '');
+      sel.appendChild(o);
+      return o;
+    }
+
+    /**
+     * Status choices by role (API values).
+     * P2: Pause | resume-token | Done (gated); Done locked → [].
+     * Admin: Draft | Active | Blocked | Pause | Done — never a second Active/Resume pair.
+     */
+    function statusChoicesForRole(t) {
+      if (role() === 'P2') {
+        const cur = String((t && t.status) || '');
+        if (cur === 'Done') return [];
+        const out = cur === 'Pause' ? [STATUS_API_RESUME] : ['Pause'];
+        if (t && taskAllLinksReadyForDone(t)) out.push('Done');
+        return out;
+      }
+      return ['Draft', 'Active', 'Blocked', 'Pause', 'Done'];
+    }
+
+    /**
+     * API value for a displayed status choice.
+     * Prefer real Active; keep resume token only while the task is already on it.
+     */
+    function statusOptionApiValue(choice, t) {
+      const cur = String((t && t.status) || '');
+      if (choice === 'Active' && cur === STATUS_API_RESUME) return STATUS_API_RESUME;
+      return choice;
+    }
+
+    /** Fill status <select> with one label per choice (single Active). */
+    function fillStatusSelect(sel, t, opts) {
+      opts = opts || {};
+      if (!sel) return;
+      sel.innerHTML = '';
+      const curStatus = String((t && t.status) || '');
+      const statuses = statusChoicesForRole(t);
+      const p2DoneLocked = !!opts.p2DoneLocked;
+
+      if (p2DoneLocked || (role() === 'P2' && curStatus && statuses.indexOf(curStatus) < 0
+          && curStatus !== STATUS_API_RESUME)) {
+        const o = appendStatusOption(sel, curStatus, p2DoneLocked ? ' (locked)' : ' (current)');
+        if (o) {
+          o.disabled = true;
+          o.selected = true;
+        }
+      }
+      // P2 on resume token with Pause|Done choices: show Active (current) stub
+      if (role() === 'P2' && curStatus === STATUS_API_RESUME && statuses.indexOf(STATUS_API_RESUME) < 0) {
+        const o = appendStatusOption(sel, STATUS_API_RESUME, ' (current)');
+        if (o) {
+          o.disabled = true;
+          o.selected = true;
+        }
+      }
+
+      const existing = () => new Set([...sel.options].map((o) => o.value));
+      statuses.forEach((choice) => {
+        const apiVal = statusOptionApiValue(choice, t);
+        if (existing().has(apiVal)) return;
+        appendStatusOption(sel, apiVal);
+      });
+
+      if (curStatus === STATUS_API_RESUME) {
+        const activeOpt = [...sel.options].find((o) => o.value === STATUS_API_RESUME || o.value === 'Active');
+        if (activeOpt) sel.value = activeOpt.value;
+      } else if (existing().has(curStatus)) {
+        sel.value = curStatus;
+      }
+    }
+
+    /** True when the selected status is one P2 is allowed to POST/PATCH. */
+    function p2MaySendStatus(uiStatus, t) {
+      const cur = String((t && t.status) || '');
+      if (cur === 'Done') return false; // cannot revoke Done
+      if (uiStatus === 'Pause') return cur !== 'Pause';
+      if (uiStatus === STATUS_API_RESUME) return cur === 'Pause';
+      if (uiStatus === 'Done') return !!(t && taskAllLinksReadyForDone(t));
+      return false;
+    }
+
+    /** Status value to send, or null to omit (P2 left on system-current stub). */
+    function statusPayloadFromSel(sel, t) {
+      if (!sel) return null;
+      const ui = sel.value;
+      if (role() === 'P2') return p2MaySendStatus(ui, t) ? ui : null;
+      return ui;
+    }
+
+    /** Hint when P2 must pick a status transition (restricted / status-only save). */
+    function p2StatusPickHint(t) {
+      const cur = String((t && t.status) || '');
+      if (cur === 'Done') return 'Status is Done and locked.';
+      const doneOk = !!(t && taskAllLinksReadyForDone(t));
+      if (cur === 'Pause') {
+        return doneOk
+          ? 'Choose Active or Done.'
+          : 'Choose Active (Done needs every link at 2★ or 3★).';
+      }
+      return doneOk
+        ? 'Choose Pause or Done.'
+        : 'Choose Pause (Done needs every link at 2★ or 3★).';
+    }
+
+    /**
+     * Task-level completion approval (Done → admin Approve → Approved tag).
+     * Completely separate from file 3★ / reviewState.
+     * Marker lives in notes and/or review feedback history (P3 can write feedback only).
+     */
+    const TASK_APPROVED_MARK = '⟦TASK_APPROVED⟧';
+
+    function notesWithoutTaskApprovalMark(notes) {
+      return String(notes == null ? '' : notes)
+        .split('\n')
+        .filter((line) => line.indexOf(TASK_APPROVED_MARK) < 0)
+        .join('\n')
+        .replace(/^\n+|\n+$/g, '');
+    }
+
+    function notesWithTaskApprovalMark(notes) {
+      const base = notesWithoutTaskApprovalMark(notes);
+      return base ? (base + '\n' + TASK_APPROVED_MARK) : TASK_APPROVED_MARK;
+    }
+
+    function textHasTaskApprovalMark(text) {
+      return String(text == null ? '' : text).indexOf(TASK_APPROVED_MARK) >= 0;
+    }
+
+    /** True when admin has approved this Done task’s completion. */
+    function isTaskCompletionApproved(t) {
+      if (!t) return false;
+      if (textHasTaskApprovalMark(t.notes)) return true;
+      if (t.review && textHasTaskApprovalMark(t.review.lastNotes)) return true;
+      const hist = t.review && t.review.history;
+      if (Array.isArray(hist)) {
+        for (let i = 0; i < hist.length; i++) {
+          if (textHasTaskApprovalMark(hist[i] && hist[i].notes)) return true;
+        }
+      }
+      return false;
+    }
+
+    function canApproveTaskCompletion(t) {
+      return !!(t
+        && perms().canReviewModerate
+        && String(t.status || '') === 'Done'
+        && !isTaskCompletionApproved(t)
+        && (t.kind === 'main' || t.kind === 'sub' || !t.kindIcon));
+    }
+
+    async function approveTaskCompletion(t) {
+      if (!canApproveTaskCompletion(t)) throw new Error('Cannot approve this task');
+      const ref = t.ref;
+      await api('POST', '/api/tasks/' + encodeURIComponent(ref) + '/review/feedback', {
+        notes: TASK_APPROVED_MARK + ' Task completion approved.',
+      });
+      // P4 can also persist on notes for list durability; P3 relies on history enrichment.
+      if (perms().editScope === 'all') {
+        await api('PATCH', '/api/tasks/' + encodeURIComponent(ref), {
+          notes: notesWithTaskApprovalMark(t.notes),
+        });
+      }
+    }
+
+    /** Fetch history/notes for Done tasks so completion-approval markers are visible. */
+    async function enrichDoneCompletionApprovals(tasks) {
+      const list = Array.isArray(tasks) ? tasks : [];
+      const need = list.filter((t) => (
+        String(t.status || '') === 'Done' && !isTaskCompletionApproved(t)
+      ));
+      if (!need.length) return list;
+      await Promise.all(need.map(async (t) => {
+        try {
+          const d = await api('GET', '/api/tasks/' + encodeURIComponent(t.ref));
+          const detail = d && d.task;
+          if (!detail) return;
+          if (detail.notes != null) t.notes = detail.notes;
+          if (detail.review) t.review = detail.review;
+          if (detail.reviewState != null) t.reviewState = detail.reviewState;
+        } catch (e) { /* keep list row */ }
+      }));
+      return list;
+    }
 
     function nest(tasks) {
       const byId = new Map((tasks || []).map((t) => [t.ref, { ...t, children: [] }]));
@@ -270,73 +762,1085 @@
       return r.length > 10 ? r.slice(0, 8) + '…' : r;
     }
 
+    /** Links are explicit entries (max 4). Notes is text-only — never mined for URLs. */
+    const MAX_LINKS = 4;
+
+    function normalizeUrlInput(raw) {
+      let u = String(raw || '').trim().replace(/[.,);:\]]+$/g, '');
+      if (!u) return '';
+      if (/^www\./i.test(u)) u = 'https://' + u;
+      return u;
+    }
+
+    function normalizeLinkEntry(x) {
+      if (x && typeof x === 'object') {
+        const url = normalizeUrlInput(x.url || x.href || '');
+        if (!url) return null;
+        // Ignore legacy stars/revTag/revComment/comments mirrored into link JSON.
+        // iter = per-file version (independent across links on the same task).
+        const iter = Math.max(1, parseInt(x.iter, 10) || 1);
+        const name = String(x.name != null ? x.name : '').trim();
+        return {
+          url,
+          name,
+          tag: String(x.tag != null ? x.tag : '').trim(),
+          iter,
+        };
+      }
+      const url = normalizeUrlInput(x);
+      return url ? { url, name: '', tag: '', iter: 1 } : null;
+    }
+
+    function parseTaskLinks(raw) {
+      if (Array.isArray(raw)) {
+        return raw.map(normalizeLinkEntry).filter(Boolean).slice(0, MAX_LINKS);
+      }
+      const s = String(raw == null ? '' : raw).trim();
+      if (!s) return [];
+      if (s.charAt(0) === '[') {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed)) {
+            return parsed.map(normalizeLinkEntry).filter(Boolean).slice(0, MAX_LINKS);
+          }
+        } catch (e) { /* fall through */ }
+      }
+      return s.split(/\r?\n+/).map(normalizeLinkEntry).filter(Boolean).slice(0, MAX_LINKS);
+    }
+
+    function serializeTaskLinks(arr) {
+      const links = (Array.isArray(arr) ? arr : [])
+        .map(normalizeLinkEntry)
+        .filter(Boolean)
+        .slice(0, MAX_LINKS);
+      if (!links.length) return '';
+      return JSON.stringify(links.map((l) => ({
+        url: l.url,
+        name: l.name || '',
+        tag: l.tag || '',
+        iter: Math.max(1, Number(l.iter) || 1),
+      })));
+    }
+
+    const REVIEW_PRESET_TAGS = [
+      'Incomplete',
+      'Needs polish',
+      'Wrong format',
+      'Broken / inaccessible',
+      'Unclear',
+      'Other',
+    ];
+
+    /** Per-file version label: v1, v2, … (never a shared task-wide number). */
+    function linkFileVersionLabel(entryOrIter) {
+      const n = (entryOrIter && typeof entryOrIter === 'object')
+        ? Math.max(1, Number(entryOrIter.iter) || 1)
+        : Math.max(1, Number(entryOrIter) || 1);
+      return 'v' + n;
+    }
+
+    /** Resolve iter for a URL from a link field snapshot (history.linkAtReview). */
+    function linkIterFromLinkField(linkField, url) {
+      if (!url) return 0;
+      const hit = parseTaskLinks(linkField).find((l) => l.url === url);
+      return hit ? Math.max(1, Number(hit.iter) || 1) : 0;
+    }
+
+    /**
+     * Per-file iter at a history entry: prefer iter embedded in linkAtReview;
+     * else count how many submit snapshots already included this URL (1-based).
+     */
+    function historyFileIter(t, entry, url) {
+      const fromSnap = linkIterFromLinkField(entry && entry.linkAtReview, url);
+      if (fromSnap) return fromSnap;
+      const hist = (t && t.review && t.review.history) || [];
+      let count = 0;
+      for (let i = 0; i < hist.length; i++) {
+        const e = hist[i];
+        if (String((e && e.action) || '').toLowerCase() === 'submit') {
+          const urls = parseTaskLinks(e && e.linkAtReview).map((l) => l.url);
+          if (urls.indexOf(url) >= 0) count += 1;
+        }
+        if (entry && e === entry) break;
+        if (entry && e && entry.at && e.at === entry.at
+          && String(entry.action || '') === String(e.action || '')
+          && String(entry.byUsername || '') === String(e.byUsername || '')) break;
+      }
+      return Math.max(1, count || 1);
+    }
+
+    /** Normalize one API rating row: { url, stars, tag?, comment? }. */
+    function normalizeApiRating(r) {
+      if (!r || typeof r !== 'object') return null;
+      const url = normalizeUrlInput(r.url || '');
+      const stars = Number(r.stars) || 0;
+      if (!url || stars < 1 || stars > 3) return null;
+      return {
+        url,
+        stars,
+        tag: String(r.tag != null ? r.tag : (r.revTag || '')).trim(),
+        comment: String(r.comment != null ? r.comment : (r.revComment || '')).trim(),
+      };
+    }
+
+    /**
+     * Latest rating for one URL: prefer review.lastRatings, else newest history
+     * entry that rates this exact url. No index fallback across files.
+     */
+    function latestRatingForUrl(t, url) {
+      const u = normalizeUrlInput(url);
+      if (!u) return null;
+      const last = t && t.review && t.review.lastRatings;
+      if (Array.isArray(last) && last.length) {
+        for (let i = 0; i < last.length; i++) {
+          const r = normalizeApiRating(last[i]);
+          if (r && r.url === u) return r;
+        }
+      }
+      const hist = t && t.review && t.review.history;
+      if (Array.isArray(hist)) {
+        for (let i = hist.length - 1; i >= 0; i--) {
+          const rs = hist[i] && hist[i].ratings;
+          if (!Array.isArray(rs) || !rs.length) continue;
+          for (let j = 0; j < rs.length; j++) {
+            const r = normalizeApiRating(rs[j]);
+            if (r && r.url === u) return r;
+          }
+        }
+      }
+      return null;
+    }
+
+    /**
+     * Star outcomes live only on the review API:
+     * prefer review.lastRatings, else latest history entry that has ratings.
+     * (Flat list helper — prefer latestRatingForUrl for per-file decisions.)
+     */
+    function taskApiRatings(t) {
+      const last = t && t.review && t.review.lastRatings;
+      if (Array.isArray(last) && last.length) {
+        const out = last.map(normalizeApiRating).filter(Boolean);
+        if (out.length) return out;
+      }
+      const hist = t && t.review && t.review.history;
+      if (Array.isArray(hist)) {
+        for (let i = hist.length - 1; i >= 0; i--) {
+          const rs = hist[i] && hist[i].ratings;
+          if (!Array.isArray(rs) || !rs.length) continue;
+          const out = rs.map(normalizeApiRating).filter(Boolean);
+          if (out.length) return out;
+        }
+      }
+      return [];
+    }
+
+    /** True when API review ratings exist for any link — EDIT must not freely mutate links. */
+    function taskHasStarRatings(t) {
+      return linksFromTask(t).some((l) => !!latestRatingForUrl(t, l.url));
+    }
+
+    /** Merge task links with per-URL API ratings (never borrow another file's stars by index). */
+    function linksWithOutcomes(t) {
+      const links = linksFromTask(t);
+      const ratedAt = taskRatingsAt(t);
+      return links.map((l) => {
+        const r = latestRatingForUrl(t, l.url);
+        return {
+          url: l.url,
+          name: l.name || '',
+          tag: l.tag || '',
+          iter: Math.max(1, Number(l.iter) || 1),
+          stars: r ? r.stars : 0,
+          revTag: r ? r.tag : '',
+          revComment: r ? r.comment : '',
+          ratedAt: r ? (linkStarRatedAt(t, l.url, r.stars) || ratedAt) : '',
+        };
+      });
+    }
+
+    /** Timestamp for the review entry that currently supplies ratings. */
+    function taskRatingsAt(t) {
+      const last = t && t.review && t.review.lastRatings;
+      if (Array.isArray(last) && last.length && t.review.lastAt) return t.review.lastAt;
+      const hist = t && t.review && t.review.history;
+      if (Array.isArray(hist)) {
+        for (let i = hist.length - 1; i >= 0; i--) {
+          const rs = hist[i] && hist[i].ratings;
+          if (Array.isArray(rs) && rs.length) return hist[i].at || '';
+        }
+      }
+      return '';
+    }
+
+    /** Latest history `at` for a url+stars rating (e.g. 3★ Approved stamp). */
+    function linkStarRatedAt(t, url, stars) {
+      const want = Number(stars) || 0;
+      const hist = t && t.review && t.review.history;
+      if (!Array.isArray(hist)) return '';
+      for (let i = hist.length - 1; i >= 0; i--) {
+        const rs = hist[i] && hist[i].ratings;
+        if (!Array.isArray(rs)) continue;
+        for (let j = 0; j < rs.length; j++) {
+          const r = normalizeApiRating(rs[j]);
+          if (r && r.url === url && (!want || r.stars === want)) return hist[i].at || '';
+        }
+      }
+      return '';
+    }
+
+    function syncAddLinkBtn(scope) {
+      if (!scope) return;
+      const list = scope.querySelector('[data-f="linkList"]');
+      const btn = scope.querySelector('[data-act="addLink"]');
+      if (!btn || !list) return;
+      const n = list.querySelectorAll('.task-link-row').length;
+      const atMax = n >= MAX_LINKS;
+      btn.disabled = atMax;
+      btn.hidden = false;
+      if (atMax) cancelAddLinkInline(scope);
+    }
+
+    /**
+     * Mark 3★ rows in the EDIT link list; they stay non-removable.
+     * Add link remains available (until max 4).
+     */
+    function markApprovedLinkRows(scope, t) {
+      if (!scope) return;
+      const list = scope.querySelector('[data-f="linkList"]');
+      if (!list) return;
+      list.querySelectorAll('.task-link-row').forEach((row) => {
+        const url = row.dataset.url || '';
+        const r = latestRatingForUrl(t, url);
+        const approved = !!(r && r.stars === 3);
+        row.dataset.approved = approved ? '1' : '';
+        row.classList.toggle('is-approved-lock', approved);
+      });
+      applyApprovedLinkRowLocks(scope);
+    }
+
+    /** Lock only 3★ rows; never hide/disable Add link due to approvals. */
+    function applyApprovedLinkRowLocks(scope) {
+      if (!scope) return;
+      const list = scope.querySelector('[data-f="linkList"]');
+      const hint = scope.querySelector('[data-f="linksLockHint"]');
+      let hasApproved = false;
+      if (list) {
+        list.querySelectorAll('.task-link-row').forEach((row) => {
+          const locked = row.dataset.approved === '1';
+          if (locked) hasApproved = true;
+          const rm = row.querySelector('[data-act="rmLink"]');
+          if (rm) {
+            rm.hidden = locked;
+            rm.disabled = locked;
+          }
+          row.querySelectorAll('[data-f="linkTag"]').forEach((inp) => {
+            inp.readOnly = locked;
+            inp.disabled = locked;
+          });
+        });
+      }
+      const addBtn = scope.querySelector('[data-act="addLink"]');
+      if (addBtn) {
+        addBtn.hidden = false;
+        syncAddLinkBtn(scope);
+      }
+      if (hint) hint.hidden = !hasApproved;
+    }
+
+    function shortLinkName(url) {
+      try {
+        const href = /^https?:\/\//i.test(url) ? url : 'https://' + url;
+        const u = new URL(href);
+        let name = u.hostname.replace(/^www\./i, '');
+        if (u.pathname && u.pathname !== '/') {
+          const seg = u.pathname.replace(/\/+$/, '').split('/').pop();
+          if (seg) name = decodeURIComponent(seg);
+        }
+        name = String(name || url);
+        return name.length > 22 ? name.slice(0, 20) + '…' : name;
+      } catch (e) {
+        const s = String(url || '');
+        return s.length > 22 ? s.slice(0, 20) + '…' : s;
+      }
+    }
+
+    /** Display label for a link: given name, else legacy URL-derived short name (never raw URL). */
+    function linkDisplayName(entry) {
+      const given = entry && entry.name != null ? String(entry.name).trim() : '';
+      if (given) return given;
+      return shortLinkName((entry && entry.url) || '');
+    }
+
+    /** Resolve stored name for a URL from a link snapshot or current task. */
+    function linkNameForUrl(t, url, linkField) {
+      if (!url) return '';
+      if (linkField != null) {
+        const hit = parseTaskLinks(linkField).find((l) => l.url === url);
+        if (hit && hit.name) return hit.name;
+      }
+      const cur = linksFromTask(t).find((l) => l.url === url);
+      if (cur && cur.name) return cur.name;
+      return '';
+    }
+
+    function linkFileType(url) {
+      const s = String(url || '').split(/[?#]/)[0].toLowerCase();
+      if (/\.pdf$/i.test(s)) return 'pdf';
+      if (/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(s)) return 'img';
+      if (/\.(docx?|rtf|txt|md|odt)$/i.test(s)) return 'doc';
+      return 'link';
+    }
+
+    function notesTextFromTask(t) {
+      // Hide task-completion marker from the notes editor.
+      return notesWithoutTaskApprovalMark((t && t.notes) ? String(t.notes) : '');
+    }
+
+    function notesPayloadForSave(scope, t) {
+      const edited = getNotesValue(scope);
+      if (t && isTaskCompletionApproved(t)) return notesWithTaskApprovalMark(edited);
+      return edited;
+    }
+
+    function linksFromTask(t) {
+      return parseTaskLinks(t && t.link);
+    }
+
+    function linkUrlsFromTask(t) {
+      return linksFromTask(t).map((l) => l.url);
+    }
+
+    function taskHasAnyLink(t) {
+      return linksFromTask(t).length > 0;
+    }
+
+    /**
+     * Mark under_review via /review/submit (required for Needs review tab).
+     * Throws on failure — callers must surface the error (do not pretend success).
+     */
+    async function markNeedsReview(ref, linkSerialized, notes) {
+      if (!ref) throw new Error('Missing task ref for review submit');
+      const link = String(linkSerialized || '').trim();
+      if (!link) throw new Error('Link is required to submit for review');
+      if (!perms().canReviewSubmit) {
+        throw new Error('You cannot submit tasks for review');
+      }
+      const body = { link };
+      const n = notes != null ? String(notes).trim() : '';
+      if (n) body.notes = n;
+      return api('POST', '/api/tasks/' + encodeURIComponent(ref) + '/review/submit', body);
+    }
+
+    /** Character-identical decorative HTML — bullets only (no URL mining). */
+    function formatNotesBackdrop(text) {
+      const s = String(text == null ? '' : text);
+      return s.split('\n').map((line) => {
+        const bullet = /^([-*]\s)/.exec(line);
+        if (bullet) {
+          return '<span class="note-bullet-mark"><span class="note-bullet-src">'
+            + escapeHtml(bullet[1]) + '</span></span>'
+            + escapeHtml(line.slice(bullet[1].length));
+        }
+        return escapeHtml(line);
+      }).join('\n');
+    }
+
+    function syncNotesBackdrop(ta, backdrop) {
+      if (!ta || !backdrop) return;
+      const val = ta.value;
+      if (backdrop.dataset.notesVal !== val) {
+        backdrop.dataset.notesVal = val;
+        backdrop.innerHTML = formatNotesBackdrop(val);
+      }
+      backdrop.style.width = ta.clientWidth + 'px';
+      backdrop.style.transform = 'translateY(' + (-(ta.scrollTop || 0)) + 'px)';
+    }
+
+    function syncNotesUi(scope, opts) {
+      opts = opts || {};
+      if (!scope) return;
+      const wrap = scope.querySelector('.notes-smart');
+      const ta = scope.querySelector('textarea[data-f="notes"]');
+      const backdrop = scope.querySelector('[data-f="notesBackdrop"]');
+      if (!ta) return;
+      const editing = !!(wrap && wrap.classList.contains('notes-editing'));
+      if (!editing || opts.forceBackdrop) syncNotesBackdrop(ta, backdrop);
+    }
+
+    const notesUiRaf = new WeakMap();
+    function scheduleNotesUi(scope) {
+      if (!scope) return;
+      if (notesUiRaf.has(scope)) return;
+      const id = requestAnimationFrame(() => {
+        notesUiRaf.delete(scope);
+        syncNotesUi(scope);
+      });
+      notesUiRaf.set(scope, id);
+    }
+
+    function setNotesEditing(scope, on) {
+      if (!scope) return;
+      const wrap = scope.querySelector('.notes-smart');
+      if (!wrap) return;
+      wrap.classList.toggle('notes-editing', !!on);
+      if (!on) syncNotesUi(scope, { forceBackdrop: true });
+    }
+
+    function setNotesEnabled(scope, on) {
+      if (!scope) return;
+      const ta = scope.querySelector('textarea[data-f="notes"]');
+      if (ta) ta.disabled = !on;
+    }
+
+    function fillNotesField(scope, text) {
+      if (!scope) return;
+      const ta = scope.querySelector('textarea[data-f="notes"]');
+      if (!ta) return;
+      ta.value = text == null ? '' : String(text);
+      const backdrop = scope.querySelector('[data-f="notesBackdrop"]');
+      if (backdrop) delete backdrop.dataset.notesVal;
+      const wrap = scope.querySelector('.notes-smart');
+      if (wrap) wrap.classList.remove('notes-editing');
+      syncNotesUi(scope, { forceBackdrop: true });
+    }
+
+    function getNotesValue(scope) {
+      const ta = scope && scope.querySelector('textarea[data-f="notes"]');
+      return ta ? ta.value : '';
+    }
+
+    function notesFieldHtml() {
+      return ''
+        + '<div class="fld" data-dfld="notes" data-efld="notes">'
+        + '<label>Notes</label>'
+        + '<p class="hint-sm">Text only. Lines starting with - or * become bullets when you leave the field.</p>'
+        + '<div class="notes-smart">'
+        + '<div class="notes-backdrop" data-f="notesBackdrop" aria-hidden="true"></div>'
+        + '<textarea data-f="notes" rows="5" placeholder="" spellcheck="true" aria-label="Notes"></textarea>'
+        + '</div>'
+        + '</div>';
+    }
+
+    function linksFieldHtml() {
+      return ''
+        + '<div class="fld task-links-fld" data-dfld="links" data-efld="links">'
+        + '<label>Links <span class="muted">(max ' + MAX_LINKS + ')</span></label>'
+        + '<div class="task-link-list" data-f="linkList"></div>'
+        + '<button type="button" class="btn" data-act="addLink">Add link</button>'
+        + '<div class="add-link-inline" data-f="addLinkInline" hidden>'
+        + '<input type="text" data-f="addLinkName" placeholder="File name (required)" maxlength="80" autocomplete="off" />'
+        + '<input type="url" data-f="addLinkUrl" placeholder="https://" autocomplete="off" />'
+        + '<button type="button" class="btn primary" data-act="addLinkSave">Add</button>'
+        + '<button type="button" class="btn" data-act="addLinkCancel">Cancel</button>'
+        + '<p class="lri-err" data-f="addLinkErr" hidden></p>'
+        + '</div>'
+        + '<p class="hint-sm" data-f="linksHint">Name + URL. The name is what everyone sees (clickable).</p>'
+        + '<p class="hint-sm" data-f="linksLockHint" hidden>'
+        + 'Rated files are locked here — use Submit Revision on the card for 1★/2★ changes.</p>'
+        + '</div>';
+    }
+
+    function linkOpenHtml(entry) {
+      const url = String((entry && entry.url) || '').replace(/"/g, '');
+      const ft = linkFileType(url);
+      const label = linkDisplayName(entry);
+      return '<a class="task-link-open" href="' + url + '" target="_blank" rel="noopener" title="'
+        + escapeHtml(url) + '">'
+        + '<span class="task-link-ft is-' + ft + '" aria-hidden="true"></span>'
+        + '<span class="task-link-label">' + escapeHtml(label) + '</span>'
+        + '</a>';
+    }
+
+    /**
+     * Link row for draft/edit lists.
+     * opts.plain — EDIT panel: icon + name (+ vN) + remove only; no tags/outcomes.
+     */
+    function buildLinkRowEl(entry, opts) {
+      opts = opts || {};
+      const row = document.createElement('div');
+      row.className = 'task-link-row';
+      const url = (entry && entry.url) || '';
+      const name = String((entry && entry.name) || '').trim() || shortLinkName(url);
+      row.dataset.url = url;
+      row.dataset.name = name;
+      row.dataset.iter = String(Math.max(1, Number(entry && entry.iter) || 1));
+      const displayEntry = { url, name, tag: (entry && entry.tag) || '', iter: entry && entry.iter };
+      if (opts.plain) {
+        row.innerHTML = linkOpenHtml(displayEntry)
+          + '<span class="task-link-iter">' + escapeHtml(linkFileVersionLabel(entry)) + '</span>'
+          + '<button type="button" class="btn" data-act="rmLink" title="Remove link">×</button>';
+        return row;
+      }
+      row.innerHTML = linkOpenHtml(displayEntry)
+        + '<span class="task-link-iter">' + escapeHtml(linkFileVersionLabel(entry)) + '</span>'
+        + '<input class="task-link-tag" data-f="linkTag" type="text" placeholder="tag / comment" maxlength="80" />'
+        + '<button type="button" class="btn" data-act="rmLink" title="Remove link">×</button>';
+      const tag = row.querySelector('[data-f="linkTag"]');
+      if (tag) tag.value = (entry && entry.tag) || '';
+      return row;
+    }
+
+    function collectLinksFromScope(scope) {
+      if (!scope) return [];
+      const rows = scope.querySelectorAll('[data-f="linkList"] .task-link-row');
+      const out = [];
+      rows.forEach((row) => {
+        if (out.length >= MAX_LINKS) return;
+        const url = normalizeUrlInput(row.dataset.url || '');
+        if (!url) return;
+        const tagEl = row.querySelector('[data-f="linkTag"]');
+        out.push({
+          url,
+          name: String(row.dataset.name || '').trim(),
+          tag: tagEl ? tagEl.value.trim() : '',
+          iter: Math.max(1, Number(row.dataset.iter) || 1),
+        });
+      });
+      return out;
+    }
+
+    function fillLinkList(scope, links, opts) {
+      if (!scope) return;
+      const list = scope.querySelector('[data-f="linkList"]');
+      if (!list) return;
+      list.innerHTML = '';
+      const entries = Array.isArray(links) ? links : parseTaskLinks(links);
+      opts = opts || {};
+      entries.forEach((entry) => list.appendChild(buildLinkRowEl(entry, opts)));
+      syncAddLinkBtn(scope);
+    }
+
+    function addLinkRow(scope, entry) {
+      if (!scope) return false;
+      const list = scope.querySelector('[data-f="linkList"]');
+      if (!list) return false;
+      if (list.querySelectorAll('.task-link-row').length >= MAX_LINKS) {
+        syncAddLinkBtn(scope);
+        return false;
+      }
+      const normalized = normalizeLinkEntry(entry);
+      if (!normalized) return false;
+      // Match EDIT plain rows (icon + name + ×); draft keeps tags.
+      const sample = list.querySelector('.task-link-row');
+      const plain = sample
+        ? !sample.querySelector('[data-f="linkTag"]')
+        : !!(scope.classList && scope.classList.contains('edit-body'));
+      list.appendChild(buildLinkRowEl(normalized, { plain }));
+      syncAddLinkBtn(scope);
+      return true;
+    }
+
+    function promptAddLink(scope) {
+      if (!scope) return;
+      const list = scope.querySelector('[data-f="linkList"]');
+      if (!list) return;
+      if (list.querySelectorAll('.task-link-row').length >= MAX_LINKS) {
+        syncAddLinkBtn(scope);
+        return;
+      }
+      const box = scope.querySelector('[data-f="addLinkInline"]');
+      const nameInp = scope.querySelector('[data-f="addLinkName"]');
+      const urlInp = scope.querySelector('[data-f="addLinkUrl"]');
+      const errEl = scope.querySelector('[data-f="addLinkErr"]');
+      const addBtn = scope.querySelector('[data-act="addLink"]');
+      if (!box || !urlInp) return;
+      if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+      box.hidden = false;
+      if (addBtn) addBtn.hidden = true;
+      if (nameInp) nameInp.value = '';
+      urlInp.value = 'https://';
+      if (nameInp) nameInp.focus();
+      else { urlInp.focus(); urlInp.select(); }
+    }
+
+    function cancelAddLinkInline(scope) {
+      if (!scope) return;
+      const box = scope.querySelector('[data-f="addLinkInline"]');
+      const nameInp = scope.querySelector('[data-f="addLinkName"]');
+      const urlInp = scope.querySelector('[data-f="addLinkUrl"]');
+      const errEl = scope.querySelector('[data-f="addLinkErr"]');
+      const addBtn = scope.querySelector('[data-act="addLink"]');
+      if (box) box.hidden = true;
+      if (nameInp) nameInp.value = '';
+      if (urlInp) urlInp.value = '';
+      if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+      if (addBtn) {
+        addBtn.hidden = false;
+        syncAddLinkBtn(scope);
+      }
+    }
+
+    function saveAddLinkInline(scope) {
+      if (!scope) return;
+      const nameInp = scope.querySelector('[data-f="addLinkName"]');
+      const urlInp = scope.querySelector('[data-f="addLinkUrl"]');
+      const errEl = scope.querySelector('[data-f="addLinkErr"]');
+      const name = String(nameInp && nameInp.value || '').trim();
+      const url = normalizeUrlInput(urlInp && urlInp.value);
+      if (!name) {
+        if (errEl) {
+          errEl.hidden = false;
+          errEl.textContent = 'A file name is required.';
+        }
+        if (nameInp) nameInp.focus();
+        return;
+      }
+      if (!url) {
+        if (errEl) {
+          errEl.hidden = false;
+          errEl.textContent = 'Enter a valid URL.';
+        }
+        return;
+      }
+      if (!addLinkRow(scope, { url, name, tag: '', iter: 1 })) {
+        if (errEl) {
+          errEl.hidden = false;
+          errEl.textContent = 'Link limit reached (max ' + MAX_LINKS + ').';
+        }
+        return;
+      }
+      cancelAddLinkInline(scope);
+    }
+
+    /** Permanent 3★ line: name · vN · DD-MMM | HH:MM · Approved · “comment?” */
+    function approvedLinkLineHtml(entry) {
+      const ver = linkFileVersionLabel(entry);
+      let when = '—';
+      if (entry && entry.ratedAt) {
+        try {
+          const d = new Date(entry.ratedAt);
+          if (!Number.isNaN(d.getTime())) when = formatIstStamp(d);
+        } catch (e) { /* keep — */ }
+      }
+      const comment = entry && entry.revComment ? String(entry.revComment).trim() : '';
+      const cmt = comment ? ' · “' + escapeHtml(comment) + '”' : '';
+      return '<p class="link-approved-line">'
+        + linkOpenHtml(entry)
+        + ' · ' + escapeHtml(ver)
+        + ' · ' + escapeHtml(when)
+        + ' · <span class="la-status">Approved</span>'
+        + cmt
+        + '</p>';
+    }
+
+    function taskLinksCompactHtml(t) {
+      const arr = linksWithOutcomes(t);
+      if (!arr.length) return '';
+      const rState = normalizeUiReviewState(t);
+      const showOutcomes = role() !== 'P1';
+      const canAct = canUserLinkAct(t);
+      return '<div class="task-links-compact">'
+        + arr.map((l, idx) => {
+          const stars = Number(l.stars) || 0;
+          const ver = linkFileVersionLabel(l);
+          const rowCls = 'task-links-compact-row'
+            + (showOutcomes && stars ? ' is-' + stars : '')
+            + (showOutcomes && stars === 1 && rState === 'rework' ? ' is-rework' : '');
+
+          // 3★: permanent read-only text — never Edit/Update again
+          if (showOutcomes && stars === 3) {
+            return '<div class="' + rowCls + '" data-link-idx="' + idx + '">'
+              + approvedLinkLineHtml(l)
+              + '</div>';
+          }
+
+          const ownerTag = (!stars && l.tag)
+            ? '<span class="task-link-tag-ro" title="' + escapeHtml(l.tag) + '">'
+              + escapeHtml(l.tag) + '</span>'
+            : '';
+          return '<div class="' + rowCls + '" data-link-idx="' + idx + '">'
+            + linkOpenHtml(l)
+            + '<span class="task-link-iter">' + escapeHtml(ver) + '</span>'
+            + ownerTag
+            + (showOutcomes ? linkOutcomeHtml(l, rState, { canAct: canAct && !!stars, index: idx }) : '')
+            + '<div class="link-replace-inline" data-f="linkReplace" hidden></div>'
+            + linkCommentHistoryHtml(t, l)
+            + '</div>';
+        }).join('')
+        + '</div>';
+    }
+
+    function canUserLinkAct(t) {
+      return !!(state.me && t && t.assigneeUsername
+        && t.assigneeUsername === state.me.username);
+    }
+
+    /**
+     * Admin Review button: show when under_review or any file is 1★/2★.
+     * Hide when every file is 3★, or status is Done with all files at 2★/3★.
+     */
+    function taskNeedsAdminReview(t) {
+      if (!t || !taskHasAnyLink(t)) return false;
+      const links = linksFromTask(t);
+      if (!links.length) return false;
+      let any12 = false;
+      let all3 = true;
+      let allDoneOk = true;
+      links.forEach((l) => {
+        const r = latestRatingForUrl(t, l.url);
+        const stars = r ? Number(r.stars) || 0 : 0;
+        if (stars === 1 || stars === 2) any12 = true;
+        if (stars !== 3) all3 = false;
+        if (stars !== 2 && stars !== 3) allDoneOk = false;
+      });
+      if (String(t.status || '') === 'Done' && allDoneOk) return false;
+      if (all3) return false;
+      const rState = normalizeUiReviewState(t);
+      if (rState === 'under_review') return true;
+      if (any12) return true;
+      return false;
+    }
+
+    /**
+     * Needs attention (P2 + admin): action still required.
+     * Includes Done tasks waiting for task-level Approve (not yet Approved).
+     */
+    function taskNeedsAttention(t) {
+      if (!t) return false;
+      if (String(t.status || '') === 'Done') {
+        return !isTaskCompletionApproved(t); // waiting for Approve task
+      }
+      const rState = normalizeUiReviewState(t);
+      // under_review covers newly submitted files awaiting first rating
+      if (rState === 'under_review' || rState === 'rework') return true;
+      const links = linksFromTask(t);
+      for (let i = 0; i < links.length; i++) {
+        const r = latestRatingForUrl(t, links[i].url);
+        const stars = r ? Number(r.stars) || 0 : 0;
+        if (stars === 1 || stars === 2) return true; // user must act
+      }
+      return false;
+    }
+
+    /** Newest added first, then soonest / past deadline. */
+    function sortTasksNeedsAttention(tasks) {
+      return (Array.isArray(tasks) ? tasks.slice() : []).sort((a, b) => {
+        const ca = Date.parse(a && a.createdAt) || Date.parse(a && a.updatedAt) || 0;
+        const cb = Date.parse(b && b.createdAt) || Date.parse(b && b.updatedAt) || 0;
+        if (cb !== ca) return cb - ca;
+        const ea = parseIstStamp(a && a.endDate);
+        const eb = parseIstStamp(b && b.endDate);
+        const ma = ea ? ea.getTime() : Number.POSITIVE_INFINITY;
+        const mb = eb ? eb.getTime() : Number.POSITIVE_INFINITY;
+        if (ma !== mb) return ma - mb;
+        return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+      });
+    }
+
+    function syncNeedsAttentionBadge(count) {
+      const n = Math.max(0, Number(count) || 0);
+      state.attentionCount = n;
+      const tab = $('tabNeeds');
+      const badge = $('tabNeedsCount');
+      if (!badge) return;
+      if (!tab || tab.hidden || n < 1) {
+        badge.hidden = true;
+        badge.textContent = '0';
+        return;
+      }
+      badge.hidden = false;
+      badge.textContent = n > 99 ? '99+' : String(n);
+    }
+
+    /** Comment trail from review history ratings (not link JSON). */
+    function linkCommentHistoryHtml(t, linkEntry) {
+      const url = linkEntry && linkEntry.url;
+      const items = [];
+      const hist = t && t.review && t.review.history;
+      if (Array.isArray(hist)) {
+        hist.forEach((entry) => {
+          const ratings = Array.isArray(entry.ratings) ? entry.ratings : [];
+          ratings.forEach((raw) => {
+            const r = normalizeApiRating(raw);
+            if (!r || !r.comment) return;
+            if (url && r.url !== url) return;
+            items.push({
+              text: r.comment,
+              at: entry.at || '',
+              by: entry.byUsername || 'admin',
+              kind: 'admin',
+            });
+          });
+          const action = String(entry.action || '').toLowerCase();
+          const notes = String(entry.notes || '').trim();
+          if ((action === 'feedback' || action === 'submit') && notes
+              && !Array.isArray(entry.ratings)) {
+            items.push({
+              text: notes,
+              at: entry.at || '',
+              by: entry.byUsername || '',
+              kind: action === 'feedback' ? 'user' : 'admin',
+            });
+          }
+        });
+      } else if (linkEntry && linkEntry.revComment) {
+        items.push({
+          text: linkEntry.revComment,
+          at: '',
+          by: 'admin',
+          kind: 'admin',
+        });
+      }
+      if (!items.length) return '';
+      return '<ul class="link-comment-hist" aria-label="Comment history">'
+        + items.map((c) => {
+          const when = c.at ? ' · ' + formatHistWhen(c.at) : '';
+          return '<li>'
+            + '<span class="lch-who lch-kind-' + escapeHtml(c.kind) + '">'
+            + escapeHtml(c.by || c.kind) + '</span>'
+            + '<span class="hist-meta">' + escapeHtml(when) + '</span>'
+            + '<span class="lch-text">' + escapeHtml(c.text) + '</span>'
+            + '</li>';
+        }).join('')
+        + '</ul>';
+    }
+
+    function linkOutcomeHtml(entry, rState, opts) {
+      opts = opts || {};
+      const stars = Number(entry && entry.stars) || 0;
+      if (stars < 1 || stars > 3) return '';
+      const tag = (entry && entry.revTag) ? String(entry.revTag) : '';
+      const comment = (entry && entry.revComment) ? String(entry.revComment) : '';
+      const canAct = !!opts.canAct;
+      const idx = opts.index != null ? opts.index : '';
+
+      if (stars === 3) {
+        // EDIT panel preview: same permanent text; never actionable
+        return approvedLinkLineHtml(entry);
+      }
+
+      if (stars === 2) {
+        const tagHtml = tag
+          ? '<span class="link-outcome-tag" title="Admin tag">' + escapeHtml(tag) + '</span>'
+          : '<span class="link-outcome-status">Ready for task Done</span>';
+        const btn = canAct
+          ? '<span class="link-user-actions">'
+            + '<button type="button" class="btn" data-act="linkUpdate" data-link-idx="'
+            + idx + '">Update</button></span>'
+          : '';
+        return '<p class="link-outcome is-2">' + tagHtml + btn + '</p>';
+      }
+
+      // 1★
+      const tagHtml = tag
+        ? '<span class="link-outcome-tag">' + escapeHtml(tag) + '</span>'
+        : '';
+      const commentHtml = comment
+        ? '<span class="link-outcome-comment">' + escapeHtml(comment) + '</span>'
+        : '';
+      const btn = canAct
+        ? '<span class="link-user-actions">'
+          + '<button type="button" class="btn" data-act="linkEdit" data-link-idx="'
+          + idx + '">Edit</button></span>'
+        : '';
+      const reworkCls = rState === 'rework' ? ' is-rework' : '';
+      return '<p class="link-outcome is-1' + reworkCls + '">'
+        + '<span class="link-outcome-status">Needs changes</span>'
+        + tagHtml + commentHtml + btn
+        + '</p>';
+    }
+
+    function isMainCard(t, isSub) {
+      if (isSub) return false;
+      if (!t || !t.ref) return false;
+      if (t.kind === 'sub') return false;
+      if (t.parentRef) return false;
+      if (t.kindIcon) return false; // P / R / N
+      if (t.kind === 'pseudo' || t.kind === 'routine' || t.kind === 'not_a_task') return false;
+      return true; // kind === main or equivalent structure task
+    }
+
+    function isSubDone(s) {
+      // Subs “done” count uses task.status only — never reviewState/file approval.
+      return String((s && s.status) || '') === 'Done';
+    }
+
+    /** Flat board tasks only — never nest children[] or the parent-picker cache. */
+    function tasksByRef() {
+      const map = new Map();
+      (state.tasks || []).forEach((t) => {
+        if (t && t.ref) map.set(String(t.ref), t);
+      });
+      return map;
+    }
+
+    /**
+     * Pure view calc: direct Subs only (parentRef === this Main’s ref).
+     * Y = total direct Subs; X = how many of those are done. Always X <= Y.
+     */
+    function subDoneStats(main) {
+      if (!main || !main.ref) return { x: 0, y: 0 };
+      const mainRef = String(main.ref);
+      const list = [];
+      tasksByRef().forEach((t) => {
+        if (!t || !t.ref) return;
+        if (String(t.ref) === mainRef) return;
+        if (String(t.parentRef || '') !== mainRef) return;
+        list.push(t);
+      });
+      const y = list.length;
+      let x = list.filter(isSubDone).length;
+      if (x > y) x = y;
+      return { x, y };
+    }
+
+    function normalizeUiReviewState(t) {
+      const s = String((t && t.review && t.review.state) || (t && t.reviewState) || 'none').toLowerCase();
+      return s || 'none';
+    }
+
+    /**
+     * File-review chip only (API reviewState). Never task completion “Approved”.
+     * When reviewState is approved: no chip — per-file 3★ lines carry “Approved”.
+     */
+    function reviewChipInfo(t) {
+      const s = normalizeUiReviewState(t);
+      if (s === 'rework') return { label: 'files:Rework', cls: 'rev-rework' };
+      if (s === 'under_review') return { label: 'files:Needs review', cls: 'rev-needs' };
+      return null;
+    }
+
+    function latestReworkNotes(t) {
+      if (normalizeUiReviewState(t) !== 'rework') return '';
+      const fromReview = t && t.review && t.review.lastNotes != null ? String(t.review.lastNotes) : '';
+      return fromReview.trim();
+    }
+
+    /** Task status chip — API resume token always displays as Active. */
+    function taskStatusChipLabel(t) {
+      const st = String((t && t.status) || '').trim();
+      return st ? ('status:' + statusDisplayLabel(st)) : 'status:—';
+    }
+
     function renderTask(t, isSub) {
       const el = document.createElement('article');
       el.className = 'task' + (isSub ? ' sub' : '');
-      const safeHref = (t.hasLink && t.link) ? String(t.link).replace(/"/g, '') : '';
-      const link = safeHref
-        ? '<a class="link-ico" href="' + safeHref + '" target="_blank" rel="noopener" title="Open link in new tab">🔗</a>'
-        : '';
+      el.dataset.ref = t.ref || '';
       const kindChip = t.kindIcon ? '<span class="chip kind">' + t.kindIcon + '</span>' : '';
-      let reviewHtml = '';
-      const rState = (t.review && t.review.state) || t.reviewState || 'none';
+      const rState = normalizeUiReviewState(t);
       const iter = (t.review && t.review.iteration != null) ? t.review.iteration : (t.reviewIteration || 0);
       const isNeeds = state.view === 'needs';
-      const isDone = state.view === 'completed' || rState === 'approved';
+      const reworkNotes = latestReworkNotes(t);
 
-      // P1: no review notes / iteration / state detail — link icon only
-      if (role() === 'P1') {
-        reviewHtml = '';
-      } else if (rState === 'approved' || isDone) {
-        reviewHtml = '<div class="muted" style="font-size:.8rem;margin-top:.3rem"><span class="chip">Approved</span>'
-          + (iter ? ' · iteration ' + iter : '') + ' · history in Logs</div>';
-      } else if (t.review && t.review.showOnDetail !== false && rState && rState !== 'none') {
-        reviewHtml = '<div class="review-box">Review: <strong>' + escapeHtml(rState) + '</strong>'
-          + (iter ? ' · iteration ' + iter : '')
-          + (t.review.version ? ' · link v' + t.review.version : '')
-          + (t.review.lastNotes ? '<br>' + escapeHtml(t.review.lastNotes) : '')
-          + (isNeeds ? '<br><span class="muted">Open the link in a new tab; Approve / Re-work stay in this app.</span>' : '')
-          + '</div>';
-      } else if (isNeeds && iter) {
-        reviewHtml = '<div class="review-box">Iteration ' + iter + '</div>';
+      let reviewHtml = '';
+      if (role() !== 'P1') {
+        if (rState === 'rework') {
+          reviewHtml = '<div class="rework-notes">'
+            + '<span class="rework-notes-label">Rework notes'
+            + (iter ? ' · iteration ' + iter : '')
+            + '</span>'
+            + '<div class="rework-notes-body">'
+            + (reworkNotes
+              ? escapeHtml(reworkNotes)
+              : '<span class="muted">No notes were provided.</span>')
+            + '</div></div>';
+        } else if (t.review && t.review.showOnDetail !== false && rState === 'under_review' && t.review.lastNotes) {
+          reviewHtml = '<div class="review-box">' + escapeHtml(t.review.lastNotes) + '</div>';
+        }
+        // reviewState=approved: no task-level banner; per-file 3★ lines show Approved
       }
 
-      el.innerHTML = '<h3></h3><div class="meta"></div><div class="chips"></div>'
-        + renderBar(t.stages) + reviewHtml + '<div class="actions"></div>';
-      el.querySelector('h3').innerHTML = escapeHtml(t.name) + link;
+      el.innerHTML =
+        '<div class="task-compact">'
+        + '<h3></h3><div class="meta"></div><div class="subs-line" hidden></div><div class="chips"></div>'
+        + taskLinksCompactHtml(t)
+        + renderBar(t.stages) + reviewHtml + '<div class="actions"></div>'
+        + '<div class="history-body" hidden></div>'
+        + '</div><div class="edit-body" hidden></div><div class="review-body" hidden></div>';
+
+      el.querySelector('h3').textContent = t.name || '';
       el.querySelector('.meta').textContent =
         (t.projectName || t.projectCode) + ' · ' + (t.assigneeDisplayName || t.assigneeUsername || '')
-        + (t.endDate ? ' · ' + t.endDate : '')
+        + (t.startDate ? ' · start ' + t.startDate : '')
+        + (t.endDate ? ' · end ' + t.endDate : '')
         + (iter && role() !== 'P1' && isNeeds ? ' · iter ' + iter : '');
+      if (isMainCard(t, isSub)) {
+        const stats = subDoneStats(t);
+        const line = el.querySelector('.subs-line');
+        line.hidden = false;
+        line.textContent = stats.y === 0
+          ? 'No subs'
+          : ('Subs: ' + stats.x + '/' + stats.y + ' done');
+      }
       const chips = el.querySelector('.chips');
       if (kindChip) chips.insertAdjacentHTML('beforeend', kindChip);
-      const chipBits = ['status:' + t.status, t.visibility];
-      if (role() !== 'P1' && t.reviewState && t.reviewState !== 'none') {
-        chipBits.push('rev:' + t.reviewState);
+      const statusChip = document.createElement('span');
+      statusChip.className = 'chip chip-status';
+      statusChip.textContent = taskStatusChipLabel(t);
+      chips.appendChild(statusChip);
+      // Task-level completion approval (Done only) — not file review.
+      if (role() !== 'P1' && String(t.status || '') === 'Done') {
+        const doneChip = document.createElement('span');
+        if (isTaskCompletionApproved(t)) {
+          doneChip.className = 'chip chip-task-approved';
+          doneChip.textContent = 'Approved';
+          doneChip.title = 'Task completion approved by admin (not file review)';
+        } else {
+          doneChip.className = 'chip chip-waiting';
+          doneChip.textContent = 'Waiting for approval';
+          doneChip.title = 'Status is Done — waiting for P3/P4 to approve the task';
+        }
+        chips.appendChild(doneChip);
       }
-      chipBits.filter(Boolean).forEach((c) => {
-        const s = document.createElement('span'); s.className = 'chip'; s.textContent = c; chips.appendChild(s);
-      });
+      if (role() !== 'P1') {
+        const revChip = reviewChipInfo(t);
+        if (revChip) {
+          const s = document.createElement('span');
+          s.className = 'chip ' + revChip.cls;
+          s.textContent = revChip.label;
+          s.title = 'File review state (not task status)';
+          chips.appendChild(s);
+        }
+      }
       const actions = el.querySelector('.actions');
       const scope = perms().editScope || 'none';
       const mine = state.me && t.assigneeUsername === state.me.username;
       const canEdit = scope === 'all' || scope === 'status' || (scope === 'own' && mine);
 
-      // Needs review: link opens new tab; Approve/Re-work stay in-app via Review panel
-      if (isNeeds && safeHref) {
-        const lb = document.createElement('a');
-        lb.className = 'btn'; lb.href = safeHref; lb.target = '_blank'; lb.rel = 'noopener';
-        lb.textContent = 'Open link'; actions.appendChild(lb);
-      }
-      if (canEdit && !isNeeds) {
+      if (canEdit) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'btn';
-        b.textContent = scope === 'status' ? 'Status' : 'Edit';
-        b.onclick = () => openEdit(t); actions.appendChild(b);
+        b.textContent = 'EDIT'; b.dataset.act = 'edit';
+        b.onclick = () => openInlineEdit(el, t); actions.appendChild(b);
       }
-      if (role() !== 'P1' && (t.kind === 'main' || t.kind === 'sub' || !t.kindIcon)) {
-        const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn' + (isNeeds ? ' primary' : '');
-        rb.textContent = isNeeds ? 'Review actions' : 'Review';
-        rb.onclick = () => openReview(t); actions.appendChild(rb);
+      // Review: P3/P4 only when action is still needed
+      const canMod = !!perms().canReviewModerate;
+      if (canMod && taskNeedsAdminReview(t)
+          && (t.kind === 'main' || t.kind === 'sub' || !t.kindIcon)) {
+        const rb = document.createElement('button'); rb.type = 'button';
+        rb.className = 'btn' + (isNeeds ? ' primary' : '');
+        rb.textContent = 'Review'; rb.dataset.act = 'review';
+        rb.onclick = () => openInlineReview(el, t); actions.appendChild(rb);
+      }
+      // Task completion approval: P3/P4 on Done tasks still waiting
+      if (canApproveTaskCompletion(t)) {
+        const ab = document.createElement('button');
+        ab.type = 'button';
+        ab.className = 'btn primary';
+        ab.textContent = 'Approve task';
+        ab.dataset.act = 'approveTask';
+        ab.onclick = () => {
+          (async () => {
+            try {
+              ab.disabled = true;
+              await approveTaskCompletion(t);
+              await refreshTasks();
+            } catch (err) {
+              ab.disabled = false;
+              alert(err.message || 'Approve task failed');
+            }
+          })();
+        };
+        actions.appendChild(ab);
+      }
+      // History: assignee + moderators (P2+)
+      if (role() !== 'P1' && (taskHasAnyLink(t) || rState !== 'none' || String(t.status || '') === 'Done')) {
+        const hb = document.createElement('button');
+        hb.type = 'button';
+        hb.className = 'btn';
+        hb.textContent = 'History';
+        hb.dataset.act = 'history';
+        hb.onclick = () => toggleTaskHistory(el, t);
+        actions.appendChild(hb);
       }
       return el;
     }
@@ -348,19 +1852,20 @@
     function renderBoard() {
       const box = $('taskList'); box.innerHTML = '';
       const roots = nest(state.tasks);
-      $('empty').hidden = !!roots.length;
+      const canDraft = !!(state.me && perms().canCreate && state.view === 'board');
+      $('empty').hidden = !!roots.length || canDraft || ($('draftList') && $('draftList').children.length > 0);
       if (state.view === 'needs') {
-        $('hint').textContent = 'Needs review: open the submission link in a new tab; Approve / Re-work stay in the app.';
+        $('hint').textContent = 'Needs attention: rework, pending ratings, 1★/2★ files, and Done waiting for Approve task. Sorted newest first, then soonest deadline.';
       } else if (state.view === 'completed') {
-        $('hint').textContent = 'Completed (approved). Badge only here; full history is under Logs.';
+        $('hint').textContent = 'Completed: Done tasks already Approved. Waiting for Approve task stays on Needs attention. Board never shows Done.';
       } else if (role() === 'P1') {
         $('hint').textContent = 'Public: main tasks with nested subs. Link icon opens work in a new tab when present.';
       } else if (role() === 'P2') {
-        $('hint').textContent = 'Your tasks. Stages + submit for review on main/sub. After re-work, revise link and resubmit.';
+        $('hint').textContent = 'Your tasks (not Done). Use Needs attention for rework, pending review, and Done waiting approval.';
       } else if (role() === 'P3') {
-        $('hint').textContent = 'All tasks. Needs review tab: link out, then Re-work (notes required) or Approve in-app.';
+        $('hint').textContent = 'Board: open work. Needs attention lists review work and Done tasks waiting for Approve task.';
       } else {
-        $('hint').textContent = 'Admin: kinds P/R/N, full review, logs. Parent Main is a dropdown (not free-text id).';
+        $('hint').textContent = 'Admin board (not Done). Needs attention covers under review, rework, 1★/2★, and Done waiting approval.';
       }
       function walk(list, sub) {
         list.forEach((t) => {
@@ -369,6 +1874,7 @@
         });
       }
       walk(roots, false);
+      syncDraftBar();
     }
 
     function renderLogs() {
@@ -378,16 +1884,25 @@
         el.innerHTML = '<strong></strong> <span class="meta"></span><div class="chips"></div>';
         el.querySelector('strong').textContent = l.name;
         el.querySelector('.meta').textContent =
-          l.projectCode + ' · ' + l.assigneeDisplayName + ' · ' + l.status
+          l.projectCode + ' · ' + l.assigneeDisplayName + ' · status:' + statusDisplayLabel(l.status)
           + (l.stagesSummary ? ' · stages ' + l.stagesSummary : '')
-          + (l.reviewState && l.reviewState !== 'none' ? ' · ' + l.reviewState : '');
+          + (l.reviewState && l.reviewState !== 'none' && l.reviewState !== 'approved'
+            ? ' · files:' + l.reviewState : '');
         if (l.kindIcon) {
           const c = document.createElement('span'); c.className = 'chip kind'; c.textContent = l.kindIcon;
           el.querySelector('.chips').appendChild(c);
         }
-        if (l.hasLink) {
-          const a = document.createElement('a'); a.className = 'link-ico'; a.href = l.link; a.target = '_blank'; a.textContent = '🔗';
-          el.querySelector('.chips').appendChild(a);
+        if (l.hasLink || linksFromTask(l).length) {
+          linksFromTask(l).forEach((entry) => {
+            const a = document.createElement('a');
+            a.className = 'chip';
+            a.href = entry.url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.title = entry.url;
+            a.textContent = linkDisplayName(entry);
+            el.querySelector('.chips').appendChild(a);
+          });
         }
         box.appendChild(el);
       });
@@ -399,64 +1914,522 @@
       if (m.user) {
         $('whoLine').textContent = m.user.displayName + ' · ' + m.role;
         $('btnLogin').hidden = true; $('btnLogout').hidden = false;
-        $('btnNew').hidden = !perms().canCreate;
         $('tabLogs').hidden = !perms().canViewLogs;
-        $('tabNeeds').hidden = !perms().canViewNeedsReview;
+        // Needs attention: P2 + P3/P4 (any signed-in user)
+        $('tabNeeds').hidden = false;
         $('tabDone').hidden = false;
       } else {
         $('whoLine').textContent = 'Public (P1)';
         $('btnLogin').hidden = false; $('btnLogout').hidden = true;
-        $('btnNew').hidden = true; $('tabLogs').hidden = true;
+        $('tabLogs').hidden = true;
         $('tabNeeds').hidden = true;
         $('tabDone').hidden = true;
+        syncNeedsAttentionBadge(0);
         if (state.view !== 'board') switchView('board');
       }
+      syncDraftBar();
     }
 
     function boardQuery() {
-      if (state.view === 'needs') return 'board=needs_review';
-      if (state.view === 'completed') return 'board=completed';
-      if (state.view === 'board') return 'board=active&nested=1';
+      // Always full scoped list; filter Board / Needs attention / Completed client-side.
       return 'nested=1';
+    }
+
+    function filterTasksForView(tasks) {
+      const list = Array.isArray(tasks) ? tasks : [];
+      if (state.view === 'completed') {
+        // Only Done + task-level Approved (Done waiting → Needs attention)
+        return list.filter((t) => String(t.status || '') === 'Done' && isTaskCompletionApproved(t));
+      }
+      if (state.view === 'board') {
+        return list.filter((t) => String(t.status || '') !== 'Done');
+      }
+      if (state.view === 'needs') {
+        return sortTasksNeedsAttention(list.filter(taskNeedsAttention));
+      }
+      return list;
     }
 
     async function refreshTasks() {
       if (state.view === 'logs') return;
       const r = await api('GET', '/api/tasks?' + boardQuery());
-      state.tasks = r.tasks || [];
-      state.hierarchy = r.hierarchy || null;
-      // cache mains for parent picker (full active list for actor)
-      try {
-        const all = await api('GET', '/api/tasks?board=active');
-        state.allForParent = all.tasks || [];
-      } catch (e) { state.allForParent = state.tasks.slice(); }
+      let all = r.tasks || [];
+      // Enrich Done rows so “waiting approval” vs Approved is accurate for Needs attention badge.
+      await enrichDoneCompletionApprovals(all);
+      const attention = all.filter(taskNeedsAttention);
+      syncNeedsAttentionBadge(attention.length);
+      state.tasks = filterTasksForView(all);
+      state.hierarchy = null;
+      state.allForParent = all.filter((t) => String(t.status || '') !== 'Done');
       renderBoard();
     }
 
-    function fillParentOptions(selectedId, excludeId) {
-      const sel = $('eParent');
+    // —— Multiple collapsible dummy drafts (frontend-only until SUBMIT) ——
+    let draftSeq = 0;
+
+    function canShowDrafts() {
+      return !!(state.me && perms().canCreate && state.view === 'board');
+    }
+
+    function clearAllDummies() {
+      const list = $('draftList');
+      if (list) list.innerHTML = '';
+    }
+
+    function syncDraftBar() {
+      const show = canShowDrafts();
+      if ($('draftBar')) $('draftBar').hidden = !show;
+      if ($('draftList')) $('draftList').hidden = !show;
+      if (!show) return;
+      // refresh project options inside existing dummies without wiping typed values
+      document.querySelectorAll('#draftList .task.draft').forEach((card) => {
+        refreshDummyProjects(card);
+        syncDummyParentVisibility(card);
+        syncDummyStagesVisibility(card);
+      });
+    }
+
+    function dq(card, sel) { return card.querySelector(sel); }
+
+    function getDummyMs(card) {
+      return (dq(card, '[data-f="ms"]') && dq(card, '[data-f="ms"]').value) || 'main';
+    }
+    function setDummyMs(card, v) {
+      const ms = v === 'sub' ? 'sub' : 'main';
+      dq(card, '[data-f="ms"]').value = ms;
+      card.querySelectorAll('.draft-ms .seg-btn').forEach((b) => {
+        b.classList.toggle('on', b.dataset.ms === ms);
+      });
+    }
+    function getDummyKindRadio(card) {
+      const el = card.querySelector('input[data-f="kind"]:checked');
+      return (el && el.value) || 'normal';
+    }
+    function resolvedDummyKind(card) {
+      const kr = getDummyKindRadio(card);
+      if (kr === 'pseudo') return 'pseudo';
+      if (kr === 'routine') return 'routine';
+      return getDummyMs(card) === 'sub' ? 'sub' : 'main';
+    }
+    function dummyStagesAllowed(card) {
+      const msFld = dq(card, '[data-dfld="ms"]');
+      if (isAdminKindUi() && msFld && !msFld.hidden) return getDummyKindRadio(card) === 'normal';
+      return true;
+    }
+
+    function fillDummyParentOptions(card, selectedId) {
+      const sel = dq(card, '[data-f="parent"]');
+      const hint = dq(card, '[data-f="parentHint"]');
+      const prev = selectedId != null ? selectedId : sel.value;
       sel.innerHTML = '';
       const opt0 = document.createElement('option');
       opt0.value = ''; opt0.textContent = '— Select a Main —';
       sel.appendChild(opt0);
       const mains = (state.allForParent || []).filter((t) => {
-        // only Main — exclude sub and P/R/N (kindIcon)
-        if (t.ref === excludeId) return false;
-        if (t.kindIcon) return false; // P / R / N
+        if (t.kindIcon) return false;
         if (t.kind === 'sub') return false;
         if (t.kind && t.kind !== 'main') return false;
-        return true; // kind main or omitted (non-admin main)
+        return true;
       });
-      $('eParentHint').hidden = mains.length > 0;
+      if (hint) hint.hidden = mains.length > 0;
       sel.disabled = mains.length === 0;
       mains.forEach((t) => {
         const o = document.createElement('option');
-        o.value = t.ref; // client handle (ref); never Task ID
+        o.value = t.ref;
         o.textContent = t.name + ' (' + shortRef(t.ref) + ')';
         sel.appendChild(o);
       });
-      if (selectedId && mains.some((m) => m.ref === selectedId)) sel.value = selectedId;
+      if (prev && mains.some((m) => m.ref === prev)) sel.value = prev;
       else sel.value = '';
+    }
+
+    function syncDummyParentVisibility(card) {
+      const admin = isAdminKindUi();
+      const msFld = dq(card, '[data-dfld="ms"]');
+      const parentFld = dq(card, '[data-dfld="parent"]');
+      if (!parentFld) return;
+      if (admin && msFld && !msFld.hidden) {
+        const show = getDummyMs(card) === 'sub';
+        parentFld.hidden = !show;
+        if (!show) dq(card, '[data-f="parent"]').value = '';
+      } else {
+        parentFld.hidden = false;
+      }
+      fillDummyParentOptions(card);
+    }
+
+    function syncDummyStagesVisibility(card) {
+      const fld = dq(card, '[data-dfld="stages"]');
+      if (!fld) return;
+      const msFld = dq(card, '[data-dfld="ms"]');
+      if (isAdminKindUi() && msFld && !msFld.hidden) {
+        fld.hidden = !dummyStagesAllowed(card);
+      } else {
+        fld.hidden = false;
+      }
+    }
+
+    function renderDummyStageChips(card, tokens, currentIndex) {
+      const box = dq(card, '[data-f="stageChips"]');
+      const hint = dq(card, '[data-f="stagePickHint"]');
+      const bar = dq(card, '[data-f="stageBar"]');
+      const fillEl = dq(card, '[data-f="stageBarFill"]');
+      const idxEl = dq(card, '[data-f="stageIdx"]');
+      box.innerHTML = '';
+      const toks = tokens || [];
+      const idx = Math.max(0, Math.min(Number(currentIndex) || 0, toks.length));
+      hint.hidden = !toks.length;
+      bar.hidden = !toks.length;
+      fillEl.style.width = (toks.length ? Math.round((idx / toks.length) * 100) : 0) + '%';
+      if (!toks.length) {
+        box.innerHTML = '<span class="hint-sm">No stages yet — type #tokens above.</span>';
+        return;
+      }
+      toks.forEach((tok, i) => {
+        const pos = i + 1;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'stage-chip' + (pos <= idx ? ' on' : '');
+        b.textContent = tok;
+        b.onclick = () => {
+          idxEl.value = String(pos);
+          renderDummyStageChips(card, toks, pos);
+        };
+        box.appendChild(b);
+      });
+      const z = document.createElement('button');
+      z.type = 'button'; z.className = 'stage-chip'; z.textContent = 'Clear';
+      z.onclick = () => {
+        idxEl.value = '0';
+        renderDummyStageChips(card, toks, 0);
+      };
+      box.appendChild(z);
+    }
+
+    function syncDummyStagesUi(card, opts) {
+      opts = opts || {};
+      const stagesEl = dq(card, '[data-f="stages"]');
+      const idxEl = dq(card, '[data-f="stageIdx"]');
+      const cleaned = cleanStageTokens(stagesEl.value);
+      if (opts.rewrite) stagesEl.value = cleaned.join(' ');
+      let idx = Number(idxEl.value) || 0;
+      if (idx < 0) idx = 0;
+      if (idx > cleaned.length) idx = cleaned.length;
+      idxEl.value = String(idx);
+      renderDummyStageChips(card, cleaned, idx);
+      return cleaned;
+    }
+
+    function refreshDummyProjects(card) {
+      const sel = dq(card, '[data-f="project"]');
+      const prev = sel.value;
+      sel.innerHTML = '';
+      state.projects.forEach((p) => {
+        const o = document.createElement('option'); o.value = p.code; o.textContent = p.name; sel.appendChild(o);
+      });
+      if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+      else if (state.projects[0]) sel.value = state.projects[0].code;
+    }
+
+    function updateDummySummary(card) {
+      const name = dq(card, '[data-f="name"]').value.trim();
+      dq(card, '.draft-summary').textContent = name || 'Untitled draft';
+    }
+
+    function setDummyCollapsed(card, collapsed) {
+      card.classList.toggle('collapsed', collapsed);
+      dq(card, '.draft-body').hidden = collapsed;
+      const toggle = dq(card, '[data-act="toggle"]');
+      if (toggle) toggle.textContent = collapsed ? 'Expand' : 'Collapse';
+      updateDummySummary(card);
+    }
+
+    function buildDummyCard(id) {
+      const admin = isAdminKindUi();
+      const showPriority = perms().editScope === 'all';
+      const card = document.createElement('article');
+      card.className = 'task draft';
+      card.dataset.draftId = id;
+      card.innerHTML =
+        '<div class="draft-head">'
+        + '<span class="draft-plus" aria-hidden="true">+</span>'
+        + '<strong>Draft</strong>'
+        + '<span class="draft-summary">Untitled draft</span>'
+        + '<button type="button" class="btn" data-act="toggle">Collapse</button>'
+        + '<button type="button" class="btn" data-act="discard">Discard</button>'
+        + '</div>'
+        + '<div class="draft-body">'
+        + '<div class="fld" data-dfld="project"><label>Project</label><select data-f="project"></select></div>'
+        + '<div class="fld"><label>Name</label><input data-f="name" placeholder="Task name" /></div>'
+        + '<div class="fld"><label>Description</label><textarea data-f="desc"></textarea></div>'
+        + notesFieldHtml()
+        + linksFieldHtml()
+        + '<div class="fld"><label>Start time</label>'
+        + '<input data-f="start" placeholder="DD-MMM | HH:MM" /></div>'
+        + '<div class="fld"><label>End time</label>'
+        + '<input data-f="end" placeholder="DD-MMM | HH:MM" /></div>'
+        + '<div class="fld" data-dfld="status"><label>Status</label><select data-f="status"></select></div>'
+        + '<div class="fld" data-dfld="priority"' + (showPriority ? '' : ' hidden') + '>'
+        + '<label>Priority</label><select data-f="priority"><option>low</option><option selected>normal</option><option>high</option></select></div>'
+        + '<div class="fld" data-dfld="ms"' + (admin ? '' : ' hidden') + '>'
+        + '<label>Main / Sub</label>'
+        + '<div class="seg draft-ms" role="group" aria-label="Main or Sub">'
+        + '<button type="button" class="seg-btn on" data-ms="main">Main</button>'
+        + '<button type="button" class="seg-btn" data-ms="sub">Sub</button></div>'
+        + '<input type="hidden" data-f="ms" value="main" /></div>'
+        + '<div class="fld" data-dfld="kind"' + (admin ? '' : ' hidden') + '>'
+        + '<label>Kind (admin)</label><div class="kind-radios" role="radiogroup">'
+        + '<label class="radio"><input type="radio" data-f="kind" name="dKind_' + id + '" value="normal" checked /> Normal</label>'
+        + '<label class="radio"><input type="radio" data-f="kind" name="dKind_' + id + '" value="pseudo" /> Pseudo</label>'
+        + '<label class="radio"><input type="radio" data-f="kind" name="dKind_' + id + '" value="routine" /> Routine</label>'
+        + '</div></div>'
+        + '<div class="fld" data-dfld="parent"><label>Parent Main task</label>'
+        + '<select data-f="parent"><option value="">— Select a Main —</option></select>'
+        + '<p class="hint-sm" data-f="parentHint" hidden>Create a Main task first.</p></div>'
+        + '<div class="fld" data-dfld="stages"><label>Stages</label>'
+        + '<p class="hint-sm">Type #tokens separated by spaces (e.g. #design #build #ship).</p>'
+        + '<input data-f="stages" placeholder="#Design #Build #Ship" autocomplete="off" spellcheck="false" />'
+        + '<input type="hidden" data-f="stageIdx" value="0" />'
+        + '<p class="hint-sm" data-f="stagePickHint" hidden>Tap a stage chip to mark progress up to that point.</p>'
+        + '<div class="stage-chips" data-f="stageChips"></div>'
+        + '<div class="bar" data-f="stageBar" hidden title="Progress"><i data-f="stageBarFill" style="width:0%"></i></div>'
+        + '</div>'
+        + '<div class="err" data-f="err"></div>'
+        + '<div class="actions"><button class="btn primary" type="button" data-act="submit">SUBMIT</button></div>'
+        + '</div>';
+
+      refreshDummyProjects(card);
+      setDummyMs(card, 'main');
+      const start = istNowStamp();
+      dq(card, '[data-f="start"]').value = start;
+      dq(card, '[data-f="end"]').value = defaultEndFromStart(start);
+      card.dataset.endManual = '0';
+      fillDummyStatusOptions(card);
+      const draftScope = dq(card, '.draft-body') || card;
+      fillNotesField(draftScope, '');
+      fillLinkList(draftScope, []);
+      syncDummyParentVisibility(card);
+      syncDummyStagesVisibility(card);
+      syncDummyStagesUi(card, { rewrite: true });
+      return card;
+    }
+
+    function fillDummyStatusOptions(card) {
+      const sel = dq(card, '[data-f="status"]');
+      if (!sel) return;
+      // Unsubmitted draft: Draft only (read-only). API create births Active.
+      sel.innerHTML = '';
+      const o = document.createElement('option');
+      o.value = 'Draft';
+      o.textContent = 'Draft';
+      o.selected = true;
+      sel.appendChild(o);
+      sel.disabled = true;
+    }
+
+    function addDummyDraft() {
+      if (!canShowDrafts()) return;
+      const id = 'd' + (++draftSeq) + '_' + Date.now().toString(36);
+      const card = buildDummyCard(id);
+      $('draftList').prepend(card);
+      setDummyCollapsed(card, false);
+      $('empty').hidden = true;
+    }
+
+    async function submitDummyCard(card) {
+      const errEl = dq(card, '[data-f="err"]');
+      errEl.textContent = '';
+      if (!perms().canCreate) {
+        errEl.textContent = 'You cannot create tasks.';
+        return;
+      }
+      const name = dq(card, '[data-f="name"]').value.trim();
+      if (!name) {
+        errEl.textContent = 'Name is required to submit.';
+        setDummyCollapsed(card, false);
+        return;
+      }
+      const draftScope = dq(card, '.draft-body') || card;
+      const notesVal = getNotesValue(draftScope);
+      const collectedLinks = collectLinksFromScope(draftScope);
+      if (collectedLinks.some((l) => !String(l.name || '').trim())) {
+        errEl.textContent = 'Every link needs a file name.';
+        setDummyCollapsed(card, false);
+        return;
+      }
+      const startEl = dq(card, '[data-f="start"]');
+      const endEl = dq(card, '[data-f="end"]');
+      let startDate = startEl ? startEl.value.trim() : '';
+      let endDate = endEl ? endEl.value.trim() : '';
+      if (!startDate) {
+        startDate = istNowStamp();
+        if (startEl) startEl.value = startDate;
+      }
+      if (!endDate) {
+        endDate = defaultEndFromStart(startDate);
+        if (endEl) endEl.value = endDate;
+      }
+      const body = {
+        projectCode: dq(card, '[data-f="project"]').value,
+        name,
+        description: dq(card, '[data-f="desc"]').value,
+        notes: notesVal,
+        link: serializeTaskLinks(collectedLinks),
+        startDate,
+        endDate,
+      };
+      // Status is not chosen on draft — API create births status=Active (system path).
+      const priFld = dq(card, '[data-dfld="priority"]');
+      if (priFld && !priFld.hidden) body.priority = dq(card, '[data-f="priority"]').value;
+      const msFld = dq(card, '[data-dfld="ms"]');
+      if (isAdminKindUi() && msFld && !msFld.hidden) {
+        const k = resolvedDummyKind(card);
+        body.kind = k;
+        if (k === 'sub') {
+          if (!dq(card, '[data-f="parent"]').value) {
+            errEl.textContent = 'Select a Main parent task.';
+            setDummyCollapsed(card, false);
+            return;
+          }
+          body.parentRef = dq(card, '[data-f="parent"]').value;
+        }
+      } else if (dq(card, '[data-f="parent"]').value) {
+        // P2 (and non-admin): parent alone — never send kind
+        body.parentRef = dq(card, '[data-f="parent"]').value;
+      }
+      try {
+        const created = await api('POST', '/api/tasks', body);
+        const createdRef = created && created.task && created.task.ref;
+        if (dummyStagesAllowed(card)) {
+          const tokens = syncDummyStagesUi(card, { rewrite: true });
+          if (tokens.length && createdRef) {
+            await api('PATCH', '/api/tasks/' + createdRef + '/stages', {
+              text: tokens.join(' '),
+              currentIndex: Number(dq(card, '[data-f="stageIdx"]').value) || 0,
+            });
+          }
+        }
+        card.remove();
+        if (body.link && createdRef) {
+          try {
+            await markNeedsReview(createdRef, body.link);
+          } catch (revErr) {
+            await refreshTasks();
+            $('hint').textContent = 'Task saved, but Needs review failed: '
+              + (revErr && revErr.message ? revErr.message : 'submit error')
+              + ' — open EDIT and UPDATE to retry.';
+            return;
+          }
+        }
+        await refreshTasks();
+      } catch (err) {
+        errEl.textContent = err.message;
+        setDummyCollapsed(card, false);
+      }
+    }
+
+    function onDraftListClick(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      const act = e.target.closest('[data-act]');
+      if (act) {
+        const a = act.dataset.act;
+        const draftScope = dq(card, '.draft-body') || card;
+        if (a === 'toggle') {
+          setDummyCollapsed(card, !card.classList.contains('collapsed'));
+          return;
+        }
+        if (a === 'discard') { card.remove(); return; }
+        if (a === 'submit') { submitDummyCard(card); return; }
+        if (a === 'addLink') {
+          e.preventDefault();
+          promptAddLink(draftScope);
+          return;
+        }
+        if (a === 'addLinkCancel') {
+          e.preventDefault();
+          cancelAddLinkInline(draftScope);
+          return;
+        }
+        if (a === 'addLinkSave') {
+          e.preventDefault();
+          saveAddLinkInline(draftScope);
+          return;
+        }
+        if (a === 'rmLink') {
+          e.preventDefault();
+          const row = act.closest('.task-link-row');
+          if (row) row.remove();
+          syncAddLinkBtn(draftScope);
+          return;
+        }
+      }
+      const msBtn = e.target.closest('.draft-ms .seg-btn');
+      if (msBtn && !msBtn.disabled) {
+        setDummyMs(card, msBtn.dataset.ms);
+        syncDummyParentVisibility(card);
+        syncDummyStagesVisibility(card);
+      }
+    }
+
+    function onDraftListChange(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      if (e.target.matches('input[data-f="kind"]')) {
+        syncDummyParentVisibility(card);
+        syncDummyStagesVisibility(card);
+      }
+      if (e.target.matches('[data-f="name"]')) updateDummySummary(card);
+      if (e.target.matches('[data-f="stages"]')) syncDummyStagesUi(card);
+    }
+
+    function onDraftListInput(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      if (e.target.matches('[data-f="name"]')) updateDummySummary(card);
+      if (e.target.matches('[data-f="stages"]')) syncDummyStagesUi(card);
+      if (e.target.matches('textarea[data-f="notes"]')) {
+        scheduleNotesUi(dq(card, '.draft-body') || card);
+      }
+      if (e.target.matches('[data-f="start"]')) {
+        if (card.dataset.endManual !== '1') {
+          dq(card, '[data-f="end"]').value = defaultEndFromStart(e.target.value.trim());
+        }
+      }
+      if (e.target.matches('[data-f="end"]')) {
+        card.dataset.endManual = '1';
+      }
+    }
+
+    function onDraftListScroll(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      if (!e.target.matches('textarea[data-f="notes"]')) return;
+      const scope = dq(card, '.draft-body') || card;
+      const wrap = scope.querySelector('.notes-smart');
+      if (wrap && wrap.classList.contains('notes-editing')) return;
+      const backdrop = scope.querySelector('[data-f="notesBackdrop"]');
+      if (backdrop) syncNotesBackdrop(e.target, backdrop);
+    }
+
+    function onDraftListFocusIn(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      if (!e.target.matches('textarea[data-f="notes"]')) return;
+      setNotesEditing(dq(card, '.draft-body') || card, true);
+    }
+
+    function onDraftListFocusOut(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      if (!e.target.matches('textarea[data-f="notes"]')) return;
+      setNotesEditing(dq(card, '.draft-body') || card, false);
+    }
+
+    function onDraftListBlur(e) {
+      const card = e.target.closest('.task.draft');
+      if (!card || !$('draftList').contains(card)) return;
+      if (e.target.matches('[data-f="stages"]')) syncDummyStagesUi(card, { rewrite: true });
     }
 
     async function refreshProjects() {
@@ -465,12 +2438,27 @@
       catch (e) { state.projects = []; }
     }
 
+    async function refreshUsers() {
+      if (!state.me || !canReassignRole()) { state.users = []; return; }
+      try { state.users = (await api('GET', '/api/users')).users || []; }
+      catch (e) { state.users = []; }
+    }
+
     async function refreshLogs() {
       const q = new URLSearchParams();
       if ($('logQ').value.trim()) q.set('q', $('logQ').value.trim());
-      if ($('logStatus').value) q.set('status', $('logStatus').value);
+      const st = $('logStatus').value;
+      // UI “Active” covers API Active + resume token
+      if (st && st !== 'Active') q.set('status', st);
       const r = await api('GET', '/api/logs?' + q.toString());
-      state.logs = r.logs || [];
+      let logs = r.logs || [];
+      if (st === 'Active') {
+        logs = logs.filter((l) => {
+          const s = String(l.status || '');
+          return s === 'Active' || s === STATUS_API_RESUME;
+        });
+      }
+      state.logs = logs;
       renderLogs();
     }
 
@@ -484,248 +2472,1448 @@
       else refreshTasks().catch((e) => { $('hint').textContent = e.message; });
     }
 
-    function parseStageTokensClient(text) {
-      const raw = String(text || '').trim();
-      if (!raw) return { ok: true, tokens: [] };
-      if (/#\s/.test(raw)) {
-        return { ok: false, error: 'invalid stage token — no spaces after #; use #take or #fill-and-sign (not "# tak")' };
-      }
-      const re = /^#[A-Za-z0-9][A-Za-z0-9._\-]*$/;
-      const parts = raw.split(/\s+/).filter(Boolean);
+    /**
+     * Extract valid stage tokens; strip/ignore malformed pieces
+     * (lone "#", "# tak", spaces inside a token, empty, non-# junk).
+     */
+    function cleanStageTokens(text) {
+      const raw = String(text == null ? '' : text);
+      if (!raw.trim()) return [];
+      const re = /#[A-Za-z0-9][A-Za-z0-9._\-]*/g;
       const tokens = [];
-      for (const p of parts) {
-        if (p === '#') return { ok: false, error: 'invalid stage token "#" — no spaces after #; use #take or #fill-and-sign' };
-        if (!p.startsWith('#')) return { ok: false, error: 'invalid stage token "' + p + '" — each stage must start with #' };
-        if (!re.test(p)) return { ok: false, error: 'invalid stage token "' + p + '" — use #Name with letters/numbers/._- only (no spaces after #)' };
-        tokens.push(p);
-      }
-      return { ok: true, tokens };
+      let m;
+      while ((m = re.exec(raw)) !== null) tokens.push(m[0]);
+      return tokens;
     }
 
     function isRestrictedKindVal(k) {
       return k === 'pseudo' || k === 'routine' || k === 'not_a_task';
     }
 
-    function setFld(name, visible) {
-      const el = document.querySelector('[data-fld="' + name + '"]');
+    // —— Inline edit on committed cards (no dialog) ——
+    function eq(card, sel) { return card.querySelector('.edit-body ' + sel); }
+
+    function getEditMs(card) {
+      return (eq(card, '[data-f="ms"]') && eq(card, '[data-f="ms"]').value) || 'main';
+    }
+    function setEditMs(card, v) {
+      const ms = v === 'sub' ? 'sub' : 'main';
+      const hid = eq(card, '[data-f="ms"]');
+      if (hid) hid.value = ms;
+      card.querySelectorAll('.edit-body .edit-ms .seg-btn').forEach((b) => {
+        b.classList.toggle('on', b.dataset.ms === ms);
+      });
+    }
+    function getEditKindRadio(card) {
+      const el = card.querySelector('.edit-body input[data-f="kind"]:checked');
+      return (el && el.value) || 'normal';
+    }
+    function setEditKindRadio(card, v) {
+      const val = (v === 'pseudo' || v === 'routine') ? v : 'normal';
+      card.querySelectorAll('.edit-body input[data-f="kind"]').forEach((r) => {
+        r.checked = r.value === val;
+      });
+    }
+    function resolvedEditKind(card) {
+      const kr = getEditKindRadio(card);
+      if (kr === 'pseudo') return 'pseudo';
+      if (kr === 'routine') return 'routine';
+      return getEditMs(card) === 'sub' ? 'sub' : 'main';
+    }
+    function setEditKindControlsEnabled(card, on) {
+      card.querySelectorAll('.edit-body .edit-ms .seg-btn').forEach((b) => { b.disabled = !on; });
+      card.querySelectorAll('.edit-body input[data-f="kind"]').forEach((r) => { r.disabled = !on; });
+    }
+    function editStagesAllowed(card) {
+      const msFld = eq(card, '[data-efld="ms"]');
+      if (isAdminKindUi() && msFld && !msFld.hidden) return getEditKindRadio(card) === 'normal';
+      return true;
+    }
+    function setEditFld(card, name, visible) {
+      const el = eq(card, '[data-efld="' + name + '"]');
       if (el) el.hidden = !visible;
     }
 
-    function renderStageChips(tokens, currentIndex, interactive) {
-      const box = $('stageChips');
-      box.innerHTML = '';
-      const toks = tokens || [];
-      const idx = Number(currentIndex) || 0;
-      $('stagePickHint').hidden = !toks.length;
-      $('stageBarEdit').hidden = !toks.length;
-      const fill = toks.length ? Math.round((idx / toks.length) * 100) : 0;
-      $('stageBarFill').style.width = fill + '%';
-      if (!toks.length) {
-        box.innerHTML = '<span class="hint-sm">No stages yet — type #tokens above, then Save.</span>';
-        return;
-      }
-      toks.forEach((tok, i) => {
-        const pos = i + 1; // currentIndex means "completed through this many"
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'stage-chip' + (pos <= idx ? ' on' : '');
-        b.textContent = tok;
-        b.disabled = !interactive;
-        b.title = interactive ? 'Set progress through ' + tok : tok;
-        if (interactive) {
-          b.onclick = async () => {
-            $('eStageIdx').value = String(pos);
-            renderStageChips(toks, pos, true);
-            const id = $('editId').value;
-            if (!id) return; // create: applied on Save
-            $('editErr').textContent = '';
-            try {
-              await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
-                text: toks.join(' '),
-                currentIndex: pos,
-              });
-              await refreshTasks();
-            } catch (err) {
-              $('editErr').textContent = err.message;
-            }
-          };
-        }
-        box.appendChild(b);
-      });
-      // allow reset to 0
-      if (interactive) {
-        const z = document.createElement('button');
-        z.type = 'button'; z.className = 'stage-chip'; z.textContent = 'Clear';
-        z.title = 'Reset progress to start';
-        z.onclick = async () => {
-          $('eStageIdx').value = '0';
-          renderStageChips(toks, 0, true);
-          const id = $('editId').value;
-          if (!id) return;
-          try {
-            await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
-              text: toks.join(' '), currentIndex: 0,
-            });
-            await refreshTasks();
-          } catch (err) { $('editErr').textContent = err.message; }
-        };
-        box.appendChild(z);
-      }
-    }
-
-    function openEdit(t) {
-      $('editTitle').textContent = t ? 'Edit task' : 'New task';
-      $('editId').value = t ? t.ref : '';
-      $('editErr').textContent = '';
-      $('editBanner').hidden = true;
-      $('editBanner').textContent = '';
-      $('eNameRo').hidden = true;
-
-      const proj = $('eProject'); proj.innerHTML = '';
-      state.projects.forEach((p) => {
-        const o = document.createElement('option'); o.value = p.code; o.textContent = p.name; proj.appendChild(o);
-      });
-      const statuses = role() === 'P2' ? ['Draft','Active','Done'] : ['Draft','Active','Blocked','Done'];
-      $('eStatus').innerHTML = statuses.map((s) => '<option>' + s + '</option>').join('');
-
+    function applyKindToEditCard(card, t) {
       let kindVal = 'main';
       if (t) {
         kindVal = t.kind || (t.kindIcon === 'P' ? 'pseudo' : t.kindIcon === 'R' ? 'routine' : t.kindIcon === 'N' ? 'not_a_task' : (t.kind || 'main'));
         if (t.kindIcon && !t.kind) {
           kindVal = t.kindIcon === 'P' ? 'pseudo' : t.kindIcon === 'R' ? 'routine' : t.kindIcon === 'N' ? 'not_a_task' : 'main';
         }
-        proj.value = t.projectCode; $('eName').value = t.name || '';
-        $('eDesc').value = t.description || ''; $('eNotes').value = t.notes || '';
-        $('eLink').value = t.link || ''; $('eStatus').value = t.status || 'Draft';
-        $('ePriority').value = t.priority || 'normal'; $('eVis').value = t.visibility || 'public';
-        $('eKind').value = kindVal;
-        fillParentOptions(t.parentRef || '', t.ref);
-        if (t.stages && t.stages.tokens) {
-          $('eStages').value = t.stages.tokens.join(' ');
-          $('eStageIdx').value = t.stages.currentIndex || 0;
-          renderStageChips(t.stages.tokens, t.stages.currentIndex || 0, true);
-        } else {
-          $('eStages').value = ''; $('eStageIdx').value = 0;
-          renderStageChips([], 0, false);
-        }
-      } else {
-        if (state.projects[0]) proj.value = state.projects[0].code;
-        ['eName','eDesc','eNotes','eLink','eStages'].forEach((id) => $(id).value = '');
-        $('eStatus').value = 'Draft'; $('ePriority').value = 'normal'; $('eVis').value = 'public';
-        $('eKind').value = 'main'; $('eStageIdx').value = 0;
-        fillParentOptions('', '');
-        renderStageChips([], 0, false);
       }
-      syncParentVisibility();
-
-      const scope = perms().editScope || 'none';
-      const isCreate = !t;
-      const statusOnlyRole = !isCreate && scope === 'status';
-      const restricted = !isCreate && isRestrictedKindVal(kindVal);
-      const full = isCreate || scope === 'all' || scope === 'own';
-
-      // Field visibility
-      if (restricted) {
-        $('editBanner').hidden = false;
-        $('editBanner').textContent = 'This kind only allows status changes.';
-        $('eNameRo').hidden = false;
-        $('eNameRo').textContent = t.name || '';
-        ['project','name','desc','notes','link','priority','vis','parent','stages'].forEach((f) => setFld(f, false));
-        setFld('status', true);
-        setFld('kind', !!perms().canSetKind); // admin may still see kind to change away via bulk; hide for clarity
-        setFld('kind', false);
-        $('eStatus').disabled = false;
+      if (kindVal === 'sub') {
+        setEditMs(card, 'sub');
+        setEditKindRadio(card, 'normal');
+      } else if (kindVal === 'pseudo') {
+        setEditMs(card, 'main');
+        setEditKindRadio(card, 'pseudo');
+      } else if (kindVal === 'routine') {
+        setEditMs(card, 'main');
+        setEditKindRadio(card, 'routine');
       } else {
-        setFld('project', true); setFld('name', true); setFld('desc', true); setFld('notes', true);
-        setFld('link', true); setFld('status', true); setFld('priority', true); setFld('vis', true);
-        setFld('kind', !!perms().canSetKind); setFld('parent', true); setFld('stages', true);
-        function en(el, on) { el.disabled = !on; }
-        en(proj, isCreate);
-        en($('eName'), full && !statusOnlyRole);
-        en($('eDesc'), full && !statusOnlyRole);
-        en($('eNotes'), full && !statusOnlyRole);
-        en($('eLink'), full && !statusOnlyRole);
-        en($('eStatus'), full || statusOnlyRole);
-        en($('ePriority'), scope === 'all');
-        en($('eVis'), scope === 'all');
-        en($('eKind'), !!perms().canSetKind);
-        en($('eParent'), full && !statusOnlyRole);
-        en($('eStages'), full && !statusOnlyRole);
-        const stageInteractive = full && !statusOnlyRole;
-        if (t && t.stages && t.stages.tokens) {
-          renderStageChips(t.stages.tokens, t.stages.currentIndex || 0, stageInteractive);
-        }
+        setEditMs(card, 'main');
+        setEditKindRadio(card, 'normal');
       }
-
-      $('editDelete').hidden = !(t && perms().canDelete);
-      $('editDlg').showModal();
+      return kindVal;
     }
 
-    function syncParentVisibility() {
-      if (!$('editBanner').hidden) return; // P/R/N status-only
-      const adminKind = perms().canSetKind && !$('eKind').disabled;
-      // Parent picker only when creating/editing a sub (admin kind=sub, or P2 optional parent → sub)
-      const show = adminKind ? ($('eKind').value === 'sub') : true;
-      const parentFld = document.querySelector('[data-fld="parent"]');
-      if (parentFld) {
-        parentFld.hidden = adminKind ? !show : false;
+    function fillEditParentOptions(card, selectedId, excludeId) {
+      const sel = eq(card, '[data-f="parent"]');
+      const hint = eq(card, '[data-f="parentHint"]');
+      if (!sel) return;
+      sel.innerHTML = '';
+      const opt0 = document.createElement('option');
+      opt0.value = ''; opt0.textContent = '— Select a Main —';
+      sel.appendChild(opt0);
+      const mains = (state.allForParent || []).filter((t) => {
+        if (t.ref === excludeId) return false;
+        if (t.kindIcon) return false;
+        if (t.kind === 'sub') return false;
+        if (t.kind && t.kind !== 'main') return false;
+        return true;
+      });
+      if (hint) hint.hidden = mains.length > 0;
+      sel.disabled = mains.length === 0;
+      mains.forEach((t) => {
+        const o = document.createElement('option');
+        o.value = t.ref;
+        o.textContent = t.name + ' (' + shortRef(t.ref) + ')';
+        sel.appendChild(o);
+      });
+      if (selectedId && mains.some((m) => m.ref === selectedId)) sel.value = selectedId;
+      else sel.value = '';
+    }
+
+    function syncEditParentVisibility(card, preferredParent) {
+      const banner = eq(card, '[data-f="banner"]');
+      if (banner && !banner.hidden) return;
+      const admin = isAdminKindUi();
+      const msFld = eq(card, '[data-efld="ms"]');
+      const parentFld = eq(card, '[data-efld="parent"]');
+      if (!parentFld) return;
+      const excludeId = card.dataset.ref || '';
+      const parentSel = eq(card, '[data-f="parent"]');
+      const keep = preferredParent != null
+        ? preferredParent
+        : (parentSel ? parentSel.value : '');
+      if (admin && msFld && !msFld.hidden) {
+        const show = getEditMs(card) === 'sub';
+        parentFld.hidden = !show;
         const lab = parentFld.querySelector('label');
-        if (lab) {
-          lab.textContent = adminKind
-            ? 'Parent Main task (dropdown)'
-            : 'Parent Main (optional — selecting one makes this a sub)';
-        }
+        if (lab) lab.textContent = 'Parent Main task';
+        if (!show && parentSel) parentSel.value = '';
+        fillEditParentOptions(card, show ? keep : '', excludeId);
+      } else {
+        parentFld.hidden = false;
+        const lab = parentFld.querySelector('label');
+        if (lab) lab.textContent = 'Parent Main (optional — selecting one makes this a sub)';
+        fillEditParentOptions(card, keep, excludeId);
       }
-      if (adminKind && $('eKind').value !== 'sub') {
-        $('eParent').value = '';
-      }
-      fillParentOptions($('eParent').value, $('editId').value);
     }
 
-    $('eKind').addEventListener('change', () => syncParentVisibility());
+    function syncEditStagesVisibility(card) {
+      const banner = eq(card, '[data-f="banner"]');
+      if (banner && !banner.hidden) return;
+      const fld = eq(card, '[data-efld="stages"]');
+      if (!fld) return;
+      const msFld = eq(card, '[data-efld="ms"]');
+      if (isAdminKindUi() && msFld && !msFld.hidden) {
+        fld.hidden = !editStagesAllowed(card);
+      }
+    }
 
-    // Rebuild chips when tokens text changes (blur)
-    $('eStages').addEventListener('change', () => {
-      const parsed = parseStageTokensClient($('eStages').value);
-      if (!parsed.ok) {
-        $('editErr').textContent = parsed.error;
+    function renderEditStageChips(card, tokens, currentIndex, interactive) {
+      const box = eq(card, '[data-f="stageChips"]');
+      const hint = eq(card, '[data-f="stagePickHint"]');
+      const bar = eq(card, '[data-f="stageBar"]');
+      const fillEl = eq(card, '[data-f="stageBarFill"]');
+      const idxEl = eq(card, '[data-f="stageIdx"]');
+      const errEl = eq(card, '[data-f="err"]');
+      if (!box) return;
+      box.innerHTML = '';
+      const toks = tokens || [];
+      const idx = Math.max(0, Math.min(Number(currentIndex) || 0, toks.length));
+      if (hint) hint.hidden = !toks.length;
+      if (bar) bar.hidden = !toks.length;
+      if (fillEl) fillEl.style.width = (toks.length ? Math.round((idx / toks.length) * 100) : 0) + '%';
+      if (!toks.length) {
+        box.innerHTML = '<span class="hint-sm">No stages yet — type #tokens above (e.g. #design #build).</span>';
         return;
       }
-      $('editErr').textContent = '';
-      let idx = Number($('eStageIdx').value) || 0;
-      if (idx > parsed.tokens.length) idx = parsed.tokens.length;
-      $('eStageIdx').value = String(idx);
-      renderStageChips(parsed.tokens, idx, true);
-    });
-
-    function openReview(t) {
-      $('revId').value = t.ref;
-      $('revNotes').value = '';
-      $('revNotesOwner').value = '';
-      $('revLink').value = t.link || '';
-      $('revErr').textContent = '';
-      const st = t.reviewState || (t.review && t.review.state) || 'none';
-      const iter = t.reviewIteration || (t.review && t.review.iteration) || 0;
-      $('revMeta').textContent = t.name + ' · ' + st + (iter ? ' · iteration ' + iter : '') + (t.linkVersion ? ' · link v' + t.linkVersion : '');
-      const hasLink = !!(t.link && String(t.link).trim());
-      $('revLinkRow').hidden = !hasLink;
-      if (hasLink) {
-        $('revOpenLink').href = t.link;
-        $('revOpenLink').target = '_blank';
-        $('revOpenLink').rel = 'noopener';
+      const id = card.dataset.ref || '';
+      toks.forEach((tok, i) => {
+        const pos = i + 1;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'stage-chip' + (pos <= idx ? ' on' : '');
+        b.textContent = tok;
+        b.disabled = !interactive;
+        b.title = interactive ? 'Mark progress through ' + tok : tok;
+        if (interactive) {
+          b.onclick = async () => {
+            idxEl.value = String(pos);
+            renderEditStageChips(card, toks, pos, true);
+            if (!id) return;
+            if (errEl) errEl.textContent = '';
+            try {
+              await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
+                text: toks.join(' '),
+                currentIndex: pos,
+              });
+              // stay open — board refresh would collapse the inline panel
+            } catch (err) {
+              if (errEl) errEl.textContent = err.message;
+            }
+          };
+        }
+        box.appendChild(b);
+      });
+      if (interactive) {
+        const z = document.createElement('button');
+        z.type = 'button'; z.className = 'stage-chip'; z.textContent = 'Clear';
+        z.title = 'Reset progress to start';
+        z.onclick = async () => {
+          idxEl.value = '0';
+          renderEditStageChips(card, toks, 0, true);
+          if (!id) return;
+          if (errEl) errEl.textContent = '';
+          try {
+            await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
+              text: toks.join(' '), currentIndex: 0,
+            });
+          } catch (err) { if (errEl) errEl.textContent = err.message; }
+        };
+        box.appendChild(z);
       }
-      const mod = !!perms().canReviewModerate;
-      const canSubmitRole = !!perms().canReviewSubmit;
-      // Owner form for submit/resubmit (none | rework); mods on under_review use Re-work / Approve only
-      const showOwnerSubmit =
-        canSubmitRole && st !== 'approved' && !(mod && st === 'under_review');
-      $('revModFields').hidden = !mod || st === 'approved';
-      $('revOwnerFields').hidden = !showOwnerSubmit;
-      $('revSubmit').hidden = !showOwnerSubmit;
-      $('revFeedback').hidden = !mod || st === 'approved';
-      $('revRework').hidden = !mod || st === 'approved';
-      $('revApprove').hidden = !mod || st === 'approved';
-      $('reviewDlg').showModal();
+    }
+
+    function syncEditStagesUi(card, opts) {
+      opts = opts || {};
+      const stagesEl = eq(card, '[data-f="stages"]');
+      const idxEl = eq(card, '[data-f="stageIdx"]');
+      if (!stagesEl) return [];
+      const interactive = opts.interactive != null
+        ? !!opts.interactive
+        : !stagesEl.disabled;
+      const cleaned = cleanStageTokens(stagesEl.value);
+      if (opts.rewrite) stagesEl.value = cleaned.join(' ');
+      let idx = Number(idxEl && idxEl.value) || 0;
+      if (idx < 0) idx = 0;
+      if (idx > cleaned.length) idx = cleaned.length;
+      if (idxEl) idxEl.value = String(idx);
+      renderEditStageChips(card, cleaned, idx, interactive);
+      return cleaned;
+    }
+
+    function fillEditAssigneeOptions(card, selectedUsername) {
+      const sel = eq(card, '[data-f="assignee"]');
+      if (!sel) return;
+      sel.innerHTML = '';
+      const opt0 = document.createElement('option');
+      opt0.value = ''; opt0.textContent = '— Select user —';
+      sel.appendChild(opt0);
+      (state.users || []).forEach((u) => {
+        const o = document.createElement('option');
+        o.value = u.username;
+        o.textContent = (u.displayName || u.username) + ' (' + u.username + ')';
+        sel.appendChild(o);
+      });
+      if (selectedUsername && (state.users || []).some((u) => u.username === selectedUsername)) {
+        sel.value = selectedUsername;
+      } else {
+        sel.value = '';
+      }
+    }
+
+    function setEditAssigneeCur(card, t) {
+      const el = eq(card, '[data-f="assigneeCur"]');
+      if (!el) return;
+      const name = (t && (t.assigneeDisplayName || t.assigneeUsername)) || '—';
+      const user = t && t.assigneeUsername ? ' (' + t.assigneeUsername + ')' : '';
+      el.textContent = 'Current assignee: ' + name
+        + (t && t.assigneeUsername && t.assigneeDisplayName !== t.assigneeUsername ? user : '');
+    }
+
+    function closeInlineEdit(card) {
+      if (!card) return;
+      card.classList.remove('editing');
+      const body = card.querySelector('.edit-body');
+      if (body) {
+        body.hidden = true;
+        body.innerHTML = '';
+      }
+    }
+
+    function closeAllInlineEdits(except) {
+      document.querySelectorAll('#taskList .task.editing').forEach((c) => {
+        if (c !== except) closeInlineEdit(c);
+      });
+    }
+
+    function formatHistWhen(iso) {
+      if (!iso) return '—';
+      try {
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso);
+        return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+      } catch (e) {
+        return String(iso);
+      }
+    }
+
+    function historyEntryRatings(entry, t) {
+      const raw = entry && Array.isArray(entry.ratings) ? entry.ratings : [];
+      return raw.map(normalizeApiRating).filter(Boolean).map((r) => ({
+        url: r.url,
+        name: linkNameForUrl(t, r.url, entry && entry.linkAtReview) || linkDisplayName({ url: r.url }),
+        stars: r.stars,
+        revTag: r.tag,
+        revComment: r.comment,
+        iter: historyFileIter(t, entry, r.url),
+      }));
+    }
+
+    function historyOverallNotes(entry) {
+      const raw = String((entry && entry.notes) || '').trim();
+      if (textHasTaskApprovalMark(raw)) {
+        return 'Task completion approved.';
+      }
+      return raw;
+    }
+
+    function renderHistoryHtml(hist, t) {
+      const list = Array.isArray(hist) ? hist.slice() : [];
+      if (!list.length) {
+        return '<p class="hist-empty">No review history yet.</p>';
+      }
+      return '<div class="hist-list" role="list">'
+        + list.map((entry) => {
+          const action = String((entry && entry.action) || 'entry').toLowerCase();
+          const ratings = historyEntryRatings(entry, t);
+          const overall = historyOverallNotes(entry);
+          const ratingsHtml = ratings.length
+            ? '<ul class="hist-ratings">'
+              + ratings.map((r) => {
+                const label = r.url
+                  ? '<a class="task-link-open" href="' + String(r.url).replace(/"/g, '')
+                    + '" target="_blank" rel="noopener" title="' + escapeHtml(r.url) + '">'
+                    + escapeHtml(r.name || linkDisplayName({ url: r.url })) + '</a>'
+                  : '<span>' + escapeHtml(r.name || 'link') + '</span>';
+                const stars = '★'.repeat(Math.max(0, Math.min(3, r.stars)));
+                const tag = r.revTag
+                  ? '<span class="link-outcome-tag">' + escapeHtml(r.revTag) + '</span>'
+                  : '';
+                const comment = r.revComment
+                  ? '<span class="link-outcome-comment">' + escapeHtml(r.revComment) + '</span>'
+                  : '';
+                const ver = linkFileVersionLabel(r.iter);
+                return '<li>'
+                  + '<span class="task-link-iter">' + escapeHtml(ver) + '</span> '
+                  + label
+                  + ' <span class="hist-stars" title="' + r.stars + ' stars">' + stars + '</span>'
+                  + tag + comment + '</li>';
+              }).join('')
+              + '</ul>'
+            : '';
+          const notesHtml = overall
+            ? '<div class="hist-notes">' + escapeHtml(overall) + '</div>'
+            : '';
+          return ''
+            + '<article class="hist-entry" role="listitem">'
+            + '<div class="hist-entry-head">'
+            + '<span class="hist-action is-' + escapeHtml(action) + '">' + escapeHtml(action) + '</span>'
+            + '<span class="hist-meta">' + escapeHtml(entry.byUsername || '—') + '</span>'
+            + '<span class="hist-meta">' + escapeHtml(formatHistWhen(entry.at)) + '</span>'
+            + '</div>'
+            + ratingsHtml
+            + notesHtml
+            + '</article>';
+        }).join('')
+        + '</div>';
+    }
+
+    async function toggleTaskHistory(card, t) {
+      if (!card || !t || !t.ref) return;
+      const body = card.querySelector('.history-body');
+      const btn = card.querySelector('.task-compact [data-act="history"]');
+      if (!body) return;
+      const opening = body.hidden;
+      body.hidden = !opening;
+      if (btn) btn.textContent = opening ? 'Hide history' : 'History';
+      if (!opening) return;
+      if (body.dataset.loaded === '1') return;
+      body.innerHTML = '<p class="hist-empty">Loading history…</p>';
+      try {
+        const r = await api('GET', '/api/tasks/' + encodeURIComponent(t.ref));
+        const detail = r && r.task;
+        const hist = (detail && detail.review && detail.review.history) || [];
+        // Keep API review summary on the in-memory task so card outcomes use lastRatings/history.
+        const idx = (state.tasks || []).findIndex((x) => x.ref === t.ref);
+        if (idx >= 0 && detail && detail.review) {
+          state.tasks[idx].review = Object.assign({}, state.tasks[idx].review, detail.review);
+          if (detail.reviewIteration != null) {
+            state.tasks[idx].reviewIteration = detail.reviewIteration;
+          }
+          const compact = card.querySelector('.task-links-compact');
+          if (compact) {
+            const wrap = document.createElement('div');
+            wrap.innerHTML = taskLinksCompactHtml(state.tasks[idx]);
+            const next = wrap.firstChild;
+            if (next) compact.replaceWith(next);
+            else compact.remove();
+          } else {
+            const host = card.querySelector('.task-compact');
+            if (host) {
+              const actions = host.querySelector('.actions');
+              const html = taskLinksCompactHtml(state.tasks[idx]);
+              if (html && actions) actions.insertAdjacentHTML('beforebegin', html);
+            }
+          }
+        }
+        body.innerHTML = renderHistoryHtml(hist, state.tasks[idx] || t);
+        body.dataset.loaded = '1';
+      } catch (err) {
+        body.innerHTML = '<p class="err">' + escapeHtml(err.message || 'Failed to load history') + '</p>';
+      }
+    }
+
+    function closeInlineReview(card) {
+      if (!card) return;
+      card.classList.remove('reviewing');
+      const body = card.querySelector('.review-body');
+      if (body) {
+        body.hidden = true;
+        body.innerHTML = '';
+      }
+    }
+
+    function closeAllInlineReviews(except) {
+      document.querySelectorAll('#taskList .task.reviewing').forEach((c) => {
+        if (c !== except) closeInlineReview(c);
+      });
+    }
+
+    function rq(card, sel) {
+      return card.querySelector('.review-body ' + sel);
+    }
+
+    function syncReviewActionButtons(card) {
+      const submit = rq(card, '[data-act="revSubmit"]');
+      if (!submit) return;
+      const rows = card.querySelectorAll('.review-body .rev-link-row[data-rateable="1"]');
+      let ok = rows.length > 0;
+      rows.forEach((row) => {
+        if (!validateRevLinkRow(row, false)) ok = false;
+      });
+      submit.disabled = !ok;
+    }
+
+    function validateRevLinkRow(row, showMsg) {
+      if (!row || row.dataset.rateable !== '1') return true;
+      const stars = Number(row.dataset.stars) || 0;
+      const tagEl = row.querySelector('[data-f="revTag"]');
+      const commentEl = row.querySelector('[data-f="revComment"]');
+      const tag = tagEl ? tagEl.value.trim() : '';
+      const comment = commentEl ? commentEl.value.trim() : '';
+      let err = '';
+      if (stars < 1 || stars > 3) err = 'Pick 1–3 stars.';
+      else if (stars === 2 && !tag) err = '2★ requires a preset tag.';
+      else if (stars === 1 && (!tag || !comment)) err = '1★ requires a tag and comment.';
+      if (showMsg) {
+        const hint = row.querySelector('[data-f="revRule"]');
+        if (hint && err) hint.textContent = err;
+      }
+      return !err;
+    }
+
+    function revRuleHint(stars) {
+      if (stars === 3) return '3★ Approved — comment optional.';
+      if (stars === 2) return '2★ Pick a tag — Ready for task Done later without another approval.';
+      if (stars === 1) return '1★ Tag + comment required — not done, another round.';
+      return 'Rate 1–3 stars.';
+    }
+
+    function syncRevLinkRow(row) {
+      if (!row || row.dataset.rateable !== '1') return;
+      const stars = Number(row.dataset.stars) || 0;
+      row.querySelectorAll('.star-btn').forEach((btn) => {
+        const n = Number(btn.dataset.star) || 0;
+        btn.classList.toggle('on', n > 0 && n <= stars);
+        btn.setAttribute('aria-pressed', n === stars ? 'true' : 'false');
+      });
+      const tagEl = row.querySelector('[data-f="revTag"]');
+      const commentEl = row.querySelector('[data-f="revComment"]');
+      const hint = row.querySelector('[data-f="revRule"]');
+      if (tagEl) {
+        const needTag = stars === 1 || stars === 2;
+        tagEl.disabled = !needTag;
+        if (!needTag) tagEl.value = '';
+      }
+      if (commentEl) {
+        const needComment = stars === 1 || stars === 3;
+        commentEl.disabled = !needComment;
+        if (!needComment) commentEl.value = '';
+        commentEl.placeholder = stars === 3 ? 'Comment (optional)…' : 'Comment (required)…';
+      }
+      if (hint) hint.textContent = revRuleHint(stars);
+    }
+
+    function setRevLinkStars(row, stars) {
+      if (!row || row.dataset.rateable !== '1') return;
+      row.dataset.stars = String(Math.max(0, Math.min(3, Number(stars) || 0)));
+      syncRevLinkRow(row);
+    }
+
+    /** Ratings from rateable admin rows only (not locked 3★ lines). */
+    function collectRevLinkRatings(card) {
+      const rows = card.querySelectorAll('.review-body .rev-link-row[data-rateable="1"]');
+      const out = [];
+      rows.forEach((row) => {
+        const url = normalizeUrlInput(row.dataset.url || '');
+        if (!url) return;
+        const stars = Number(row.dataset.stars) || 0;
+        const tagEl = row.querySelector('[data-f="revTag"]');
+        const commentEl = row.querySelector('[data-f="revComment"]');
+        const tag = tagEl ? tagEl.value.trim() : '';
+        const comment = commentEl ? commentEl.value.trim() : '';
+        out.push({
+          url,
+          ownerTag: row.dataset.ownerTag || '',
+          stars,
+          revTag: (stars === 1 || stars === 2) ? tag : '',
+          revComment: (stars === 1 || stars === 3) ? comment : '',
+        });
+      });
+      return out;
+    }
+
+    /** Keep prior 3★ files in the API payload so lastRatings stays complete. */
+    function frozenApprovedRatings(t) {
+      return linksFromTask(t)
+        .map((l) => {
+          const r = latestRatingForUrl(t, l.url);
+          if (!r || r.stars !== 3) return null;
+          const o = { url: r.url, stars: 3 };
+          if (r.tag) o.tag = r.tag;
+          if (r.comment) o.comment = r.comment;
+          return o;
+        })
+        .filter(Boolean);
+    }
+
+    function presetTagOptionsHtml() {
+      return '<option value="">Pick a tag…</option>'
+        + REVIEW_PRESET_TAGS.map((t) => (
+          '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>'
+        )).join('');
+    }
+
+    async function openInlineReview(el, t) {
+      if (!el || !t || !perms().canReviewModerate) return;
+      closeAllInlineEdits();
+      closeAllInlineReviews(el);
+      closeInlineEdit(el);
+
+      el.classList.add('reviewing');
+      const body = el.querySelector('.review-body');
+      body.hidden = false;
+      body.innerHTML = '<p class="muted">Loading review…</p>';
+
+      // Needs-review list often omits full history — fetch detail so 3★ locks are accurate.
+      let task = t;
+      try {
+        const r = await api('GET', '/api/tasks/' + encodeURIComponent(t.ref));
+        if (r && r.task) {
+          task = r.task;
+          const idx = (state.tasks || []).findIndex((x) => x.ref === t.ref);
+          if (idx >= 0) {
+            state.tasks[idx] = Object.assign({}, state.tasks[idx], {
+              link: task.link != null ? task.link : state.tasks[idx].link,
+              review: task.review || state.tasks[idx].review,
+              reviewState: task.reviewState != null ? task.reviewState : state.tasks[idx].reviewState,
+              reviewIteration: task.reviewIteration != null
+                ? task.reviewIteration
+                : state.tasks[idx].reviewIteration,
+            });
+            task = state.tasks[idx];
+          }
+        }
+      } catch (e) {
+        /* fall back to list payload */
+      }
+
+      const links = linksFromTask(task);
+      const approved = [];
+      const rateable = [];
+      links.forEach((l) => {
+        const r = latestRatingForUrl(task, l.url);
+        const stars = r ? r.stars : 0;
+        const entry = {
+          url: l.url,
+          name: l.name || '',
+          tag: l.tag || '',
+          iter: Math.max(1, Number(l.iter) || 1),
+          stars,
+          revTag: r ? r.tag : '',
+          revComment: r ? r.comment : '',
+          ratedAt: r ? (linkStarRatedAt(task, l.url, r.stars) || taskRatingsAt(task)) : '',
+        };
+        if (stars === 3) approved.push(entry);
+        else rateable.push(entry);
+      });
+
+      // Open tabs only for files that still need a decision
+      rateable.forEach((l) => {
+        try { window.open(l.url, '_blank', 'noopener'); } catch (err) { /* popup blocked */ }
+      });
+
+      const approvedHtml = approved.length
+        ? '<div class="rev-approved-block" data-f="revApproved">'
+          + '<p class="hint-sm" style="margin:0 0 .25rem">Already approved (read-only)</p>'
+          + approved.map((l) => (
+            '<div class="task-links-compact-row is-3" data-approved="1">'
+            + approvedLinkLineHtml(l)
+            + '</div>'
+          )).join('')
+          + '</div>'
+        : '';
+
+      const rateableHtml = rateable.length
+        ? rateable.map((l) => {
+          const safeUrl = String(l.url).replace(/"/g, '');
+          const ver = linkFileVersionLabel(l);
+          return ''
+            + '<div class="rev-link-row" data-rateable="1" data-url="' + safeUrl
+            + '" data-owner-tag="' + escapeHtml(l.tag || '') + '" data-stars="0">'
+            + '<div class="rev-link-head">'
+            + linkOpenHtml(l)
+            + '<span class="task-link-iter">' + escapeHtml(ver) + '</span>'
+            + '</div>'
+            + '<div class="star-row" role="group" aria-label="Star rating">'
+            + [1, 2, 3].map((n) => (
+              '<button type="button" class="star-btn" data-act="setStar" data-star="' + n
+              + '" aria-label="' + n + ' star' + (n > 1 ? 's' : '') + '" aria-pressed="false">★</button>'
+            )).join('')
+            + '</div>'
+            + '<select class="rev-tag" data-f="revTag" disabled>' + presetTagOptionsHtml() + '</select>'
+            + '<textarea class="rev-comment" data-f="revComment" rows="2" disabled'
+            + ' placeholder="Comment…"></textarea>'
+            + '<p class="rev-rule" data-f="revRule">' + revRuleHint(0) + '</p>'
+            + '</div>';
+        }).join('')
+        : '<p class="muted">No files need a rating right now.</p>';
+
+      const pendingN = rateable.length;
+      body.innerHTML =
+        '<p class="muted" style="margin:0 0 .35rem" data-f="revHeader">'
+        + (pendingN
+          ? ('Rate ' + pendingN + ' pending file' + (pendingN === 1 ? '' : 's')
+            + (approved.length ? ' · ' + approved.length + ' already approved' : '')
+            + '.')
+          : 'All files on this task are already approved.')
+        + '</p>'
+        + approvedHtml
+        + '<div class="rev-links" data-f="revLinks">' + rateableHtml + '</div>'
+        + '<div class="err" data-f="revErr"></div>'
+        + '<div class="actions">'
+        + '<button type="button" class="btn primary" data-act="revSubmit" disabled>Submit Feedback</button>'
+        + '<button type="button" class="btn" data-act="revCancel">Cancel</button>'
+        + '</div>';
+
+      body.querySelectorAll('.rev-link-row[data-rateable="1"]').forEach((row) => syncRevLinkRow(row));
+      syncReviewActionButtons(el);
+    }
+
+    async function submitInlineReview(card) {
+      const errEl = rq(card, '[data-f="revErr"]');
+      if (errEl) errEl.textContent = '';
+      const id = card.dataset.ref;
+      if (!id) {
+        if (errEl) errEl.textContent = 'Missing task ref.';
+        return;
+      }
+
+      const rateableRows = card.querySelectorAll('.review-body .rev-link-row[data-rateable="1"]');
+      if (!rateableRows.length) {
+        if (errEl) errEl.textContent = 'No pending files to rate.';
+        syncReviewActionButtons(card);
+        return;
+      }
+
+      let valid = true;
+      rateableRows.forEach((row) => {
+        if (!validateRevLinkRow(row, true)) valid = false;
+      });
+      if (!valid) {
+        if (errEl) errEl.textContent = 'Finish rating every pending file (see hints).';
+        syncReviewActionButtons(card);
+        return;
+      }
+
+      const rated = collectRevLinkRatings(card);
+      if (!rated.length) {
+        if (errEl) errEl.textContent = 'No ratings collected.';
+        syncReviewActionButtons(card);
+        return;
+      }
+
+      const task = (state.tasks || []).find((x) => x.ref === id) || { ref: id, link: '' };
+      const needsRework = rated.some((r) => r.stars === 1);
+      const path = needsRework ? '/review/rework' : '/review/approve';
+      const fromForm = rated.map((r) => {
+        const o = { url: r.url, stars: r.stars };
+        if (r.revTag) o.tag = r.revTag;
+        if (r.revComment) o.comment = r.revComment;
+        return o;
+      });
+      // Preserve locked 3★ files in the payload (not re-rated in the panel).
+      const frozen = frozenApprovedRatings(task);
+      const frozenUrls = new Set(fromForm.map((r) => r.url));
+      const apiRatings = fromForm.concat(frozen.filter((r) => !frozenUrls.has(r.url)));
+
+      const notes = needsRework ? 'Rework requested.' : 'Files approved.';
+
+      const submitBtn = rq(card, '[data-act="revSubmit"]');
+      if (submitBtn) submitBtn.disabled = true;
+      try {
+        await api('POST', '/api/tasks/' + encodeURIComponent(id) + path, {
+          notes,
+          ratings: apiRatings,
+        });
+        await refreshTasks();
+      } catch (err) {
+        if (errEl) errEl.textContent = err.message || 'Submit Feedback failed';
+        syncReviewActionButtons(card);
+      }
+    }
+
+    async function persistTaskLinks(ref, links) {
+      const serialized = serializeTaskLinks(links);
+      await api('PATCH', '/api/tasks/' + encodeURIComponent(ref), { link: serialized });
+      return serialized;
+    }
+
+    function closeAllLinkReplaceInlines(exceptRow) {
+      document.querySelectorAll('#taskList .link-replace-inline:not([hidden])').forEach((box) => {
+        const row = box.closest('.task-links-compact-row');
+        if (exceptRow && row === exceptRow) return;
+        box.hidden = true;
+        box.innerHTML = '';
+        const outcome = row && row.querySelector('.link-outcome');
+        if (outcome) outcome.hidden = false;
+        const actions = row && row.querySelector('.link-user-actions');
+        if (actions) actions.hidden = false;
+      });
+    }
+
+    function openLinkReplaceInline(card, t, index, mode) {
+      if (!canUserLinkAct(t)) return;
+      const outcomes = linksWithOutcomes(t);
+      const entry = outcomes[index];
+      if (!entry) return;
+      const stars = Number(entry.stars) || 0;
+      if (mode === 'update' && stars !== 2) return;
+      if (mode === 'edit' && stars !== 1) return;
+      if (stars === 3) return;
+
+      const row = card.querySelector('.task-links-compact-row[data-link-idx="' + index + '"]');
+      if (!row) return;
+      closeAllLinkReplaceInlines(row);
+      const box = row.querySelector('[data-f="linkReplace"]');
+      if (!box) return;
+
+      const commentRequired = mode === 'update';
+      const outcome = row.querySelector('.link-outcome');
+      if (outcome) outcome.hidden = true;
+
+      box.hidden = false;
+      box.innerHTML = ''
+        + '<label class="hint-sm">File name (required)</label>'
+        + '<input type="text" data-f="lriName" value="' + escapeHtml(entry.name || '') + '"'
+        + ' placeholder="File name" maxlength="80" autocomplete="off" />'
+        + '<label class="hint-sm">' + (mode === 'update' ? 'Replace file URL' : 'New file URL') + '</label>'
+        + '<input type="url" data-f="lriUrl" value="' + escapeHtml(entry.url || 'https://') + '" autocomplete="off" />'
+        + '<label class="hint-sm">' + (commentRequired ? 'Comment (required)' : 'Comment (optional)') + '</label>'
+        + '<input type="text" data-f="lriComment" placeholder="'
+        + (commentRequired ? 'Describe the update…' : 'Optional note…')
+        + '" maxlength="240" autocomplete="off" />'
+        + '<p class="lri-err" data-f="lriErr" hidden></p>'
+        + '<div class="lri-actions">'
+        + '<button type="button" class="btn primary" data-act="linkReplaceSave" data-link-idx="'
+        + index + '" data-mode="' + mode + '">Submit Revision</button>'
+        + '<button type="button" class="btn" data-act="linkReplaceCancel">Cancel</button>'
+        + '</div>';
+
+      const nameInp = box.querySelector('[data-f="lriName"]');
+      if (nameInp) nameInp.focus();
+      else {
+        const urlInp = box.querySelector('[data-f="lriUrl"]');
+        if (urlInp) { urlInp.focus(); urlInp.select(); }
+      }
+    }
+
+    async function saveLinkReplaceInline(card, t, index, mode) {
+      if (!canUserLinkAct(t)) return;
+      const row = card.querySelector('.task-links-compact-row[data-link-idx="' + index + '"]');
+      const box = row && row.querySelector('[data-f="linkReplace"]');
+      if (!box || box.hidden) return;
+      const errEl = box.querySelector('[data-f="lriErr"]');
+      const nameInp = box.querySelector('[data-f="lriName"]');
+      const urlInp = box.querySelector('[data-f="lriUrl"]');
+      const cmtInp = box.querySelector('[data-f="lriComment"]');
+      const setErr = (msg) => {
+        if (!errEl) return;
+        errEl.hidden = !msg;
+        errEl.textContent = msg || '';
+      };
+
+      const outcomes = linksWithOutcomes(t);
+      const entry = outcomes[index];
+      if (!entry) return;
+      const stars = Number(entry.stars) || 0;
+      if (mode === 'update' && stars !== 2) return;
+      if (mode === 'edit' && stars !== 1) return;
+
+      const newName = String(nameInp && nameInp.value || '').trim();
+      if (!newName) {
+        setErr('A file name is required.');
+        if (nameInp) nameInp.focus();
+        return;
+      }
+      const newUrl = normalizeUrlInput(urlInp && urlInp.value);
+      if (!newUrl) {
+        setErr('A valid URL is required.');
+        return;
+      }
+      const userComment = cmtInp ? String(cmtInp.value || '').trim() : '';
+      if (mode === 'update' && !userComment) {
+        setErr('A comment is required for Update.');
+        return;
+      }
+
+      const links = linksFromTask(t).map((l) => ({
+        url: l.url,
+        name: l.name || '',
+        tag: l.tag || '',
+        iter: Math.max(1, Number(l.iter) || 1),
+      }));
+      if (!links[index]) return;
+      links[index] = {
+        url: newUrl,
+        name: newName,
+        tag: links[index].tag || '',
+        iter: links[index].iter + 1,
+      };
+
+      const saveBtn = box.querySelector('[data-act="linkReplaceSave"]');
+      if (saveBtn) saveBtn.disabled = true;
+      setErr('');
+      try {
+        // 3★ rows never reach here (mode/stars guards). Persist new URL, then
+        // always re-open Needs review so admin sees the new version.
+        const serialized = await persistTaskLinks(t.ref, links);
+        try {
+          await markNeedsReview(t.ref, serialized, userComment);
+        } catch (revErr) {
+          setErr(revErr.message || 'Needs review submit failed — file saved, but not re-opened for review');
+          if (saveBtn) saveBtn.disabled = false;
+          return;
+        }
+        await refreshTasks();
+      } catch (err) {
+        setErr(err.message || 'Could not save link');
+        if (saveBtn) saveBtn.disabled = false;
+      }
+    }
+
+    function cancelLinkReplaceInline(row) {
+      if (!row) return;
+      const box = row.querySelector('[data-f="linkReplace"]');
+      if (box) {
+        box.hidden = true;
+        box.innerHTML = '';
+      }
+      const outcome = row.querySelector('.link-outcome');
+      if (outcome) outcome.hidden = false;
+    }
+
+    function buildEditPanelHtml(t) {
+      const admin = isAdminKindUi();
+      const showPriority = perms().editScope === 'all';
+      const showReassign = canReassignRole();
+      const rid = String(t.ref || '').replace(/[^A-Za-z0-9_-]/g, '_');
+      return ''
+        + '<div class="banner muted" data-f="banner" hidden></div>'
+        + '<div class="fld" data-efld="project" hidden><label>Project</label>'
+        + '<input data-f="projectRo" readonly /></div>'
+        + '<div class="fld" data-efld="name"><label>Name</label>'
+        + '<input data-f="name" /><p class="muted" data-f="nameRo" hidden></p></div>'
+        + '<div class="fld" data-efld="desc"><label>Description</label><textarea data-f="desc"></textarea></div>'
+        + notesFieldHtml()
+        + linksFieldHtml()
+        + '<div class="fld" data-efld="start"><label>Start time</label>'
+        + '<p class="muted" data-f="startRo">—</p></div>'
+        + '<div class="fld" data-efld="end"><label>End time</label>'
+        + '<input data-f="end" placeholder="DD-MMM | HH:MM" />'
+        + '<p class="muted" data-f="endRo" hidden>—</p></div>'
+        + '<div class="fld" data-efld="status"><label>Status</label><select data-f="status"></select></div>'
+        + '<div class="fld" data-efld="priority"' + (showPriority ? '' : ' hidden') + '>'
+        + '<label>Priority</label><select data-f="priority"><option>low</option><option>normal</option><option>high</option></select></div>'
+        + '<div class="fld" data-efld="ms"' + (admin ? '' : ' hidden') + '>'
+        + '<label>Main / Sub</label>'
+        + '<div class="seg edit-ms" role="group" aria-label="Main or Sub">'
+        + '<button type="button" class="seg-btn on" data-ms="main">Main</button>'
+        + '<button type="button" class="seg-btn" data-ms="sub">Sub</button></div>'
+        + '<input type="hidden" data-f="ms" value="main" /></div>'
+        + '<div class="fld" data-efld="kind"' + (admin ? '' : ' hidden') + '>'
+        + '<label>Kind (admin)</label><div class="kind-radios" role="radiogroup">'
+        + '<label class="radio"><input type="radio" data-f="kind" name="eKind_' + rid + '" value="normal" checked /> Normal</label>'
+        + '<label class="radio"><input type="radio" data-f="kind" name="eKind_' + rid + '" value="pseudo" /> Pseudo</label>'
+        + '<label class="radio"><input type="radio" data-f="kind" name="eKind_' + rid + '" value="routine" /> Routine</label>'
+        + '</div></div>'
+        + '<div class="fld" data-efld="parent"><label>Parent Main task</label>'
+        + '<select data-f="parent"><option value="">— Select a Main —</option></select>'
+        + '<p class="hint-sm" data-f="parentHint" hidden>Create a Main task first.</p></div>'
+        + '<div class="fld" data-efld="stages"><label>Stages</label>'
+        + '<p class="hint-sm">Type #tokens separated by spaces (e.g. #design #build #ship).</p>'
+        + '<input data-f="stages" placeholder="#Design #Build #Ship" autocomplete="off" spellcheck="false" />'
+        + '<input type="hidden" data-f="stageIdx" value="0" />'
+        + '<p class="hint-sm" data-f="stagePickHint" hidden>Tap a stage chip to mark progress up to that point.</p>'
+        + '<div class="stage-chips" data-f="stageChips"></div>'
+        + '<div class="bar" data-f="stageBar" hidden title="Progress"><i data-f="stageBarFill" style="width:0%"></i></div>'
+        + '</div>'
+        + '<div class="fld" data-efld="reassign"' + (showReassign ? '' : ' hidden') + '>'
+        + '<label>Re-assign</label>'
+        + '<p class="muted" data-f="assigneeCur"></p>'
+        + '<select data-f="assignee"></select>'
+        + '<button type="button" class="btn" data-act="reassign">Re-assign</button>'
+        + '<span class="ok-msg" data-f="reassignOk"></span>'
+        + '<div class="err" data-f="reassignErr"></div></div>'
+        + '<div class="err" data-f="err"></div>'
+        + '<div class="actions">'
+        + '<button class="btn primary" type="button" data-act="update">UPDATE</button>'
+        + '<button class="btn" type="button" data-act="cancel">Cancel</button>'
+        + (perms().canDelete
+          ? '<button class="btn" type="button" data-act="delete">Delete</button>'
+          : '')
+        + '</div>';
+    }
+
+    function openInlineEdit(el, t) {
+      if (!el || !t) return;
+      closeAllInlineReviews();
+      closeInlineReview(el);
+      closeAllInlineEdits(el);
+      el.classList.add('editing');
+      const body = el.querySelector('.edit-body');
+      body.hidden = false;
+      body.innerHTML = buildEditPanelHtml(t);
+
+      const errEl = eq(el, '[data-f="err"]');
+      if (errEl) errEl.textContent = '';
+
+      const kindVal = applyKindToEditCard(el, t);
+      const nameEl = eq(el, '[data-f="name"]');
+      const nameRo = eq(el, '[data-f="nameRo"]');
+      nameEl.value = t.name || '';
+      nameRo.textContent = t.name || '';
+      eq(el, '[data-f="desc"]').value = t.description || '';
+      fillNotesField(el.querySelector('.edit-body') || el, notesTextFromTask(t));
+      el.dataset.linksLocked = '';
+      const editScopeEarly = el.querySelector('.edit-body') || el;
+      fillLinkList(editScopeEarly, linksFromTask(t), { plain: true });
+      markApprovedLinkRows(editScopeEarly, t);
+      eq(el, '[data-f="projectRo"]').value = t.projectName || t.projectCode || '';
+      eq(el, '[data-f="startRo"]').textContent = t.startDate || '—';
+      eq(el, '[data-f="end"]').value = t.endDate || '';
+      eq(el, '[data-f="endRo"]').textContent = t.endDate || '—';
+      eq(el, '[data-f="priority"]').value = t.priority || 'normal';
+
+      const stSel = eq(el, '[data-f="status"]');
+      const curStatus = t.status || '';
+      fillStatusSelect(stSel, t, { p2DoneLocked: role() === 'P2' && curStatus === 'Done' });
+
+      if (t.stages && t.stages.tokens) {
+        eq(el, '[data-f="stages"]').value = (t.stages.tokens || []).join(' ');
+        eq(el, '[data-f="stageIdx"]').value = String(t.stages.currentIndex || 0);
+      } else {
+        eq(el, '[data-f="stages"]').value = '';
+        eq(el, '[data-f="stageIdx"]').value = '0';
+      }
+
+      const scope = perms().editScope || 'none';
+      const statusOnlyRole = scope === 'status';
+      const restricted = isRestrictedKindVal(kindVal);
+      const full = scope === 'all' || scope === 'own';
+      const showReassign = canReassignRole();
+      const showAdminKind = isAdminKindUi();
+      const banner = eq(el, '[data-f="banner"]');
+
+      function en(node, on) { if (node) node.disabled = !on; }
+
+      if (restricted) {
+        banner.hidden = false;
+        banner.textContent = 'This kind only allows status changes.';
+        ['project','desc','notes','links','priority','parent','stages','ms','kind','start','end'].forEach((f) => setEditFld(el, f, false));
+        setEditFld(el, 'name', true);
+        nameEl.hidden = true;
+        nameRo.hidden = false;
+        setEditFld(el, 'status', true);
+        en(stSel, true);
+        if (p2DoneLocked) {
+          en(stSel, false);
+          banner.hidden = false;
+          banner.textContent = isTaskCompletionApproved(t)
+            ? 'Done — task Approved by admin (status locked).'
+            : 'Done — Waiting for approval (status locked).';
+        }
+      } else {
+        banner.hidden = true;
+        setEditFld(el, 'project', false);
+        setEditFld(el, 'name', !statusOnlyRole);
+        setEditFld(el, 'desc', !statusOnlyRole);
+        setEditFld(el, 'notes', !statusOnlyRole);
+        setEditFld(el, 'links', !statusOnlyRole);
+        setEditFld(el, 'start', true);
+        setEditFld(el, 'end', true);
+        setEditFld(el, 'status', true);
+        setEditFld(el, 'priority', scope === 'all');
+        setEditFld(el, 'ms', showAdminKind && !statusOnlyRole);
+        setEditFld(el, 'kind', showAdminKind && !statusOnlyRole);
+        setEditFld(el, 'parent', !statusOnlyRole);
+        setEditFld(el, 'stages', !statusOnlyRole);
+        nameEl.hidden = false;
+        nameRo.hidden = true;
+        en(nameEl, full && !statusOnlyRole);
+        en(eq(el, '[data-f="desc"]'), full && !statusOnlyRole);
+        setNotesEnabled(el.querySelector('.edit-body') || el, full && !statusOnlyRole);
+        const linksOn = full && !statusOnlyRole;
+        const editScope = el.querySelector('.edit-body') || el;
+        const linkList = editScope.querySelector('[data-f="linkList"]');
+        const addBtn = editScope.querySelector('[data-act="addLink"]');
+        if (linksOn) {
+          markApprovedLinkRows(editScope, t);
+          if (linkList) {
+            linkList.querySelectorAll('.task-link-row').forEach((row) => {
+              if (row.dataset.approved === '1') return;
+              row.querySelectorAll('[data-f="linkTag"], [data-act="rmLink"]').forEach((n) => {
+                n.disabled = false;
+                if (n.matches('[data-act="rmLink"]')) n.hidden = false;
+              });
+            });
+          }
+          if (addBtn) {
+            addBtn.hidden = false;
+            syncAddLinkBtn(editScope);
+          }
+        } else {
+          if (addBtn) {
+            addBtn.hidden = true;
+            addBtn.disabled = true;
+          }
+          if (linkList) {
+            linkList.querySelectorAll('[data-act="rmLink"]').forEach((n) => {
+              n.disabled = true;
+              n.hidden = true;
+            });
+          }
+          cancelAddLinkInline(editScope);
+        }
+        en(stSel, (full || statusOnlyRole) && !p2DoneLocked);
+        if (p2DoneLocked) {
+          banner.hidden = false;
+          banner.textContent = isTaskCompletionApproved(t)
+            ? 'Done — task Approved by admin (status locked).'
+            : 'Done — Waiting for approval (status locked).';
+        }
+        en(eq(el, '[data-f="priority"]'), scope === 'all');
+        const endEditable = full && !statusOnlyRole && curStatus !== 'Done';
+        eq(el, '[data-f="end"]').hidden = !endEditable;
+        eq(el, '[data-f="endRo"]').hidden = endEditable;
+        if (!endEditable) {
+          eq(el, '[data-f="endRo"]').textContent = (eq(el, '[data-f="end"]').value || t.endDate || '—');
+        }
+        en(eq(el, '[data-f="end"]'), endEditable);
+        setEditKindControlsEnabled(el, showAdminKind && !statusOnlyRole && (full || !!perms().canSetKind));
+        en(eq(el, '[data-f="parent"]'), full && !statusOnlyRole);
+        en(eq(el, '[data-f="stages"]'), full && !statusOnlyRole);
+        const stageInteractive = full && !statusOnlyRole;
+        syncEditStagesUi(el, { interactive: stageInteractive, rewrite: true });
+      }
+
+      setEditFld(el, 'reassign', showReassign);
+      if (showReassign) {
+        setEditAssigneeCur(el, t);
+        fillEditAssigneeOptions(el, t.assigneeUsername || '');
+        refreshUsers().then(() => fillEditAssigneeOptions(el, t.assigneeUsername || ''));
+      }
+
+      syncEditParentVisibility(el, t.parentRef || '');
+      syncEditStagesVisibility(el);
+      if (!restricted) {
+        const stageInteractive = full && !statusOnlyRole;
+        syncEditStagesUi(el, { interactive: stageInteractive, rewrite: true });
+      }
+    }
+
+    async function submitInlineUpdate(card) {
+      const errEl = eq(card, '[data-f="err"]');
+      if (errEl) errEl.textContent = '';
+      const id = card.dataset.ref;
+      if (!id) {
+        if (errEl) errEl.textContent = 'Missing task ref.';
+        return;
+      }
+      const taskRow = (state.tasks || []).find((x) => x.ref === id)
+        || (state.allForParent || []).find((x) => x.ref === id)
+        || null;
+      const banner = eq(card, '[data-f="banner"]');
+      const restrictedMode = banner && !banner.hidden;
+      const stSel = eq(card, '[data-f="status"]');
+      try {
+        if (restrictedMode) {
+          const st = statusPayloadFromSel(stSel, taskRow);
+          if (role() === 'P2' && !st) {
+            errEl.textContent = p2StatusPickHint(taskRow);
+            return;
+          }
+          await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
+            status: st || stSel.value,
+          });
+        } else {
+          const body = {};
+          if (stSel && !stSel.disabled) {
+            if (role() === 'P2' && stSel.value === 'Done' && !taskAllLinksReadyForDone(taskRow)) {
+              errEl.textContent = 'Done needs every link rated 2★ or 3★.';
+              return;
+            }
+            const st = statusPayloadFromSel(stSel, taskRow);
+            if (st) body.status = st;
+          }
+          const nameEl = eq(card, '[data-f="name"]');
+          if (nameEl && !nameEl.disabled) body.name = nameEl.value.trim();
+          const descEl = eq(card, '[data-f="desc"]');
+          if (descEl && !descEl.disabled) body.description = descEl.value;
+          const notesScope = card.querySelector('.edit-body') || card;
+          const notesTa = notesScope.querySelector('textarea[data-f="notes"]');
+          if (notesTa && !notesTa.disabled) {
+            body.notes = notesPayloadForSave(notesScope, taskRow);
+          }
+          const linksFld = notesScope.querySelector('[data-efld="links"]');
+          if (linksFld && !linksFld.hidden) {
+            const collected = collectLinksFromScope(notesScope);
+            if (collected.some((l) => !String(l.name || '').trim())) {
+              errEl.textContent = 'Every link needs a file name.';
+              return;
+            }
+            body.link = serializeTaskLinks(collected);
+          }
+          const priEl = eq(card, '[data-f="priority"]');
+          const priFld = eq(card, '[data-efld="priority"]');
+          if (priEl && !priEl.disabled && priFld && !priFld.hidden) {
+            body.priority = priEl.value;
+          }
+          const endEl = eq(card, '[data-f="end"]');
+          if (endEl && !endEl.hidden && !endEl.disabled) {
+            body.endDate = endEl.value.trim();
+          }
+
+          const msFld = eq(card, '[data-efld="ms"]');
+          const parentSel = eq(card, '[data-f="parent"]');
+          if (isAdminKindUi() && msFld && !msFld.hidden) {
+            const k = resolvedEditKind(card);
+            const orig = (state.tasks || []).find((x) => x.ref === id);
+            let origKind = 'main';
+            if (orig) {
+              if (orig.kind) origKind = orig.kind;
+              else if (orig.kindIcon === 'P') origKind = 'pseudo';
+              else if (orig.kindIcon === 'R') origKind = 'routine';
+              else if (orig.kindIcon === 'N') origKind = 'not_a_task';
+              else if (orig.parentRef) origKind = 'sub';
+            }
+            // kind only when P3/P4 actually changed Main|Sub / kind radios
+            if (k !== origKind) body.kind = k;
+            if (k === 'sub') {
+              if (!parentSel || !parentSel.value) {
+                errEl.textContent = 'Select a Main parent task.'; return;
+              }
+              body.parentRef = parentSel.value;
+            } else {
+              body.parentRef = null;
+            }
+          } else if (parentSel && parentSel.value) {
+            // P2 (and non-admin): parent alone — never send kind
+            body.parentRef = parentSel.value;
+          }
+
+          if (body.kind && isRestrictedKindVal(body.kind)) {
+            const st = body.status || statusPayloadFromSel(stSel, taskRow) || stSel.value;
+            await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
+              kind: body.kind,
+              status: st,
+            });
+          } else {
+            await api('PATCH', '/api/tasks/' + encodeURIComponent(id), body);
+            const stagesEl = eq(card, '[data-f="stages"]');
+            if (stagesEl && !stagesEl.disabled && editStagesAllowed(card)) {
+              const tokens = syncEditStagesUi(card, { rewrite: true, interactive: true });
+              await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
+                text: tokens.join(' '),
+                currentIndex: Number(eq(card, '[data-f="stageIdx"]').value) || 0,
+              });
+            }
+          }
+        }
+        if (!restrictedMode) {
+          const notesScope = card.querySelector('.edit-body') || card;
+          const linksFld = notesScope.querySelector('[data-efld="links"]');
+          const collected = (linksFld && !linksFld.hidden)
+            ? collectLinksFromScope(notesScope)
+            : [];
+          const linkStr = serializeTaskLinks(collected);
+          // Re-open Needs review when any attached file is not yet 3★ (includes new adds).
+          const needsSubmit = collected.some((l) => {
+            const r = latestRatingForUrl(taskRow, l.url);
+            return !r || Number(r.stars) !== 3;
+          });
+          if (linkStr && needsSubmit) {
+            try {
+              await markNeedsReview(id, linkStr);
+            } catch (revErr) {
+              if (errEl) {
+                errEl.textContent = 'Saved, but Needs review failed: '
+                  + (revErr && revErr.message ? revErr.message : 'submit error');
+              }
+              await refreshTasks();
+              return;
+            }
+          }
+        }
+        await refreshTasks();
+      } catch (err) {
+        if (errEl) errEl.textContent = err.message;
+      }
+    }
+
+    async function reassignFromCard(card) {
+      const okEl = eq(card, '[data-f="reassignOk"]');
+      const errEl = eq(card, '[data-f="reassignErr"]');
+      if (okEl) okEl.textContent = '';
+      if (errEl) errEl.textContent = '';
+      if (!canReassignRole()) {
+        if (errEl) errEl.textContent = 'only P3/P4 can reassign tasks';
+        return;
+      }
+      const id = card.dataset.ref;
+      const assigneeUsername = (eq(card, '[data-f="assignee"]') || {}).value;
+      if (!id) {
+        if (errEl) errEl.textContent = 'Missing task ref.';
+        return;
+      }
+      if (!assigneeUsername) {
+        if (errEl) errEl.textContent = 'Select a username to re-assign.';
+        return;
+      }
+      try {
+        const r = await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/reassign', {
+          assigneeUsername,
+        });
+        const task = r && r.task;
+        if (task) {
+          setEditAssigneeCur(card, task);
+          fillEditAssigneeOptions(card, task.assigneeUsername || '');
+          const idx = (state.tasks || []).findIndex((x) => x.ref === id);
+          if (idx >= 0) {
+            state.tasks[idx].assigneeUsername = task.assigneeUsername;
+            state.tasks[idx].assigneeDisplayName = task.assigneeDisplayName;
+          }
+        }
+        if (okEl) okEl.textContent = 'Assignee updated.';
+        // stay in edit mode — refresh would collapse the panel
+      } catch (err) {
+        if (errEl) errEl.textContent = err.message;
+      }
+    }
+
+    function onTaskListClick(e) {
+      const card = e.target.closest('#taskList .task');
+      if (!card) return;
+
+      const linkAct = e.target.closest(
+        '[data-act="linkUpdate"], [data-act="linkEdit"], [data-act="linkReplaceSave"], [data-act="linkReplaceCancel"]'
+      );
+      if (linkAct && card.querySelector('.task-compact') && card.querySelector('.task-compact').contains(linkAct)) {
+        e.preventDefault();
+        const t = (state.tasks || []).find((x) => x.ref === card.dataset.ref);
+        if (!t) return;
+        const a = linkAct.dataset.act;
+        if (a === 'linkReplaceCancel') {
+          cancelLinkReplaceInline(linkAct.closest('.task-links-compact-row'));
+          return;
+        }
+        if (a === 'linkReplaceSave') {
+          const idx = Number(linkAct.dataset.linkIdx);
+          const mode = linkAct.dataset.mode === 'update' ? 'update' : 'edit';
+          if (Number.isNaN(idx)) return;
+          saveLinkReplaceInline(card, t, idx, mode);
+          return;
+        }
+        const idx = Number(linkAct.dataset.linkIdx);
+        if (Number.isNaN(idx)) return;
+        openLinkReplaceInline(card, t, idx, a === 'linkUpdate' ? 'update' : 'edit');
+        return;
+      }
+
+      if (card.classList.contains('reviewing')) {
+        const revBody = card.querySelector('.review-body');
+        const act = e.target.closest('[data-act]');
+        if (act && revBody && revBody.contains(act)) {
+          const a = act.dataset.act;
+          if (a === 'revCancel') { closeInlineReview(card); return; }
+          if (a === 'revSubmit') { submitInlineReview(card); return; }
+          if (a === 'setStar') {
+            e.preventDefault();
+            const row = act.closest('.rev-link-row');
+            setRevLinkStars(row, act.dataset.star);
+            syncReviewActionButtons(card);
+            return;
+          }
+        }
+        return;
+      }
+
+      if (!card.classList.contains('editing')) return;
+      const editScope = card.querySelector('.edit-body') || card;
+      const act = e.target.closest('[data-act]');
+      if (act && editScope.contains(act)) {
+        const a = act.dataset.act;
+        if (a === 'cancel') {
+          closeInlineEdit(card);
+          return;
+        }
+        if (a === 'update') { submitInlineUpdate(card); return; }
+        if (a === 'reassign') { reassignFromCard(card); return; }
+        if (a === 'addLink') {
+          e.preventDefault();
+          if (act.disabled) return;
+          promptAddLink(editScope);
+          return;
+        }
+        if (a === 'addLinkCancel') {
+          e.preventDefault();
+          cancelAddLinkInline(editScope);
+          return;
+        }
+        if (a === 'addLinkSave') {
+          e.preventDefault();
+          saveAddLinkInline(editScope);
+          return;
+        }
+        if (a === 'rmLink') {
+          e.preventDefault();
+          const row = act.closest('.task-link-row');
+          if (!row || row.dataset.approved === '1' || act.disabled) return;
+          row.remove();
+          syncAddLinkBtn(editScope);
+          return;
+        }
+        if (a === 'delete') {
+          if (!confirm('Delete?')) return;
+          (async () => {
+            try {
+              await api('DELETE', '/api/tasks/' + encodeURIComponent(card.dataset.ref));
+              await refreshTasks();
+            } catch (err) {
+              const errEl = eq(card, '[data-f="err"]');
+              if (errEl) errEl.textContent = err.message;
+            }
+          })();
+          return;
+        }
+      }
+      const msBtn = e.target.closest('.edit-ms .seg-btn');
+      if (msBtn && !msBtn.disabled && card.querySelector('.edit-body').contains(msBtn)) {
+        setEditMs(card, msBtn.dataset.ms);
+        syncEditParentVisibility(card);
+        syncEditStagesVisibility(card);
+      }
+    }
+
+    function onTaskListChange(e) {
+      const revCard = e.target.closest('#taskList .task.reviewing');
+      if (revCard) {
+        const revBody = revCard.querySelector('.review-body');
+        if (revBody && revBody.contains(e.target)
+            && (e.target.matches('[data-f="revTag"]') || e.target.matches('[data-f="revComment"]'))) {
+          syncReviewActionButtons(revCard);
+        }
+        return;
+      }
+      const card = e.target.closest('#taskList .task.editing');
+      if (!card) return;
+      if (!card.querySelector('.edit-body').contains(e.target)) return;
+      if (e.target.matches('input[data-f="kind"]')) {
+        syncEditParentVisibility(card);
+        syncEditStagesVisibility(card);
+      }
+      if (e.target.matches('[data-f="stages"]')) syncEditStagesUi(card);
+    }
+
+    function onTaskListInput(e) {
+      const revCard = e.target.closest('#taskList .task.reviewing');
+      if (revCard) {
+        const revBody = revCard.querySelector('.review-body');
+        if (revBody && revBody.contains(e.target)
+            && (e.target.matches('[data-f="revComment"]') || e.target.matches('[data-f="revTag"]'))) {
+          syncReviewActionButtons(revCard);
+        }
+        return;
+      }
+      const card = e.target.closest('#taskList .task.editing');
+      if (!card) return;
+      if (!card.querySelector('.edit-body').contains(e.target)) return;
+      if (e.target.matches('[data-f="stages"]')) syncEditStagesUi(card);
+      if (e.target.matches('textarea[data-f="notes"]')) {
+        scheduleNotesUi(card.querySelector('.edit-body') || card);
+      }
+    }
+
+    function onTaskListScroll(e) {
+      const card = e.target.closest('#taskList .task.editing');
+      if (!card) return;
+      if (!e.target.matches('textarea[data-f="notes"]')) return;
+      if (!card.querySelector('.edit-body').contains(e.target)) return;
+      const scope = card.querySelector('.edit-body') || card;
+      const wrap = scope.querySelector('.notes-smart');
+      if (wrap && wrap.classList.contains('notes-editing')) return;
+      const backdrop = scope.querySelector('[data-f="notesBackdrop"]');
+      if (backdrop) syncNotesBackdrop(e.target, backdrop);
+    }
+
+    function onTaskListFocusIn(e) {
+      const card = e.target.closest('#taskList .task.editing');
+      if (!card) return;
+      if (!e.target.matches('textarea[data-f="notes"]')) return;
+      if (!card.querySelector('.edit-body').contains(e.target)) return;
+      setNotesEditing(card.querySelector('.edit-body') || card, true);
+    }
+
+    function onTaskListFocusOut(e) {
+      const card = e.target.closest('#taskList .task.editing');
+      if (!card) return;
+      if (!e.target.matches('textarea[data-f="notes"]')) return;
+      if (!card.querySelector('.edit-body').contains(e.target)) return;
+      setNotesEditing(card.querySelector('.edit-body') || card, false);
+    }
+
+    function onTaskListBlur(e) {
+      const card = e.target.closest('#taskList .task.editing');
+      if (!card) return;
+      if (!card.querySelector('.edit-body').contains(e.target)) return;
+      if (e.target.matches('[data-f="stages"]')) {
+        syncEditStagesUi(card, { rewrite: true });
+      }
     }
 
     // events
@@ -740,109 +3928,23 @@
     };
     $('btnLogout').onclick = async () => {
       try { await api('POST', '/api/logout', {}); } catch (e) {}
-      setAuth(null, null); await boot();
+      setAuth(null, null); clearAllDummies(); await boot();
     };
-    $('btnNew').onclick = async () => { await refreshProjects(); openEdit(null); };
-    $('editCancel').onclick = () => $('editDlg').close();
-    $('editDelete').onclick = async () => {
-      if (!confirm('Delete?')) return;
-      try { await api('DELETE', '/api/tasks/' + encodeURIComponent($('editId').value)); $('editDlg').close(); await refreshTasks(); }
-      catch (err) { $('editErr').textContent = err.message; }
-    };
-    $('editForm').onsubmit = async (e) => {
-      e.preventDefault(); $('editErr').textContent = '';
-      const id = $('editId').value;
-      const restrictedMode = !$('editBanner').hidden;
-      try {
-        if (!id) {
-          const body = {
-            projectCode: $('eProject').value, name: $('eName').value.trim(),
-            description: $('eDesc').value, notes: $('eNotes').value,
-            link: $('eLink').value.trim(), visibility: $('eVis').value,
-          };
-          if (perms().canSetKind && !$('eKind').disabled) body.kind = $('eKind').value;
-          if ($('eParent').value) {
-            body.parentRef = $('eParent').value;
-            body.kind = 'sub';
-          } else if (body.kind === 'sub') {
-            $('editErr').textContent = 'Select a Main parent task.'; return;
-          }
-          const created = await api('POST', '/api/tasks', body);
-          if ($('eStages').value.trim() && !$('eStages').disabled) {
-            const parsed = parseStageTokensClient($('eStages').value);
-            if (!parsed.ok) { $('editErr').textContent = parsed.error; return; }
-            await api('PATCH', '/api/tasks/' + created.task.ref + '/stages', {
-              text: parsed.tokens.join(' '),
-              currentIndex: Number($('eStageIdx').value) || 0,
-            });
-          }
-        } else if (restrictedMode) {
-          // P/R/N: status only
-          await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
-            status: $('eStatus').value,
-          });
-        } else {
-          const body = {};
-          if (!$('eStatus').disabled) body.status = $('eStatus').value;
-          if (!$('eName').disabled) body.name = $('eName').value.trim();
-          if (!$('eDesc').disabled) body.description = $('eDesc').value;
-          if (!$('eNotes').disabled) body.notes = $('eNotes').value;
-          if (!$('eLink').disabled) body.link = $('eLink').value.trim();
-          if (!$('ePriority').disabled) body.priority = $('ePriority').value;
-          if (!$('eVis').disabled) body.visibility = $('eVis').value;
-          if (!$('eKind').disabled && perms().canSetKind) body.kind = $('eKind').value;
-          if ($('eParent').value) {
-            body.parentRef = $('eParent').value;
-            body.kind = 'sub';
-          } else if (body.kind === 'sub') {
-            $('editErr').textContent = 'Select a Main parent task.'; return;
-          } else if (!$('eKind').disabled && perms().canSetKind && body.kind !== 'sub') {
-            body.parentRef = null;
-          }
-
-          // Admin kind → P/R/N: send kind (+ status) only so server accepts cleanly
-          if (body.kind && isRestrictedKindVal(body.kind)) {
-            await api('PATCH', '/api/tasks/' + encodeURIComponent(id), {
-              kind: body.kind,
-              status: body.status || $('eStatus').value,
-            });
-          } else {
-            await api('PATCH', '/api/tasks/' + encodeURIComponent(id), body);
-            if (!$('eStages').disabled) {
-              const parsed = parseStageTokensClient($('eStages').value);
-              if (!parsed.ok) { $('editErr').textContent = parsed.error; return; }
-              await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
-                text: parsed.tokens.join(' '),
-                currentIndex: Number($('eStageIdx').value) || 0,
-              });
-            }
-          }
-        }
-        $('editDlg').close(); await refreshTasks();
-      } catch (err) { $('editErr').textContent = err.message; }
-    };
-
-    async function revAct(path, opts) {
-      opts = opts || {};
-      $('revErr').textContent = '';
-      const notes = (opts.owner ? $('revNotesOwner').value : $('revNotes').value).trim();
-      if (opts.needNotes && !notes) { $('revErr').textContent = 'Notes are required for re-work.'; return; }
-      const body = {};
-      if (notes) body.notes = notes;
-      if (opts.withLink) {
-        const link = $('revLink').value.trim();
-        if (link) body.link = link;
-      }
-      try {
-        await api('POST', '/api/tasks/' + encodeURIComponent($('revId').value) + path, body);
-        $('reviewDlg').close(); await refreshTasks();
-      } catch (err) { $('revErr').textContent = err.message; }
-    }
-    $('revClose').onclick = () => $('reviewDlg').close();
-    $('revSubmit').onclick = () => revAct('/review/submit', { owner: true, withLink: true });
-    $('revFeedback').onclick = () => revAct('/review/feedback', { needNotes: true });
-    $('revRework').onclick = () => revAct('/review/rework', { needNotes: true });
-    $('revApprove').onclick = () => revAct('/review/approve', {});
+    $('btnAddDraft').onclick = () => addDummyDraft();
+    $('draftList').addEventListener('click', onDraftListClick);
+    $('draftList').addEventListener('change', onDraftListChange);
+    $('draftList').addEventListener('input', onDraftListInput);
+    $('draftList').addEventListener('focusin', onDraftListFocusIn);
+    $('draftList').addEventListener('focusout', onDraftListFocusOut);
+    $('draftList').addEventListener('focusout', onDraftListBlur);
+    $('draftList').addEventListener('scroll', onDraftListScroll, true);
+    $('taskList').addEventListener('click', onTaskListClick);
+    $('taskList').addEventListener('change', onTaskListChange);
+    $('taskList').addEventListener('input', onTaskListInput);
+    $('taskList').addEventListener('focusin', onTaskListFocusIn);
+    $('taskList').addEventListener('focusout', onTaskListFocusOut);
+    $('taskList').addEventListener('focusout', onTaskListBlur);
+    $('taskList').addEventListener('scroll', onTaskListScroll, true);
 
     document.getElementById('tabs').onclick = (e) => {
       const t = e.target.closest('.tab'); if (t) switchView(t.dataset.view);
@@ -856,13 +3958,18 @@
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'logs.csv'; a.click();
     };
 
-    ['Draft','Active','Blocked','Done'].forEach((s) => {
-      const o = document.createElement('option'); o.value = s; o.textContent = s; $('logStatus').appendChild(o);
+    ['Draft', 'Active', 'Blocked', 'Pause', 'Done'].forEach((s) => {
+      const o = document.createElement('option');
+      o.value = s;
+      o.textContent = s;
+      $('logStatus').appendChild(o);
     });
 
     async function boot() {
       try {
-        await refreshMe(); await refreshProjects(); await refreshTasks();
+        await refreshMe(); await refreshProjects();
+        if (!state.me) clearAllDummies();
+        await refreshTasks();
       } catch (err) { $('hint').textContent = 'Could not load: ' + err.message; }
     }
     boot();

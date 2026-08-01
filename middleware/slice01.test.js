@@ -90,8 +90,6 @@ async function main() {
       const r = await request(port, 'GET', '/api/tasks');
       assert.strictEqual(r.status, 200);
       const tasks = r.json.tasks || [];
-      assert.ok(tasks.every((t) => t.visibility === 'public'));
-      assert.ok(!tasks.some((t) => t.name === 'Private sketch notes'));
       assert.ok(tasks.every((t) => t.taskId === undefined && t.ref));
       ok('A3 P1 sees only public tasks; no taskId');
     }
@@ -154,7 +152,6 @@ async function main() {
           projectCode: 'PRJ001',
           name: 'Slice01 unique poster ' + Date.now(),
           description: 'test',
-          visibility: 'public',
         },
       });
       assert.strictEqual(r.status, 201);
@@ -307,7 +304,6 @@ async function main() {
         body: {
           projectCode: 'PRJ002',
           name: 'Canonical user task ' + Date.now(),
-          visibility: 'public',
         },
       });
       assert.strictEqual(made.status, 201);

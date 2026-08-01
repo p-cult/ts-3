@@ -28,6 +28,7 @@ function createGetTask({ data }) {
             iteration: Number(row.reviewIteration) || 0,
             lastAction: last.action,
             lastNotes: last.notes || '',
+            lastRatings: last.ratings || undefined,
             lastAt: last.at,
             showOnDetail: String(row.reviewState || '') !== 'approved',
             history:
@@ -35,6 +36,8 @@ function createGetTask({ data }) {
                 ? hist.map((h) => ({
                     version: h.version,
                     notes: h.notes,
+                    ratings: h.ratings || undefined,
+                    iteration: h.iteration,
                     byUsername: h.byUsername,
                     at: h.at,
                     action: h.action,

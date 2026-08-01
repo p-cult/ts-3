@@ -5,6 +5,7 @@ const {
   canModerateReview,
   normalizeReviewState,
   nextIteration,
+  normalizeRatings,
 } = require('../domain/review');
 const { isReviewable } = require('../domain/kinds');
 const { canViewTask } = require('../domain/tasks');
@@ -35,9 +36,9 @@ function createReviewTask({ data }) {
   return {
     /**
      * Submit / resubmit for review.
-     * body: { link?, notes? } — link required if task has no link.
+     * body: { ratings?: [{url, stars, tag?, comment?}, ...], link?, notes? }
      */
-    async submit({ actor, id, link, notes }) {
+    async submit({ actor, id, ratings, link, notes }) {
       if (!actor || !actor.authenticated) throw unauthorized('sign in required');
       if (!canSubmitReview(actor.profile)) throw forbidden('cannot submit review');
       const row = loadTask(data, id, actor);
@@ -49,6 +50,13 @@ function createReviewTask({ data }) {
       let nextLink = String(row.link || '').trim();
       const incoming = link != null ? String(link).trim() : '';
       if (incoming) nextLink = incoming;
+      if (Array.isArray(ratings) && ratings.length > 4) {
+        throw badRequest('maximum 4 links allowed');
+      }
+      const normRatings = normalizeRatings(ratings);
+      if (normRatings.length && !nextLink) {
+        nextLink = normRatings[0].url;
+      }
       if (!nextLink) {
         throw badRequest('link is required to submit for review');
       }
@@ -65,6 +73,7 @@ function createReviewTask({ data }) {
         version: linkVersion,
         linkAtReview: nextLink,
         notes: String(notes || '').trim(),
+        ratings: normRatings,
         byUsername: actor.username,
         at,
         action: 'submit',
@@ -85,7 +94,7 @@ function createReviewTask({ data }) {
       };
     },
 
-    async feedback({ actor, id, notes }) {
+    async feedback({ actor, id, notes, ratings }) {
       if (!actor || !actor.authenticated) throw unauthorized('sign in required');
       if (!canModerateReview(actor.profile)) {
         throw forbidden('only moderator or admin can add feedback');
@@ -94,10 +103,12 @@ function createReviewTask({ data }) {
       const text = String(notes || '').trim();
       if (!text) throw badRequest('notes required');
       const at = new Date().toISOString();
+      const normRatings = normalizeRatings(ratings);
       append(data, row, {
         version: row.linkVersion || 0,
         linkAtReview: row.link || '',
         notes: text,
+        ratings: normRatings,
         byUsername: actor.username,
         at,
         action: 'feedback',
@@ -111,7 +122,7 @@ function createReviewTask({ data }) {
     },
 
     /** Preferred name for re-work */
-    async rework({ actor, id, notes }) {
+    async rework({ actor, id, notes, ratings }) {
       if (!actor || !actor.authenticated) throw unauthorized('sign in required');
       if (!canModerateReview(actor.profile)) {
         throw forbidden('only moderator or admin can request re-work');
@@ -121,10 +132,12 @@ function createReviewTask({ data }) {
       if (!text) throw badRequest('notes are required for re-work');
       const at = new Date().toISOString();
       const iteration = nextIteration(row.reviewIteration);
+      const normRatings = normalizeRatings(ratings);
       append(data, row, {
         version: row.linkVersion || 0,
         linkAtReview: row.link || '',
         notes: text,
+        ratings: normRatings,
         byUsername: actor.username,
         at,
         action: 'rework',
@@ -142,22 +155,20 @@ function createReviewTask({ data }) {
       };
     },
 
-    /** Backward-compatible alias */
-    async sendBack(args) {
-      return this.rework(args);
-    },
-
-    async approve({ actor, id, notes }) {
+    async approve({ actor, id, notes, ratings }) {
       if (!actor || !actor.authenticated) throw unauthorized('sign in required');
       if (!canModerateReview(actor.profile)) {
         throw forbidden('only moderator or admin can approve');
       }
       const row = loadTask(data, id, actor);
       const at = new Date().toISOString();
+      const normRatings = normalizeRatings(ratings);
+      // freeze final ratings on approve
       append(data, row, {
         version: row.linkVersion || 0,
         linkAtReview: row.link || '',
         notes: String(notes || '').trim(),
+        ratings: normRatings.length ? normRatings : undefined,
         byUsername: actor.username,
         at,
         action: 'approve',

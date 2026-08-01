@@ -46,7 +46,7 @@ function toPublicTask(row, displayNames, opts = {}) {
     name: row.name || '',
     description: row.description || '',
     notes: row.notes || '',
-    status: row.status || 'Draft',
+    status: row.status || 'Active',
     priority: row.priority || 'normal',
     startDate: row.startDate || '',
     endDate: row.endDate || '',
@@ -56,7 +56,6 @@ function toPublicTask(row, displayNames, opts = {}) {
       row.assigneeDisplayName ||
       row.assigneeUsername ||
       '',
-    visibility: row.visibility || 'public',
     createdAt: row.createdAt || '',
     updatedAt: row.updatedAt || '',
     hasLink: !!link,
@@ -119,11 +118,7 @@ function scopeTasks(depotTasks, actor) {
     const u = String((actor && actor.username) || '');
     list = list.filter((t) => t.assigneeUsername === u);
   } else {
-    list = list.filter(
-      (t) =>
-        String(t.visibility || '').toLowerCase() === 'public' &&
-        isPublicBoardKind(t.kind)
-    );
+    list = list.filter((t) => isPublicBoardKind(t.kind));
   }
   return list;
 }
@@ -137,7 +132,6 @@ function canViewTask(task, actor) {
     if (task.assigneeUsername === actor.username) return 'ok';
     return 'forbidden';
   }
-  if (String(task.visibility || '').toLowerCase() !== 'public') return 'not_found';
   if (!isPublicBoardKind(kind)) return 'not_found';
   return 'ok';
 }

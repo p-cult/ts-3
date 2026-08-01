@@ -67,6 +67,10 @@ async function main() {
   const server = await startServer({ host: '127.0.0.1', port: 0 });
   const port = server.address().port;
   const app = server.app;
+  // Isolate from persisted side-store leftovers across runs (Task IDs recycle).
+  if (app.data._side && typeof app.data._side._reset === 'function') {
+    app.data._side._reset();
+  }
 
   try {
     {
@@ -124,20 +128,19 @@ async function main() {
       const usr = await login(port, 'ts3usr1', 'ts3-98860');
       const main = await request(port, 'POST', '/api/tasks', {
         token: usr.token,
-        body: { projectCode: 'PRJ001', name: 'Main H ' + Date.now(), visibility: 'public' },
+        body: { projectCode: 'PRJ001', name: 'Main H ' + Date.now() },
       });
       assert.strictEqual(main.status, 201);
       // default kind main — P2 dto may show main
       assert.ok(main.json.task.kind === 'main' || main.json.task.kind === undefined);
 
-      // Parent is client ref from Main list (parentRef); legacy alias parentPublicId also accepted
+      // Parent is client ref from Main list (parentRef)
       const sub = await request(port, 'POST', '/api/tasks', {
         token: usr.token,
         body: {
           projectCode: 'PRJ001',
           name: 'Sub H ' + Date.now(),
           parentRef: main.json.task.ref,
-          visibility: 'public',
         },
       });
       assert.strictEqual(sub.status, 201);
@@ -146,18 +149,6 @@ async function main() {
       // never exposes internal Task ID as parent
       assert.strictEqual(sub.json.task.parentTaskId, undefined);
       assert.strictEqual(sub.json.task.taskId, undefined);
-
-      const subAlias = await request(port, 'POST', '/api/tasks', {
-        token: usr.token,
-        body: {
-          projectCode: 'PRJ001',
-          name: 'Sub Alias ' + Date.now(),
-          parentPublicId: main.json.task.ref, // legacy alias = same opaque ref
-          visibility: 'public',
-        },
-      });
-      assert.strictEqual(subAlias.status, 201);
-      assert.strictEqual(subAlias.json.task.parentRef, main.json.task.ref);
 
       // public list includes main+sub, nested
       const pub = await request(port, 'GET', '/api/tasks?nested=1');
@@ -176,7 +167,6 @@ async function main() {
           name: pseudoName,
           kind: 'pseudo',
           assigneeUsername: 'ts3usr1',
-          visibility: 'public',
         },
       });
       assert.strictEqual(p1.status, 201);
@@ -298,7 +288,6 @@ async function main() {
           projectCode: 'PRJ001',
           name: 'ReviewMe ' + Date.now(),
           link: 'https://example.com/v1',
-          visibility: 'public',
         },
       });
       const id = t.json.task.ref;
@@ -354,34 +343,135 @@ async function main() {
       assert.strictEqual(rw.json.reviewState, 'rework');
       assert.ok(rw.json.reviewIteration >= 1);
 
-      // alias send-back still works
+      // resubmit then approve
       await request(port, 'POST', '/api/tasks/' + id + '/review/submit', {
         token: usr.token,
         body: { link: 'https://example.com/v2' },
       });
-      const sb = await request(port, 'POST', '/api/tasks/' + id + '/review/send-back', {
-        token: mira.token,
-        body: { notes: 'once more' },
-      });
-      assert.strictEqual(sb.status, 200);
-      assert.strictEqual(sb.json.reviewState, 'rework');
-
-      // resubmit then approve
-      await request(port, 'POST', '/api/tasks/' + id + '/review/submit', {
-        token: usr.token,
-        body: { link: 'https://example.com/v3' },
-      });
       const ap = await request(port, 'POST', '/api/tasks/' + id + '/review/approve', {
         token: admin.token,
-        body: { notes: 'ship it' },
+        body: { notes: 'ship it', ratings: [{ url: 'https://example.com/v2', stars: 3 }] },
       });
       assert.strictEqual(ap.status, 200);
       assert.strictEqual(ap.json.reviewState, 'approved');
+
+      // New rule: to appear in completed, must also set status=Done (P2 can after good ratings)
+      const setDone = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Done' },
+      });
+      assert.strictEqual(setDone.status, 200);
+      assert.strictEqual(setDone.json.task.status, 'Done');
 
       const done = await request(port, 'GET', '/api/tasks?board=completed', {
         token: usr.token,
       });
       assert.ok(done.json.tasks.some((x) => x.ref === id));
+
+      // ratings support: array of link-ratings with stars 1-3, tag/comment rules
+      const rateT = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: { projectCode: 'PRJ001', name: 'RateMe ' + Date.now(), link: 'https://ex.com/r1' }
+      });
+      const rid = rateT.json.task.ref;
+      const sR = await request(port, 'POST', '/api/tasks/' + rid + '/review/submit', {
+        token: usr.token,
+        body: { ratings: [ { url: 'https://ex.com/r1', stars: 3, tag: 'great', comment: 'solid' }, { url: 'https://ex.com/r2', stars: 2, tag: 'ok' } ] }
+      });
+      assert.strictEqual(sR.status, 200);
+      const gR = await request(port, 'GET', '/api/tasks/' + rid, { token: mira.token });
+      const histR = (gR.json.task.review && gR.json.task.review.history) || [];
+      assert.ok(histR.some((h) => h.ratings && h.ratings.some((r) => r.stars === 3)));
+      // admin rework with ratings including 1★ (stores the admin's ratings)
+      await request(port, 'POST', '/api/tasks/' + rid + '/review/rework', {
+        token: mira.token,
+        body: { notes: 'adjust', ratings: [{ url: 'https://ex.com/r1', stars: 1, tag: 'poor', comment: 'fix it' }] }
+      });
+      const gR2 = await request(port, 'GET', '/api/tasks/' + rid, { token: mira.token });
+      const histR2 = gR2.json.task.review.history || [];
+      assert.ok(histR2.length > histR.length); // history append-only
+      const reworks = histR2.filter((h) => h.action === 'rework');
+      const reworkEntry = reworks[reworks.length - 1];
+      assert.ok(reworkEntry);
+      assert.strictEqual(reworkEntry.iteration, 1);
+      assert.ok(reworkEntry.ratings && reworkEntry.ratings[0].stars === 1);
+
+      // >4 links/ratings rejected
+      const tooMany = await request(port, 'POST', '/api/tasks/' + rid + '/review/submit', {
+        token: usr.token,
+        body: { ratings: new Array(5).fill(0).map((_, i) => ({ url: 'https://ex.com/' + i, stars: 3 })) }
+      });
+      assert.strictEqual(tooMany.status, 400);
+
+      const tooCreate = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: { projectCode: 'PRJ001', name: 'TooLinks ' + Date.now(), links: new Array(5).fill('http://x') }
+      });
+      assert.strictEqual(tooCreate.status, 400);
+      ok('review star ratings + iteration reset + history');
+
+      // === NEW RULES: COMPLETED = status Done + Done gate for 1★ ===
+      // Test 1: approved but not Done must not appear in board=completed
+      const noDoneTask = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: { projectCode: 'PRJ001', name: 'NoDone ' + Date.now(), link: 'https://ex.com/nodone' }
+      });
+      const ndRef = noDoneTask.json.task.ref;
+      await request(port, 'POST', '/api/tasks/' + ndRef + '/review/submit', {
+        token: usr.token,
+        body: { ratings: [{ url: 'https://ex.com/nodone', stars: 3 }] }
+      });
+      await request(port, 'POST', '/api/tasks/' + ndRef + '/review/approve', {
+        token: admin.token,
+        body: { notes: 'approved only', ratings: [{ url: 'https://ex.com/nodone', stars: 3 }] }
+      });
+      const compCheck = await request(port, 'GET', '/api/tasks?board=completed', { token: usr.token });
+      const inCompND = compCheck.json.tasks.some((x) => x.ref === ndRef);
+      assert.strictEqual(inCompND, false, 'approved but !Done must not be in completed');
+      // confirm it is approved
+      const ndGet = await request(port, 'GET', '/api/tasks/' + ndRef, { token: admin.token });
+      assert.strictEqual(ndGet.json.task.reviewState, 'approved');
+      assert.notStrictEqual(ndGet.json.task.status, 'Done');
+
+      // Test 2: P2 cannot set Done with 1★ (403)
+      const badDoneTask = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: { projectCode: 'PRJ001', name: 'BadDone ' + Date.now(), link: 'https://ex.com/bad' }
+      });
+      const bdRef = badDoneTask.json.task.ref;
+      await request(port, 'POST', '/api/tasks/' + bdRef + '/review/submit', {
+        token: usr.token,
+        body: { ratings: [{ url: 'https://ex.com/bad', stars: 3 }] }
+      });
+      await request(port, 'POST', '/api/tasks/' + bdRef + '/review/rework', {
+        token: mira.token,
+        body: { notes: '1 star', ratings: [{ url: 'https://ex.com/bad', stars: 1, tag: 'bad', comment: 'fix' }] }
+      });
+      const badDonePatch = await request(port, 'PATCH', '/api/tasks/' + bdRef, {
+        token: usr.token,
+        body: { status: 'Done' }
+      });
+      assert.strictEqual(badDonePatch.status, 403);
+
+      // Test 3: after good ratings (no 1★), P2 can set Done and it appears in completed
+      await request(port, 'POST', '/api/tasks/' + bdRef + '/review/submit', {
+        token: usr.token,
+        body: { ratings: [{ url: 'https://ex.com/bad', stars: 3 }] }
+      });
+      await request(port, 'POST', '/api/tasks/' + bdRef + '/review/approve', {
+        token: admin.token,
+        body: { notes: 'good', ratings: [{ url: 'https://ex.com/bad', stars: 3 }] }
+      });
+      const goodDonePatch = await request(port, 'PATCH', '/api/tasks/' + bdRef, {
+        token: usr.token,
+        body: { status: 'Done' }
+      });
+      assert.strictEqual(goodDonePatch.status, 200);
+      assert.strictEqual(goodDonePatch.json.task.status, 'Done');
+      const compGood = await request(port, 'GET', '/api/tasks?board=completed', { token: usr.token });
+      assert.ok(compGood.json.tasks.some((x) => x.ref === bdRef));
+
+      ok('NEW: completed=Done only + 1★ blocks Done for non-admin');
 
       // public list: link ok; no review notes / state / iteration (P1)
       const pub = await request(port, 'GET', '/api/tasks');
@@ -437,6 +527,29 @@ async function main() {
       assert.strictEqual(br.status, 200);
       assert.ok(br.json.results[0].ok);
       ok('bulk set_kind admin');
+
+      // Bulk set_status Done gate (same as PATCH)
+      const bulkUsr = await login(port, 'ts3usr1', 'ts3-98860');
+      const badBulk = await request(port, 'POST', '/api/tasks', {
+        token: bulkUsr.token,
+        body: { projectCode: 'PRJ001', name: 'BulkBadDone ' + Date.now(), link: 'https://ex.com/bulkbad' }
+      });
+      const bbRef = badBulk.json.task.ref;
+      await request(port, 'POST', '/api/tasks/' + bbRef + '/review/submit', {
+        token: bulkUsr.token,
+        body: { ratings: [{ url: 'https://ex.com/bulkbad', stars: 3 }] }
+      });
+      await request(port, 'POST', '/api/tasks/' + bbRef + '/review/rework', {
+        token: admin.token,
+        body: { notes: '1star', ratings: [{ url: 'https://ex.com/bulkbad', stars: 1, tag: 'bad', comment: 'fix' }] }
+      });
+      const bbr = await request(port, 'POST', '/api/tasks/bulk', {
+        token: admin.token,
+        body: { action: 'set_status', status: 'Done', ids: [bbRef] },
+      });
+      assert.strictEqual(bbr.status, 200);
+      assert.strictEqual(bbr.json.results[0].ok, false);
+      assert.ok(bbr.json.results[0].error && bbr.json.results[0].error.includes('1★'));
     }
 
     // unit learnKind
@@ -448,6 +561,121 @@ async function main() {
       );
       assert.strictEqual(k, 'routine');
       ok('unit learnKind');
+    }
+
+    // re-assign via dedicated endpoint
+    {
+      const usr = await login(port, 'ts3usr1', 'ts3-98860');
+      const mira = await login(port, 'mira', 'mira');
+      const admin = await login(port, 'ts3admin', 'ts3-98860');
+      const reTask = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: { projectCode: 'PRJ001', name: 'ReassignTest ' + Date.now() }
+      });
+      const reRef = reTask.json.task.ref;
+      const origRow = app.data.findByRef(reRef);
+      const origTaskId = origRow ? origRow.taskId : null;
+
+      // non-admin rejected
+      const no = await request(port, 'PATCH', '/api/tasks/' + reRef + '/reassign', {
+        token: usr.token,
+        body: { assigneeUsername: 'mira' }
+      });
+      assert.strictEqual(no.status, 403);
+
+      // P4 happy
+      const p4 = await request(port, 'PATCH', '/api/tasks/' + reRef + '/reassign', {
+        token: admin.token,
+        body: { assigneeUsername: 'vinod' }
+      });
+      assert.strictEqual(p4.status, 200);
+      assert.strictEqual(p4.json.task.assigneeUsername, 'vinod');
+      assert.strictEqual(p4.json.task.ref, reRef);
+      const after = app.data.findByRef(reRef);
+      if (origTaskId) assert.strictEqual(after.taskId, origTaskId);
+
+      // P3 can
+      const p3 = await request(port, 'PATCH', '/api/tasks/' + reRef + '/reassign', {
+        token: mira.token,
+        body: { assigneeUsername: 'mira' }
+      });
+      assert.strictEqual(p3.status, 200);
+      assert.strictEqual(p3.json.task.assigneeUsername, 'mira');
+
+      // unknown user 400
+      const badU = await request(port, 'PATCH', '/api/tasks/' + reRef + '/reassign', {
+        token: admin.token,
+        body: { assigneeUsername: 'nope' }
+      });
+      assert.strictEqual(badU.status, 400);
+
+      // unknown ref 404
+      const badR = await request(port, 'PATCH', '/api/tasks/xxx-missing/reassign', {
+        token: admin.token,
+        body: { assigneeUsername: 'vinod' }
+      });
+      assert.strictEqual(badR.status, 404);
+
+      ok('reassign: P3/P4 only, ref+id frozen, user validation');
+    }
+
+    // P2 status: create/submit → Active (system); PATCH limited to Pause/Resume/Done
+    {
+      const usr = await login(port, 'ts3usr1', 'ts3-98860');
+      const t = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: { projectCode: 'PRJ001', name: 'P2Status ' + Date.now() }
+      });
+      assert.strictEqual(t.status, 201);
+      assert.strictEqual(t.json.task.status, 'Active', 'P2 create/submit must birth Active');
+      const id = t.json.task.ref;
+
+      // P2 can set Pause
+      const pPause = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Pause' }
+      });
+      assert.strictEqual(pPause.status, 200);
+      assert.strictEqual(pPause.json.task.status, 'Pause');
+
+      // P2 can set Resume
+      const pResume = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Resume' }
+      });
+      assert.strictEqual(pResume.status, 200);
+      assert.strictEqual(pResume.json.task.status, 'Resume');
+
+      // P2 can set Done
+      const pDone = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Done' }
+      });
+      assert.strictEqual(pDone.status, 200);
+      assert.strictEqual(pDone.json.task.status, 'Done');
+
+      // P2 cannot set Draft
+      const badDraft = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Draft' }
+      });
+      assert.strictEqual(badDraft.status, 403);
+
+      // P2 cannot set Active (user-initiated PATCH still forbidden)
+      const badActive = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Active' }
+      });
+      assert.strictEqual(badActive.status, 403);
+
+      // P2 cannot set Blocked
+      const badBlocked = await request(port, 'PATCH', '/api/tasks/' + id, {
+        token: usr.token,
+        body: { status: 'Blocked' }
+      });
+      assert.strictEqual(badBlocked.status, 403);
+
+      ok('P2 status: create→Active; PATCH only Pause/Resume/Done');
     }
   } catch (e) {
     fail('suite', e);

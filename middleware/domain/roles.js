@@ -7,20 +7,19 @@
 const { PROFILE, roleCode, roleName, normalizeProfile } = require('./profiles');
 const { isRestrictedKind, normalizeKind } = require('./kinds');
 
-const ALL_STATUSES = Object.freeze(['Draft', 'Active', 'Blocked', 'Done']);
-const USER_STATUSES = Object.freeze(['Draft', 'Active', 'Done']);
+const ALL_STATUSES = Object.freeze(['Draft', 'Active', 'Blocked', 'Done', 'Pause', 'Resume']);
+const USER_STATUSES = Object.freeze(['Pause', 'Resume', 'Done']);
 
 const PATCH_FIELDS = Object.freeze({
   [PROFILE.USER]: Object.freeze([
     'name', 'description', 'notes', 'startDate', 'endDate', 'status', 'link',
     'parentRef', // sub parent — client ref only
-    'parentPublicId', // legacy alias accepted then mapped
   ]),
   [PROFILE.MODERATOR]: Object.freeze(['status']),
   [PROFILE.SUPER_ADMIN]: Object.freeze([
     'name', 'description', 'notes', 'startDate', 'endDate', 'status',
-    'priority', 'visibility', 'assigneeUsername',
-    'link', 'kind', 'parentRef', 'parentPublicId',
+    'priority', 'assigneeUsername',
+    'link', 'kind', 'parentRef',
   ]),
 });
 
@@ -144,10 +143,6 @@ function authorizeTaskPatch(args) {
 
   if (b.assigneeUsername !== undefined && profile < PROFILE.SUPER_ADMIN) {
     return deny(403, 'forbidden', 'only the admin can reassign tasks');
-  }
-
-  if (b.visibility !== undefined && profile < PROFILE.SUPER_ADMIN) {
-    return deny(403, 'forbidden', 'only the admin can change visibility');
   }
 
   if (b.kind !== undefined && profile < PROFILE.SUPER_ADMIN) {

@@ -38,11 +38,7 @@ function createMemoryData(opts = {}) {
     row.kind = row.kind || 'main';
     row.link = row.link || '';
     row.parentTaskId = row.parentTaskId || null;
-    // legacy parentPublicId in seed → ignore; parent is Task ID only internally
-    delete row.parentPublicId;
-    let rs = String(row.reviewState || 'none').toLowerCase();
-    if (rs === 'sent_back') rs = 'rework';
-    row.reviewState = rs || 'none';
+    row.reviewState = String(row.reviewState || 'none').toLowerCase() || 'none';
     row.linkVersion = Number(row.linkVersion) || 0;
     row.reviewIteration = Number(row.reviewIteration) || 0;
     // Denormalized project from atom when valid
@@ -175,6 +171,35 @@ function createMemoryData(opts = {}) {
     return clone(next);
   }
 
+  function reassignByTaskId(taskId, assigneeUsername, userSheet) {
+    const id = String(taskId || '');
+    const idx = depot.findIndex((t) => t.taskId === id);
+    if (idx < 0) return null;
+    const prev = depot[idx];
+    const next = normalizeRow({ ...prev, assigneeUsername, userSheet, taskId: prev.taskId });
+    depot[idx] = next;
+    if (prev.userSheet !== next.userSheet) {
+      if (vehicle[prev.userSheet]) {
+        vehicle[prev.userSheet] = vehicle[prev.userSheet].filter((t) => t.taskId !== id);
+      }
+      if (!vehicle[next.userSheet]) vehicle[next.userSheet] = [];
+      if (!vehicle[next.userSheet].some((t) => t.taskId === id)) {
+        vehicle[next.userSheet].push(clone(next));
+      }
+    } else if (vehicle[next.userSheet]) {
+      const vi = vehicle[next.userSheet].findIndex((t) => t.taskId === id);
+      if (vi >= 0) vehicle[next.userSheet][vi] = clone(next);
+    }
+    if (mapping[next.taskId]) {
+      mapping[next.taskId] = {
+        ...mapping[next.taskId],
+        userSheet: next.userSheet,
+        assigneeUsername: next.assigneeUsername,
+      };
+    }
+    return clone(next);
+  }
+
   function updateByRef(ref, patch) {
     const row = findByRef(ref);
     if (!row) return null;
@@ -244,6 +269,7 @@ function createMemoryData(opts = {}) {
     commitBirth,
     updateByTaskId,
     updateByRef,
+    reassignByTaskId,
     deleteByTaskId,
     deleteByRef,
     getMapping,

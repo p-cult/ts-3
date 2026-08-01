@@ -1,10 +1,11 @@
 'use strict';
 
 const { authorizeTaskPatch, normalizeProfile } = require('../domain/roles');
+const { PROFILE } = require('../domain/profiles');
 const { canViewTask, toPublicTask } = require('../domain/tasks');
 const { guardDuplicate, normName } = require('../domain/identity');
 const { normalizeKind } = require('../domain/kinds');
-const { nextLinkVersion } = require('../domain/review');
+const { nextLinkVersion, hasDisqualifyingDoneRating } = require('../domain/review');
 const {
   unauthorized,
   forbidden,
@@ -45,6 +46,27 @@ function createUpdateTask({ data }) {
 
       const patch = { ...authz.body };
 
+      if (Array.isArray(patch.links) && patch.links.length > 4) {
+        throw badRequest('maximum 4 links allowed');
+      }
+      if (Array.isArray(patch.ratings) && patch.ratings.length > 4) {
+        throw badRequest('maximum 4 links allowed');
+      }
+
+      // DONE GATE (non-admin/P2): reject 403 if 1★ present or unrated links exist
+      if (patch.status === 'Done') {
+        const prof = normalizeProfile(actor.profile);
+        if (prof < PROFILE.SUPER_ADMIN) {
+          const reviews = data.getReviews(row.taskId) || [];
+          const last = reviews.length ? reviews[reviews.length - 1] : null;
+          const ratings = (last && last.ratings) || [];
+          const hasLink = !!(row.link && String(row.link).trim());
+          if (hasDisqualifyingDoneRating(ratings, hasLink)) {
+            throw new AppError('forbidden', 'cannot set status to Done while a 1★ rating exists or links are unrated', { status: 403 });
+          }
+        }
+      }
+
       // projectCode change: denormalized only — Task ID atom unchanged (forbid for non-admin already)
       if (patch.projectCode) {
         const p = data.findProject(patch.projectCode);
@@ -68,15 +90,12 @@ function createUpdateTask({ data }) {
         patch.userSheet = u.userSheet;
       }
 
-      // parent via parentRef (or legacy parentPublicId)
+      // parent via parentRef (client opaque ref only)
       const parentKey =
         patch.parentRef !== undefined
           ? patch.parentRef
-          : patch.parentPublicId !== undefined
-            ? patch.parentPublicId
-            : undefined;
+          : undefined;
       delete patch.parentRef;
-      delete patch.parentPublicId;
 
       if (parentKey !== undefined) {
         if (parentKey === null || parentKey === '') {

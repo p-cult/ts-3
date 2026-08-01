@@ -80,7 +80,7 @@ function createCreateTask({ data }) {
 
       let parentTaskId = null;
       // Client sends parentRef (opaque), never Task ID
-      const parentKey = body.parentRef || body.parentPublicId;
+      const parentKey = body.parentRef;
       if (parentKey) {
         const parent = data.findByRef(String(parentKey));
         if (!parent) throw badRequest('parent task not found');
@@ -119,14 +119,14 @@ function createCreateTask({ data }) {
       }
 
       const now = new Date().toISOString();
-      let visibility = 'public';
-      if (body.visibility != null && String(body.visibility).trim()) {
-        visibility =
-          String(body.visibility).trim().toLowerCase() === 'private'
-            ? 'private'
-            : 'public';
-      }
       const link = String(body.link || '').trim();
+
+      if (Array.isArray(body.links) && body.links.length > 4) {
+        throw badRequest('maximum 4 links allowed');
+      }
+      if (Array.isArray(body.ratings) && body.ratings.length > 4) {
+        throw badRequest('maximum 4 links allowed');
+      }
 
       const row = {
         taskId,
@@ -135,13 +135,14 @@ function createCreateTask({ data }) {
         name,
         description: String(body.description || ''),
         notes: String(body.notes || ''),
-        status: 'Draft',
+        // System birth status — Active for every assignee (including P2).
+        // P2 still cannot PATCH status to Active via authorizeTaskPatch.
+        status: 'Active',
         priority: 'normal',
         startDate: String(body.startDate || ''),
         endDate: String(body.endDate || ''),
         assigneeUsername: assignee.username,
         userSheet: assignee.userSheet,
-        visibility,
         kind,
         parentTaskId,
         link,

@@ -45,6 +45,19 @@ function createSideStores(opts) {
     writeJson(reviewsFile, reviewsByTaskId);
   }
 
+  // One-time: historical review action "send_back" → "rework"
+  let migrated = false;
+  for (const arr of Object.values(reviewsByTaskId)) {
+    if (!Array.isArray(arr)) continue;
+    for (const e of arr) {
+      if (e && e.action === 'send_back') {
+        e.action = 'rework';
+        migrated = true;
+      }
+    }
+  }
+  if (migrated) persistReviews();
+
   return {
     getStages(taskId) {
       const s = stagesByTaskId[taskId];
@@ -79,6 +92,11 @@ function createSideStores(opts) {
       reviewsByTaskId[taskId].push({ ...entry });
       persistReviews();
       return this.getReviews(taskId);
+    },
+
+    clearReviews(taskId) {
+      delete reviewsByTaskId[taskId];
+      persistReviews();
     },
 
     /** test helper */

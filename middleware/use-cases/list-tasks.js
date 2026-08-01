@@ -33,7 +33,9 @@ function createListTasks({ data }) {
         if (profile < PROFILE.USER) {
           throw forbidden('completed tab requires sign-in');
         }
-        reviewFilter = 'approved';
+        // COMPLETED = status "Done" only. reviewState=approved alone must never qualify a task.
+        scoped = scoped.filter((t) => String(t.status || '').trim() === 'Done');
+        // do not set reviewFilter (approved-only must not appear here)
       } else if (board === 'active') {
         // main board: hide approved (still in completed tab)
         scoped = scoped.filter(
@@ -61,6 +63,7 @@ function createListTasks({ data }) {
               iteration: Number(t.reviewIteration) || 0,
               lastAction: last ? last.action : '',
               lastNotes: last ? last.notes || '' : '',
+              lastRatings: last ? last.ratings : undefined,
               lastAt: last ? last.at : '',
               showOnDetail: state !== 'approved',
             };

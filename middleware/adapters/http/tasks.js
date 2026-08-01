@@ -42,6 +42,16 @@ function register(router) {
     ctx.sendJson(200, result);
   });
 
+  router.patch('/api/tasks/:ref/reassign', async (ctx) => {
+    const body = await ctx.readJson();
+    const result = await ctx.useCases.reassignTask.execute({
+      actor: ctx.actor,
+      id: ctx.params.ref,
+      assigneeUsername: body && body.assigneeUsername,
+    });
+    ctx.sendJson(200, result);
+  });
+
   router.delete('/api/tasks/:id', async (ctx) => {
     const result = await ctx.useCases.deleteTask.execute({
       actor: ctx.actor,
@@ -67,6 +77,7 @@ function register(router) {
       id: ctx.params.id,
       link: body && body.link,
       notes: body && body.notes,
+      ratings: body && body.ratings,
     });
     ctx.sendJson(200, result);
   });
@@ -77,6 +88,7 @@ function register(router) {
       actor: ctx.actor,
       id: ctx.params.id,
       notes: body.notes,
+      ratings: body && body.ratings,
     });
     ctx.sendJson(200, result);
   });
@@ -87,17 +99,7 @@ function register(router) {
       actor: ctx.actor,
       id: ctx.params.id,
       notes: body.notes,
-    });
-    ctx.sendJson(200, result);
-  });
-
-  // Backward-compatible alias
-  router.post('/api/tasks/:id/review/send-back', async (ctx) => {
-    const body = await ctx.readJson();
-    const result = await ctx.useCases.reviewSendBack.execute({
-      actor: ctx.actor,
-      id: ctx.params.id,
-      notes: body.notes,
+      ratings: body && body.ratings,
     });
     ctx.sendJson(200, result);
   });
@@ -108,6 +110,7 @@ function register(router) {
       actor: ctx.actor,
       id: ctx.params.id,
       notes: body && body.notes,
+      ratings: body && body.ratings,
     });
     ctx.sendJson(200, result);
   });

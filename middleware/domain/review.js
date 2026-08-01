@@ -3,7 +3,6 @@
 /**
  * Review workflow — pure helpers.
  * States: none | under_review | rework | approved
- * Legacy alias: sent_back → rework
  */
 
 const REVIEW_STATES = Object.freeze([
@@ -14,8 +13,7 @@ const REVIEW_STATES = Object.freeze([
 ]);
 
 function normalizeReviewState(s) {
-  let v = String(s || 'none').trim().toLowerCase();
-  if (v === 'sent_back') v = 'rework';
+  const v = String(s || 'none').trim().toLowerCase();
   return REVIEW_STATES.includes(v) ? v : 'none';
 }
 
@@ -45,6 +43,36 @@ function nextIteration(prev) {
   return n + 1;
 }
 
+function normalizeRating(r) {
+  if (!r || typeof r !== 'object') return null;
+  const url = String(r.url || '').trim();
+  const stars = Number(r.stars);
+  if (!url || ![1,2,3].includes(stars)) return null;
+  const tag = r.tag != null ? String(r.tag).trim() : '';
+  const comment = r.comment != null ? String(r.comment).trim() : '';
+  // simple rules: tag req for <3, comment req for 1
+  if (stars < 3 && !tag) return null;
+  if (stars === 1 && !comment) return null;
+  return { url, stars, tag: tag || undefined, comment: comment || undefined };
+}
+
+function normalizeRatings(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(normalizeRating).filter(Boolean);
+}
+
+/**
+ * Gate for setting status=Done: block if any 1★ or (links exist but unrated).
+ * Used by P2/non-admin PATCH.
+ */
+function hasDisqualifyingDoneRating(ratings, hasLink) {
+  const arr = Array.isArray(ratings) ? ratings : [];
+  if (arr.length === 0) {
+    return !!hasLink; // unrated while links exist
+  }
+  return arr.some((r) => Number(r && r.stars) === 1);
+}
+
 module.exports = {
   REVIEW_STATES,
   normalizeReviewState,
@@ -52,4 +80,7 @@ module.exports = {
   canModerateReview,
   nextLinkVersion,
   nextIteration,
+  normalizeRating,
+  normalizeRatings,
+  hasDisqualifyingDoneRating,
 };

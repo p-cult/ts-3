@@ -3,6 +3,7 @@
 const { normalizeKind } = require('../domain/kinds');
 const { PROFILE, normalizeProfile } = require('../domain/profiles');
 const { unauthorized, forbidden, badRequest } = require('../errors');
+const { hasDisqualifyingDoneRating } = require('../domain/review');
 
 function createBulkTasks({ data }) {
   return {
@@ -34,8 +35,19 @@ function createBulkTasks({ data }) {
             data.updateByTaskId(row.taskId, patch);
             results.push({ id, ok: true, action: 'set_kind', kind });
           } else if (action === 'set_status') {
+            const newStatus = String(body.status || row.status);
+            if (newStatus === 'Done') {
+              const reviews = data.getReviews(row.taskId) || [];
+              const last = reviews.length ? reviews[reviews.length - 1] : null;
+              const ratings = (last && last.ratings) || [];
+              const hasLink = !!(row.link && String(row.link).trim());
+              if (hasDisqualifyingDoneRating(ratings, hasLink)) {
+                results.push({ id, ok: false, error: 'cannot set status to Done while a 1★ rating exists or links are unrated' });
+                continue;
+              }
+            }
             data.updateByTaskId(row.taskId, {
-              status: String(body.status || row.status),
+              status: newStatus,
               updatedAt: new Date().toISOString(),
             });
             results.push({ id, ok: true, action: 'set_status' });

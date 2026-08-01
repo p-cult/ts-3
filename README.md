@@ -12,7 +12,7 @@ This folder stays **lean**. Cutover law: [ARCHITECTURE.md](ARCHITECTURE.md) §14
 | 1 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Core model + laws (Task ID, vehicle, depot, control room) |
 | 2 | **[PLAN-CLEAN.md](PLAN-CLEAN.md)** | Rebuild plan: preserve / drop / one birth path / waves |
 | 3 | **[FOUNDATION.md](FOUNDATION.md)** | Technical spine (server, config, log, errors, layout) |
-| 4 | **[SLICE-01.md](SLICE-01.md)** … **[SLICE-08.md](SLICE-08.md)** | Control room → classifier / Logged |
+| 4 | **[SLICE-01.md](SLICE-01.md)** … **[SLICE-12.md](SLICE-12.md)** | Control room → go-live track |
 | 5 | **[CAPABILITIES-FROM-TS2.md](CAPABILITIES-FROM-TS2.md)** | What live ts-2 actually does |
 
 That’s the whole working brain. Everything else is reference or archive.
@@ -76,12 +76,11 @@ data/              local runtime
 ## Status
 
 - Planning + foundation: **yes**
-- Staging / cutover strategy: **documented**
-- **Slice 01–08:** built + automated tests green (`npm test`)
+- Staging / cutover strategy: **documented** ([docs/HOSTING.md](docs/HOSTING.md), [docs/GO-LIVE.md](docs/GO-LIVE.md))
+- **Slice 01–12:** built + automated tests green (`npm test`) — **production-ready Staging track**
 - Classifier: Logged tab (`board=logged`), Make Task (P3+), completed counting helpers
-- Dual writers: visible → vehicle/depot; invisible stages/reviews → side-store only
-- Sheets adapter: fixture reads; Staging writes gated (`STAGING_WRITES` + `WRITER_OF_RECORD`)
-- Board: hierarchy, stages bar, review, logs (print/CSV)
+- Reports journey (P3+), dropdown vocabulary, CORS for Pages+Render split
+- Go-live preflight: **`./go-live.sh`** (does not touch ts-2)
 - Try: `./run.sh` → primary Staging logins:
   - **ts3admin** / `ts3-98860` (P4 Admin)
   - **ts3usr1** / `ts3-98860` (P2 User)

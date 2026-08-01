@@ -3,6 +3,7 @@
 const { scopeTasks, toPublicTask, nestHierarchy } = require('../domain/tasks');
 const { PROFILE, normalizeProfile } = require('../domain/profiles');
 const { normalizeReviewState } = require('../domain/review');
+const { isLoggedKind, countsAsCompleted } = require('../domain/classifier');
 const { forbidden } = require('../errors');
 
 function createListTasks({ data }) {
@@ -33,14 +34,18 @@ function createListTasks({ data }) {
         if (profile < PROFILE.USER) {
           throw forbidden('completed tab requires sign-in');
         }
-        // COMPLETED = status "Done" only. reviewState=approved alone must never qualify a task.
-        scoped = scoped.filter((t) => String(t.status || '').trim() === 'Done');
-        // do not set reviewFilter (approved-only must not appear here)
+        scoped = scoped.filter((t) => countsAsCompleted(t));
+      } else if (board === 'logged') {
+        if (profile < PROFILE.USER) {
+          throw forbidden('logged tab requires sign-in');
+        }
+        scoped = scoped.filter((t) => isLoggedKind(t.kind));
       } else if (board === 'active') {
-        // main board: hide approved (still in completed tab)
+        // main board: hide approved and logged diary rows
         scoped = scoped.filter(
           (t) => normalizeReviewState(t.reviewState) !== 'approved'
         );
+        scoped = scoped.filter((t) => !isLoggedKind(t.kind));
       }
 
       if (reviewFilter) {

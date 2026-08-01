@@ -126,7 +126,7 @@ async function main() {
   try {
     {
       const r = await request(port, 'GET', '/api/health');
-      assert.strictEqual(r.json.slice, '07');
+      assert.strictEqual(r.json.slice, '08');
     }
     ok('health slice 07');
 

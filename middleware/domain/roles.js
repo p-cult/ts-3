@@ -6,6 +6,7 @@
 
 const { PROFILE, roleCode, roleName, normalizeProfile } = require('./profiles');
 const { isRestrictedKind, normalizeKind } = require('./kinds');
+const { isMakeTaskEligible } = require('./classifier');
 
 const ALL_STATUSES = Object.freeze(['Draft', 'Active', 'Blocked', 'Done', 'Pause', 'Resume']);
 const USER_STATUSES = Object.freeze(['Pause', 'Resume', 'Done']);
@@ -53,6 +54,7 @@ function permissionsFor(profile) {
     canViewLogs: p >= PROFILE.USER,
     canBulk: p >= PROFILE.SUPER_ADMIN,
     canDecideQueue: p >= PROFILE.MODERATOR,
+    canMakeTask: p >= PROFILE.MODERATOR,
     createsDirect: true,
   };
 }
@@ -107,6 +109,21 @@ function authorizeTaskPatch(args) {
       next.status = b.status;
     }
     return { ok: true, body: next };
+  }
+
+  // Make Task: P3+ promotes restricted kind → main (clear classifier)
+  if (
+    isRestrictedKind(taskKind) &&
+    b.kind !== undefined &&
+    normalizeKind(b.kind) === 'main'
+  ) {
+    if (profile < PROFILE.MODERATOR) {
+      return deny(403, 'forbidden', 'only moderators and admins can make task');
+    }
+    if (!isMakeTaskEligible({ kind: taskKind })) {
+      return deny(403, 'forbidden', 'task is not eligible for make task');
+    }
+    return { ok: true, body: { kind: 'main' } };
   }
 
   // Already P/R/N: status only (all roles)

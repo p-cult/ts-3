@@ -80,7 +80,7 @@ async function main() {
 
   try {
     const h = await request(port, 'GET', '/api/health');
-    assert.strictEqual(h.json.slice, '07');
+    assert.strictEqual(h.json.slice, '08');
     assert.strictEqual(h.json.mode.queueMode, 'on');
     ok('health queueMode on');
 

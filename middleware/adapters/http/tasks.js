@@ -32,6 +32,14 @@ function register(router) {
     ctx.sendJson(result && result.queued ? 202 : 201, result);
   });
 
+  router.post('/api/tasks/:id/make-task', async (ctx) => {
+    const result = await ctx.useCases.makeTask.execute({
+      actor: ctx.actor,
+      id: ctx.params.id,
+    });
+    ctx.sendJson(200, result);
+  });
+
   router.patch('/api/tasks/:id', async (ctx) => {
     const body = await ctx.readJson();
     const result = await ctx.useCases.updateTask.execute({

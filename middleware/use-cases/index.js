@@ -17,6 +17,7 @@ const { createBulkTasks } = require('./bulk-tasks');
 const { createReassignTask } = require('./reassign-task');
 const { createListUsers } = require('./list-users');
 const { createDecideQueue } = require('./decide-queue');
+const { createMakeTask } = require('./make-task');
 
 function createUseCases(deps) {
   const { config, data, runtime, sessions, log } = deps;
@@ -50,6 +51,7 @@ function createUseCases(deps) {
     listQueue: { execute: (i) => decideQueue.list(i) },
     approveQueue: { execute: (i) => decideQueue.approve(i) },
     rejectQueue: { execute: (i) => decideQueue.reject(i) },
+    makeTask: createMakeTask({ data }),
   };
 }
 

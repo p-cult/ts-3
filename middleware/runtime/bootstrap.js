@@ -92,13 +92,13 @@ function bootstrap(deps) {
 
   // --- store adapter ---
   const adapter = String(cfg.storeAdapter || 'memory').toLowerCase();
-  if (adapter !== 'memory') {
+  if (adapter !== 'memory' && adapter !== 'sheets') {
     if (cfg.isProd) {
       issue(
         'error',
         'store_adapter',
-        `STORE_ADAPTER=${adapter} is not implemented yet`,
-        'Set STORE_ADAPTER=memory until the Sheets adapter ships'
+        `STORE_ADAPTER=${adapter} is unknown`,
+        'Use memory or sheets'
       );
     } else {
       heal(
@@ -111,10 +111,20 @@ function bootstrap(deps) {
       issue(
         'warn',
         'store_adapter',
-        `STORE_ADAPTER=${adapter} not implemented; using memory`,
-        'Only memory is available in foundation'
+        `STORE_ADAPTER=${adapter} unknown; using memory`,
+        'Use memory or sheets'
       );
     }
+  }
+  if (adapter === 'sheets') {
+    issue(
+      'warn',
+      'store_sheets',
+      cfg.stagingWrites
+        ? 'STORE_ADAPTER=sheets with STAGING_WRITES=true'
+        : 'STORE_ADAPTER=sheets — reads via fixture/bridge; writes refused until STAGING_WRITES=true',
+      'Keep STAGING_WRITES=false unless supervised Staging write test'
+    );
   }
 
   // --- live bridge configuration ---

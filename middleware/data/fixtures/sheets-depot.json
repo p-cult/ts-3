@@ -1,0 +1,144 @@
+{
+  "users": [
+    {
+      "username": "ts3admin",
+      "password": "ts3-98860",
+      "displayName": "TS3 Admin",
+      "profile": 4,
+      "employeeId": "9001",
+      "userSheet": "user-ts3admin"
+    },
+    {
+      "username": "ts3usr1",
+      "password": "ts3-98860",
+      "displayName": "TS3 User 1",
+      "profile": 2,
+      "employeeId": "9002",
+      "userSheet": "user-ts3usr1"
+    },
+    {
+      "username": "anya",
+      "password": "anya",
+      "displayName": "Anya",
+      "profile": 2,
+      "employeeId": "1001",
+      "userSheet": "user-anya"
+    },
+    {
+      "username": "ravi",
+      "password": "ravi",
+      "displayName": "Ravi",
+      "profile": 2,
+      "employeeId": "1002",
+      "userSheet": "user-ravi"
+    },
+    {
+      "username": "mira",
+      "password": "mira",
+      "displayName": "Mira",
+      "profile": 3,
+      "employeeId": "2001",
+      "userSheet": "user-mira"
+    },
+    {
+      "username": "vinod",
+      "password": "vinod",
+      "displayName": "Vinod",
+      "profile": 4,
+      "employeeId": "0001",
+      "userSheet": "user-vinod"
+    }
+  ],
+  "projects": [
+    {
+      "code": "PRJ001",
+      "name": "Sample Project"
+    },
+    {
+      "code": "PRJ002",
+      "name": "Other Project"
+    }
+  ],
+  "tasks": [
+    {
+      "taskId": "PRJ0011001A01",
+      "projectName": "Sample Project",
+      "name": "Draw poster",
+      "description": "A3 colour poster for launch",
+      "notes": "",
+      "status": "Active",
+      "priority": "normal",
+      "startDate": "",
+      "endDate": "15 Aug | 18:00",
+      "assigneeUsername": "anya",
+      "userSheet": "user-anya",
+      "kind": "main",
+      "createdAt": "2026-07-20T10:00:00.000Z",
+      "updatedAt": "2026-07-20T10:00:00.000Z"
+    },
+    {
+      "taskId": "PRJ0011001A02",
+      "projectName": "Sample Project",
+      "name": "Private sketch notes",
+      "description": "Only Anya should see this as P2",
+      "notes": "WIP",
+      "status": "Draft",
+      "priority": "normal",
+      "startDate": "",
+      "endDate": "",
+      "assigneeUsername": "anya",
+      "userSheet": "user-anya",
+      "kind": "main",
+      "createdAt": "2026-07-21T10:00:00.000Z",
+      "updatedAt": "2026-07-21T10:00:00.000Z"
+    },
+    {
+      "taskId": "PRJ0021002A01",
+      "projectName": "Other Project",
+      "name": "Edit reel",
+      "description": "30s cut",
+      "notes": "",
+      "status": "Active",
+      "priority": "high",
+      "startDate": "",
+      "endDate": "20 Aug | 12:00",
+      "assigneeUsername": "ravi",
+      "userSheet": "user-ravi",
+      "kind": "main",
+      "createdAt": "2026-07-22T10:00:00.000Z",
+      "updatedAt": "2026-07-22T10:00:00.000Z"
+    },
+    {
+      "taskId": "PRJ0010001A01",
+      "projectName": "Sample Project",
+      "name": "Approve brand board",
+      "description": "Final check",
+      "notes": "",
+      "status": "Blocked",
+      "priority": "normal",
+      "startDate": "",
+      "endDate": "01 Sep | 09:00",
+      "assigneeUsername": "vinod",
+      "userSheet": "user-vinod",
+      "kind": "main",
+      "createdAt": "2026-07-23T10:00:00.000Z",
+      "updatedAt": "2026-07-23T10:00:00.000Z"
+    },
+    {
+      "taskId": "PRJ0019001A99",
+      "projectName": "Sample Project",
+      "name": "Sheets Fixture Read Task",
+      "description": "Visible only via sheets fixture",
+      "notes": "",
+      "status": "Active",
+      "priority": "normal",
+      "startDate": "",
+      "endDate": "",
+      "assigneeUsername": "ts3admin",
+      "userSheet": "user-ts3admin",
+      "kind": "main",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "updatedAt": "2026-08-01T00:00:00.000Z"
+    }
+  ]
+}

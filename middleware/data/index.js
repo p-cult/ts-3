@@ -2,9 +2,11 @@
 
 const path = require('path');
 const { createMemoryData } = require('./memory');
+const { createSheetsData } = require('./sheets');
 const { createSideStores } = require('./side-store');
 const { createSheetWriter } = require('./sheet-writer');
 const { createHistoryWriter } = require('./history-writer');
+const { createBridgeClient } = require('../bridge/client');
 const { withRetry, isRetryable } = require('./retry');
 const { notImplemented } = require('../errors');
 const { joinVisibleAndHistory } = require('../domain/field-class');
@@ -13,7 +15,28 @@ function createDataAccess(deps) {
   const config = deps.config;
   const log = deps.log;
   const refSecret = config.sessionSecret || process.env.SESSION_SECRET || 'dev-ref-secret';
-  const inner = createMemoryData({ refSecret });
+  const adapter = String(config.storeAdapter || 'memory').toLowerCase();
+
+  const bridge = createBridgeClient({
+    bridgeUrl: config.bridgeUrl,
+    bridgeSecret: config.bridgeSecret,
+    log,
+  });
+
+  let inner;
+  if (adapter === 'sheets') {
+    inner = createSheetsData({
+      refSecret,
+      stagingWrites: !!config.stagingWrites,
+      useLiveBridge: !!config.useLiveBridge,
+      bridge,
+      fixturePath: config.sheetsFixturePath,
+      log,
+    });
+  } else {
+    inner = createMemoryData({ refSecret });
+  }
+
   const sideDir = path.join(
     config.dataDir || path.join(__dirname, '..', '..', 'data'),
     'side'
@@ -49,18 +72,20 @@ function createDataAccess(deps) {
     },
 
     async bridgeStatus() {
+      if (typeof inner.bridgeStatus === 'function') {
+        return inner.bridgeStatus();
+      }
       if (!config.useLiveBridge) {
         return { ok: true, state: 'disabled', message: 'USE_LIVE_BRIDGE=false' };
       }
-      return {
-        ok: false,
-        state: 'unavailable',
-        message: 'sheets/bridge not installed',
-      };
+      return bridge.ping();
     },
 
     async bridge() {
-      throw notImplemented('sheets/bridge adapter not installed yet');
+      if (!config.useLiveBridge) {
+        throw notImplemented('live bridge disabled');
+      }
+      return bridge;
     },
 
     listDepot: () => inner.listDepot(),
@@ -73,7 +98,6 @@ function createDataAccess(deps) {
     listProjects: () => inner.listProjects(),
     findProject: (c) => inner.findProject(c),
 
-    // Visible-only birth / update (sheetWriter)
     commitBirth: (row) => sheets.commitBirth(row),
     updateByTaskId: (id, p) => sheets.updateByTaskId(id, p),
     updateByRef: (r, p) => sheets.updateByRef(r, p),
@@ -85,23 +109,28 @@ function createDataAccess(deps) {
     partitionsFor: (id) => inner.partitionsFor(id),
     refFor: (tid) => inner.refFor(tid),
 
-    // Invisible history (historyWriter / side-store)
     getStages: (taskId) => history.getStages(taskId),
     setStages: (taskId, s) => history.setStages(taskId, s),
     getReviews: (taskId) => history.getReviews(taskId),
     appendReview: (taskId, e) => history.appendReview(taskId, e),
 
-    /** Join depot row + side history for reports/logs. */
     joinHistory(taskId) {
       const row = inner.findByTaskId(taskId);
       if (!row) return null;
       return joinVisibleAndHistory(row, history.snapshot(taskId));
     },
 
+    refreshFromBridge:
+      typeof inner.refreshFromBridge === 'function'
+        ? () => inner.refreshFromBridge()
+        : async () => ({ ok: false, reason: 'not sheets' }),
+
     _side: side,
     _sheetWriter: sheets,
     _historyWriter: history,
-    _unsafeMemory: () => inner._state,
+    _bridge: bridge,
+    _unsafeMemory: () =>
+      typeof inner._unsafeMemory === 'function' ? inner._unsafeMemory() : inner._state,
   };
 }
 

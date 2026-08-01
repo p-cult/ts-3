@@ -211,12 +211,27 @@ async function main() {
       isDev: true,
       isProd: false,
       env: 'development',
-      storeAdapter: 'sheets',
+      storeAdapter: 'bogus',
       useLiveBridge: false,
     });
     const app = createApp({ config: cfg });
     assert.strictEqual(app.config.storeAdapter, 'memory');
     assert.ok(app.bootstrap.heals.some((h) => h.action === 'store_adapter_fallback_memory'));
+  });
+
+  await check('bootstrap keeps STORE_ADAPTER=sheets', () => {
+    const cfg = Object.freeze({
+      ...baseConfig,
+      isDev: true,
+      isProd: false,
+      env: 'development',
+      storeAdapter: 'sheets',
+      stagingWrites: false,
+      useLiveBridge: false,
+    });
+    const app = createApp({ config: cfg });
+    assert.strictEqual(app.config.storeAdapter, 'sheets');
+    assert.strictEqual(app.data.kind, 'sheets');
   });
 
   // --- HTTP ---
@@ -290,9 +305,9 @@ async function main() {
     {
       const r = await request(port, 'GET', '/api/health');
       assert.strictEqual(r.json.foundation, true);
-      assert.strictEqual(r.json.slice, '04');
+      assert.strictEqual(r.json.slice, '05');
       assert.ok(r.json.mode && r.json.mode.appMode === 'staging');
-      ok('health reports slice 04 + staging mode');
+      ok('health reports slice 05 + staging mode');
     }
   } finally {
     await new Promise((resolve) => server.close(resolve));

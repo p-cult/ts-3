@@ -12,7 +12,7 @@ This folder stays **lean**. Cutover law: [ARCHITECTURE.md](ARCHITECTURE.md) §14
 | 1 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Core model + laws (Task ID, vehicle, depot, control room) |
 | 2 | **[PLAN-CLEAN.md](PLAN-CLEAN.md)** | Rebuild plan: preserve / drop / one birth path / waves |
 | 3 | **[FOUNDATION.md](FOUNDATION.md)** | Technical spine (server, config, log, errors, layout) |
-| 4 | **[SLICE-01.md](SLICE-01.md)** … **[SLICE-06.md](SLICE-06.md)** | Control room → sheets read/write gates |
+| 4 | **[SLICE-01.md](SLICE-01.md)** … **[SLICE-07.md](SLICE-07.md)** | Control room → sheets read/write gates |
 | 5 | **[CAPABILITIES-FROM-TS2.md](CAPABILITIES-FROM-TS2.md)** | What live ts-2 actually does |
 
 That’s the whole working brain. Everything else is reference or archive.
@@ -77,7 +77,7 @@ data/              local runtime
 
 - Planning + foundation: **yes**
 - Staging / cutover strategy: **documented**
-- **Slice 01–06:** built + automated tests green (`npm test`)
+- **Slice 01–07:** built + automated tests green (`npm test`)
 - Dual writers: visible → vehicle/depot; invisible stages/reviews → side-store only
 - Sheets adapter: fixture reads; Staging writes gated (`STAGING_WRITES` + `WRITER_OF_RECORD`)
 - Board: hierarchy, stages bar, review, logs (print/CSV)

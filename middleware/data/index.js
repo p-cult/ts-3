@@ -6,6 +6,7 @@ const { createSheetsData } = require('./sheets');
 const { createSideStores } = require('./side-store');
 const { createSheetWriter } = require('./sheet-writer');
 const { createHistoryWriter } = require('./history-writer');
+const { createQueueStore } = require('./queue-store');
 const { createBridgeClient } = require('../bridge/client');
 const { withRetry, isRetryable } = require('./retry');
 const { notImplemented } = require('../errors');
@@ -44,6 +45,7 @@ function createDataAccess(deps) {
     'side'
   );
   const side = createSideStores({ dataDir: sideDir });
+  const queue = createQueueStore({ dataDir: sideDir });
   const sheets = createSheetWriter(inner);
   const history = createHistoryWriter(side);
 
@@ -122,12 +124,18 @@ function createDataAccess(deps) {
       return joinVisibleAndHistory(row, history.snapshot(taskId));
     },
 
+    enqueueDraft: (d) => queue.enqueue(d),
+    listQueue: (f) => queue.list(f),
+    getQueueItem: (id) => queue.get(id),
+    markQueueItem: (id, st, extra) => queue.mark(id, st, extra),
+
     refreshFromBridge:
       typeof inner.refreshFromBridge === 'function'
         ? () => inner.refreshFromBridge()
         : async () => ({ ok: false, reason: 'not sheets' }),
 
     _side: side,
+    _queue: queue,
     _sheetWriter: sheets,
     _historyWriter: history,
     _bridge: bridge,

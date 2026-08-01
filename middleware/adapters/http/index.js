@@ -9,6 +9,7 @@ const tasks = require('./tasks');
 const projects = require('./projects');
 const users = require('./users');
 const logs = require('./logs');
+const queue = require('./queue');
 
 function buildRouter(_deps) {
   const router = createRouter();
@@ -17,6 +18,7 @@ function buildRouter(_deps) {
   system.register(router, _deps);
   auth.register(router, _deps);
   bulk.register(router, _deps); // before /api/tasks/:id
+  queue.register(router, _deps);
   tasks.register(router, _deps);
   projects.register(router, _deps);
   users.register(router, _deps);

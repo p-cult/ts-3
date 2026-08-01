@@ -2,7 +2,7 @@
 
 **Purpose:** Rebuild Param’s task system as a **clearly better** ts-3: cleaner, more efficient, more robust, more agile, more versatile — **without breaking the core architecture**.
 
-**Status:** Foundation + Slice 01–06 built (`npm test` green). Queue / go-live not started.  
+**Status:** Foundation + Slice 01–07 built (`npm test` green). Queue / go-live not started.  
 **ts-2:** Live production — **never modify from the ts-3 track** (non-negotiable).  
 **ts-3:** Staging rebuild until one-command go-live; then production on Pages + Render.  
 **Data:** **Same live Master + User Sheets** as ts-2. All processing in **ts-3 middleware** when traffic hits ts-3.

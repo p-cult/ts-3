@@ -75,9 +75,9 @@ async function main() {
     {
       const r = await request(port, 'GET', '/api/health');
       assert.strictEqual(r.status, 200);
-      assert.strictEqual(r.json.slice, '06');
+      assert.strictEqual(r.json.slice, '07');
       assert.ok(r.json.mode && r.json.mode.appMode === 'staging');
-      ok('A1 GET /api/health slice 06 + staging');
+      ok('A1 GET /api/health slice 07 + staging');
     }
     {
       const r = await request(port, 'GET', '/api/me');

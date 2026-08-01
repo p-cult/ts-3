@@ -16,10 +16,16 @@ const { createListLogs } = require('./list-logs');
 const { createBulkTasks } = require('./bulk-tasks');
 const { createReassignTask } = require('./reassign-task');
 const { createListUsers } = require('./list-users');
+const { createDecideQueue } = require('./decide-queue');
 
 function createUseCases(deps) {
   const { config, data, runtime, sessions, log } = deps;
   const review = createReviewTask({ data });
+  const createTask = createCreateTask({ data, config });
+  const decideQueue = createDecideQueue({
+    data,
+    useCases: { createTask },
+  });
 
   return {
     getHealth: createGetHealth({ config, data, runtime, log }),
@@ -28,7 +34,7 @@ function createUseCases(deps) {
     getMe: createGetMe(),
     listTasks: createListTasks({ data }),
     getTask: createGetTask({ data }),
-    createTask: createCreateTask({ data }),
+    createTask,
     updateTask: createUpdateTask({ data }),
     deleteTask: createDeleteTask({ data }),
     listProjects: createListProjects({ data }),
@@ -41,6 +47,9 @@ function createUseCases(deps) {
     listLogs: createListLogs({ data }),
     bulkTasks: createBulkTasks({ data }),
     reassignTask: createReassignTask({ data }),
+    listQueue: { execute: (i) => decideQueue.list(i) },
+    approveQueue: { execute: (i) => decideQueue.approve(i) },
+    rejectQueue: { execute: (i) => decideQueue.reject(i) },
   };
 }
 

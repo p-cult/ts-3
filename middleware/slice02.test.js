@@ -75,9 +75,9 @@ async function main() {
   try {
     {
       const r = await request(port, 'GET', '/api/health');
-      assert.strictEqual(r.json.slice, '06');
+      assert.strictEqual(r.json.slice, '07');
       assert.strictEqual(r.json.mode.appMode, 'staging');
-      ok('health slice 06 staging');
+      ok('health slice 07 staging');
     }
 
     // A — duplicate never mints

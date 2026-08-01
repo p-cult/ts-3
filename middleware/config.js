@@ -104,6 +104,9 @@ const config = Object.freeze({
    */
   writerOfRecord: envString('WRITER_OF_RECORD', 'ts2'),
 
+  /** Queue untrusted creates (P2) — default off until Vinod enables */
+  queueMode: envString('QUEUE_MODE', 'off'),
+
   /** Defaults for data/retry.withRetry on external I/O */
   retry: Object.freeze({
     attempts: envInt('RETRY_ATTEMPTS', 3),

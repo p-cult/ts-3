@@ -29,7 +29,7 @@ function register(router) {
       actor: ctx.actor,
       body,
     });
-    ctx.sendJson(201, result);
+    ctx.sendJson(result && result.queued ? 202 : 201, result);
   });
 
   router.patch('/api/tasks/:id', async (ctx) => {

@@ -106,7 +106,7 @@ function createGetHealth(deps) {
         app: config.appName,
         version: config.appVersion,
         foundation: true,
-        slice: '06',
+        slice: '07',
         time: new Date().toISOString(),
         startedAt: rt.startedAt,
         mode: {
@@ -116,6 +116,7 @@ function createGetHealth(deps) {
           liveBridge: !!config.useLiveBridge,
           stagingWrites: !!config.stagingWrites,
           writerOfRecord: config.writerOfRecord || 'ts2',
+          queueMode: config.queueMode || 'off',
           isDev: !!config.isDev,
           isProd: !!config.isProd,
         },
@@ -123,6 +124,7 @@ function createGetHealth(deps) {
           staging: (config.appMode || 'staging') === 'staging',
           stagingWrites: !!config.stagingWrites,
           writerOfRecord: config.writerOfRecord || 'ts2',
+          queueMode: config.queueMode || 'off',
           message: !!config.stagingWrites
             ? 'STAGING WRITES ON — ts-3 may write sheets (WRITER_OF_RECORD=' +
               (config.writerOfRecord || 'ts2') +

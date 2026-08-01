@@ -52,8 +52,16 @@ function permissionsFor(profile) {
     canViewNeedsReview: p >= PROFILE.MODERATOR,
     canViewLogs: p >= PROFILE.USER,
     canBulk: p >= PROFILE.SUPER_ADMIN,
+    canDecideQueue: p >= PROFILE.MODERATOR,
     createsDirect: true,
   };
+}
+
+/** P2 creates enqueue when QUEUE_MODE is on; P4 still births direct. */
+function mustQueueCreates(profile, queueModeOn) {
+  if (!queueModeOn) return false;
+  const p = normalizeProfile(profile);
+  return p === PROFILE.USER;
 }
 
 function deny(status, code, error) {
@@ -210,6 +218,7 @@ module.exports = {
   authorizeTaskPatch,
   canCreate,
   canDelete,
+  mustQueueCreates,
   normalizeProfile,
   roleCode,
   roleName,

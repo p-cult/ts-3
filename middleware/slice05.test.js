@@ -147,11 +147,11 @@ async function main() {
   const memPort = memServer.address().port;
   try {
     const h = await request(memPort, 'GET', '/api/health');
-    assert.strictEqual(h.json.slice, '06');
+    assert.strictEqual(h.json.slice, '07');
     assert.strictEqual(h.json.mode.storeAdapter, 'memory');
     assert.strictEqual(h.json.mode.stagingWrites, false);
     assert.strictEqual(h.json.dependencies.bridge.state, 'disabled');
-    ok('default memory health slice 06');
+    ok('default memory health slice 07');
 
     const admin = await login(memPort, 'ts3admin', 'ts3-98860');
     const list = await request(memPort, 'GET', '/api/tasks', { token: admin.token });

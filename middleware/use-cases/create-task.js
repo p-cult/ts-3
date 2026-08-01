@@ -6,9 +6,11 @@
  *
  * Order: auth → validate → assignee → norm name → identity guard
  *        → nextTaskId → commitBirth → public DTO (ref)
+ *
+ * When QUEUE_MODE=on and actor is P2: enqueue draft (no mint) instead.
  */
 
-const { canCreate, PROFILE, normalizeProfile } = require('../domain/roles');
+const { canCreate, mustQueueCreates, PROFILE, normalizeProfile } = require('../domain/roles');
 const {
   nextTaskId,
   isValidProjectCode,
@@ -17,7 +19,7 @@ const {
 } = require('../domain/taskid');
 const { guardDuplicate, normName } = require('../domain/identity');
 const { toPublicTask } = require('../domain/tasks');
-const { normalizeKind, learnKind, isRestrictedKind } = require('../domain/kinds');
+const { normalizeKind, learnKind } = require('../domain/kinds');
 const {
   unauthorized,
   forbidden,
@@ -25,8 +27,12 @@ const {
   conflict,
 } = require('../errors');
 
-function createCreateTask({ data }) {
+function createCreateTask({ data, config }) {
   const refSecret = data.refSecret;
+  const queueOn = () => {
+    const m = String((config && config.queueMode) || 'off').toLowerCase();
+    return m === 'on' || m === 'true' || m === '1';
+  };
 
   return {
     async execute(input) {
@@ -36,6 +42,11 @@ function createCreateTask({ data }) {
 
       if (!actor.authenticated) throw unauthorized('sign in to create tasks');
       if (!canCreate(profile)) throw forbidden('your role cannot create tasks');
+
+      if (!input._fromQueue && queueOn() && mustQueueCreates(profile, true)) {
+        const { createEnqueueDraft } = require('./enqueue-draft');
+        return createEnqueueDraft({ data, config }).execute(input);
+      }
 
       const projectCode = String(body.projectCode || '').trim().toUpperCase();
       const name = String(body.name || '').trim();
@@ -73,13 +84,11 @@ function createCreateTask({ data }) {
         );
       }
 
-      // Kind / hierarchy (product) — does NOT change Task ID atom structure
       let kind = 'main';
       const learned = learnKind(depotBefore, { projectCode, name }, { normName });
       if (learned) kind = learned;
 
       let parentTaskId = null;
-      // Client sends parentRef (opaque), never Task ID
       const parentKey = body.parentRef;
       if (parentKey) {
         const parent = data.findByRef(String(parentKey));
@@ -96,7 +105,6 @@ function createCreateTask({ data }) {
         throw badRequest('sub tasks require a parent Main (parentRef)');
       }
 
-      // Mint AFTER guard only — ts-2 atom
       let empSuf;
       try {
         empSuf = employeeSuffix(String(assignee.employeeId));
@@ -130,13 +138,11 @@ function createCreateTask({ data }) {
 
       const row = {
         taskId,
-        projectCode, // denormalized from atom; same value
+        projectCode,
         projectName: project.name,
         name,
         description: String(body.description || ''),
         notes: String(body.notes || ''),
-        // System birth status — Active for every assignee (including P2).
-        // P2 still cannot PATCH status to Active via authorizeTaskPatch.
         status: 'Active',
         priority: 'normal',
         startDate: String(body.startDate || ''),

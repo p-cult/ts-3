@@ -447,9 +447,6 @@ body[data-source="error"] .offline { display: block; }
 .smart-filter {
   margin-bottom: 0.85rem; padding: 0.55rem 0.65rem;
   display: flex; flex-direction: column; gap: 0.35rem;
-  width: 25%;
-  max-width: 25%;
-  box-sizing: border-box;
 }
 .inject-bulk,
 .needs-bulk {

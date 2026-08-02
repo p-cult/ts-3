@@ -86,11 +86,13 @@ Birth used `OUTBOX_AWAIT_BIRTH` (synced on create). Patches write-behind then dr
 ## Open before Phase 6
 
 - [ ] Publish `dist/` to `p-cult/task` — bake on branch **`ts3-cutover-20260802`**, PR https://github.com/p-cult/task/pull/1 (**do not merge until Render sole-writer ready**)
-- [ ] Render dashboard twin of `render.yaml` + secrets (`SESSION_SECRET`, bridge, `CORS_ORIGIN`)
+- [ ] Render dashboard twin — see [RENDER-CUTOVER.md](./RENDER-CUTOVER.md); paste non-secret env now; flip repo + `WRITER_OF_RECORD=ts3` only in freeze window
 - [ ] Private-window login against Pages → Render (after merge or via branch preview if enabled)
 - [x] Full system backup trees + bake copy (`param/_cutover-backup-20260802-200747`) — still need Render deploy ID + Sheet version-history note at freeze
 - [ ] Book maintenance window
 - [ ] Explicit go-ahead for Phase 6
+
+**GitHub (2026-08-02):** ts-3 cutover commit pushed — `9e6061d` on `p-cult/ts-3` `main`.
 
 ---
 

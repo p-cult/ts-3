@@ -271,19 +271,29 @@
     .row { display: flex; gap: .4rem; margin-top: .8rem; flex-wrap: wrap; }
     .filters input, .filters select { width: auto; min-width: 6rem; }
     .smart-filter { /* chrome → skin-map */ margin: 0 0 .75rem; }
-    .sf-chips { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 0; margin-bottom: .35rem; }
+    .sf-row {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+    }
+    .sf-chips {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+      min-height: 0; margin: 0;
+    }
     .sf-chips:empty { display: none; }
     .sf-chip {
-      display: inline-flex; align-items: center; gap: .3rem;
-      font-size: .78rem; font-weight: 650; padding: .2rem .45rem .2rem .55rem;
+      display: inline-flex; align-items: center; gap: .25rem;
+      font-size: .78rem; font-weight: 650; padding: .2rem .35rem .2rem .55rem;
       /* colors → skin-map */
     }
     .sf-chip button {
       border: 0; background: transparent; color: inherit; cursor: pointer;
-      font: inherit; font-size: .9rem; line-height: 1; padding: 0 .1rem; opacity: .75;
+      font: inherit; font-size: .85rem; font-weight: 700; line-height: 1;
+      padding: 0 .15rem; opacity: .7;
     }
     .sf-chip button:hover { opacity: 1; }
-    .sf-input-wrap { position: relative; width: 25%; max-width: 25%; box-sizing: border-box; }
+    .sf-input-wrap {
+      position: relative; flex: 0 0 25%; width: 25%; max-width: 25%;
+      min-width: 9rem; box-sizing: border-box;
+    }
     .sf-input-wrap input { width: 100%; }
     .sf-suggest {
       position: absolute; left: 0; right: 0; top: calc(100% + .2rem); z-index: 8;
@@ -552,10 +562,12 @@
       <p class="muted" id="hint" hidden></p>
 
       <div id="smartFilter" class="smart-filter" hidden>
-        <div class="sf-chips" id="sfChips"></div>
-        <div class="sf-input-wrap">
-          <input id="sfInput" type="search" placeholder="Filter by status, priority, kind, review, project, person…" autocomplete="off" />
-          <div id="sfSuggest" class="sf-suggest" hidden></div>
+        <div class="sf-row">
+          <div class="sf-chips" id="sfChips"></div>
+          <div class="sf-input-wrap">
+            <input id="sfInput" type="search" placeholder="Filter by status, priority, kind, review, project, person…" autocomplete="off" />
+            <div id="sfSuggest" class="sf-suggest" hidden></div>
+          </div>
         </div>
         <p class="sf-cap" id="sfCap" hidden>Max 4 filters (AND).</p>
       </div>
@@ -1226,7 +1238,7 @@
       (state.filterTags || []).forEach((tag, idx) => {
         const el = document.createElement('span');
         el.className = 'sf-chip';
-        el.innerHTML = '<span></span><button type="button" aria-label="Remove filter">×</button>';
+        el.innerHTML = '<span></span><button type="button" aria-label="Remove filter">X</button>';
         el.querySelector('span').textContent = tag.label;
         el.querySelector('button').onclick = () => {
           state.filterTags.splice(idx, 1);

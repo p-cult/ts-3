@@ -132,7 +132,7 @@ else
   step 7 FAIL "Done after good ratings failed ($d2code $d2s)"
 fi
 
-# 8. approved but status≠Done does NOT appear as completed in Done-meaning filter
+# 8. approved but status≠Done does NOT appear as completed in Done-meaning filter (per locked rule)
 # Create fresh approved non-Done
 name8="PFX8-$(date +%s)"
 c8=$(req POST /api/tasks "$token_p2" "{\"projectCode\":\"$PROJECT\",\"name\":\"$name8\",\"link\":\"https://ex.com/nd8\"}")
@@ -150,10 +150,19 @@ in_comp=$(echo "$(get_body "$comp8")" | jq --arg rr "$r8" '.tasks | map(.ref) | 
 act8=$(req GET "/api/tasks?board=active" "$token_p4" "")
 in_act=$(echo "$(get_body "$act8")" | jq --arg rr "$r8" '.tasks | map(.ref) | index($rr) != null')
 
-if [ "$in_comp" = "true" ] && [ "$in_act" = "false" ]; then
-  step 8 PASS "approved (status Draft) appears in completed (review=approved) but NOT in active; no strict status=Done gate for completed list (current API: completed=approved)"
+if [ "$in_comp" = "false" ] && [ "$in_act" = "false" ]; then
+  step 8 PASS "approved non-Done is off completed and off active (correct)"
 else
   step 8 FAIL "unexpected visibility: completed=$in_comp active=$in_act state=$st8"
+fi
+
+# 8b. the Done task from step 7 (cref) appears in board=completed
+comp_done=$(req GET "/api/tasks?board=completed" "$token_p4" "")
+in_comp_done=$(echo "$(get_body "$comp_done")" | jq --arg rr "$cref" '.tasks | map(.ref) | index($rr) != null')
+if [ "$in_comp_done" = "true" ]; then
+  step "8b" PASS "Done task from step 7 appears in board=completed"
+else
+  step "8b" FAIL "Done task missing from completed: $cref"
 fi
 
 # 9. Max-4 enforced on submit

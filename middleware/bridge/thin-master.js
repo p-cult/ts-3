@@ -199,7 +199,10 @@ function createThinMasterApi(deps) {
   }
 
   async function readTab(tab, range) {
-    const payload = { action: 'read', spreadsheetId: masterId, tab };
+    // Omit spreadsheetId for Master tabs. The live thin Apps Script defaults to
+    // its hardcoded MASTER_ID (always allowlisted). Sending a mismatched
+    // Render MASTER_ID env caused production: "sheet not in allowlist".
+    const payload = { action: 'read', tab };
     if (range) payload.range = range;
     const r = await call(payload.action, payload);
     const data = (r && r.data) || r || {};
@@ -244,8 +247,9 @@ function createThinMasterApi(deps) {
   async function getDepot() {
     // Prefer two sequential reads over readMany — large Masters time out / HTML-error
     // when Apps Script batches fat tabs in one execution.
-    const taskRes = await call('read', { spreadsheetId: masterId, tab: 'task' });
-    const mapRes = await call('read', { spreadsheetId: masterId, tab: 'mapping' }).catch((err) => {
+    // Omit spreadsheetId — use Apps Script MASTER_ID (see readTab).
+    const taskRes = await call('read', { tab: 'task' });
+    const mapRes = await call('read', { tab: 'mapping' }).catch((err) => {
       log.warn('mapping tab read failed — depot without userSheet join', {
         err: String(err && err.message),
       });

@@ -44,12 +44,29 @@ function doPost(e) {
     }
     if (action === 'getProjects') return json_({ ok: true, projects: readProjects_() });
     if (action === 'getUsers') return json_({ ok: true, users: readUsers_() });
-    if (action === 'writeVehicle' || action === 'writeDepot' || action === 'writeMapping') {
-      return json_({ ok: false, error: 'writes disabled in stub until Staging write slice' });
+    if (action === 'writeVehicle') {
+      return json_({ ok: true, action: action, data: locked_(function () { return writeVehicle_(body); }) });
+    }
+    if (action === 'writeDepot') {
+      return json_({ ok: true, action: action, data: locked_(function () { return writeDepot_(body); }) });
+    }
+    if (action === 'writeMapping') {
+      return json_({ ok: true, action: action, data: locked_(function () { return writeMapping_(body); }) });
     }
     return json_({ ok: false, error: 'unknown action: ' + action });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message ? err.message : err) });
+  }
+}
+
+/** Serialize sheet mutations — same spirit as ts-2 bridge lock (do not edit ts-2). */
+function locked_(fn) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('busy: another write is in progress');
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -239,4 +256,127 @@ function readUsers_() {
     });
   });
   return out;
+}
+
+/** First 1-based row ≥ DATA_ROW whose column A is blank; else append. */
+function firstEmptyRow_(sh) {
+  var last = Math.max(sh.getLastRow(), DATA_ROW - 1);
+  if (last >= DATA_ROW) {
+    var values = sh.getRange(DATA_ROW, 1, last, 1).getDisplayValues();
+    for (var i = 0; i < values.length; i++) {
+      if (!String(values[i][0] == null ? '' : values[i][0]).trim()) {
+        return DATA_ROW + i;
+      }
+    }
+  }
+  return Math.max(sh.getLastRow() + 1, DATA_ROW);
+}
+
+/** Existing Task Id row, or 0. */
+function findRowByTaskId_(sh, taskId) {
+  var want = String(taskId || '').trim();
+  if (!want) return 0;
+  var last = Math.max(sh.getLastRow(), DATA_ROW - 1);
+  if (last < DATA_ROW) return 0;
+  var values = sh.getRange(DATA_ROW, 1, last, 1).getDisplayValues();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0] || '').trim() === want) return DATA_ROW + i;
+  }
+  return 0;
+}
+
+function resolveTaskWriteRow_(sh, taskId) {
+  return findRowByTaskId_(sh, taskId) || firstEmptyRow_(sh);
+}
+
+function taskRowToCells_(row) {
+  var r = row || {};
+  var kind = String(r.kind || 'main').toLowerCase();
+  var classifier = '';
+  if (kind === 'pseudo') classifier = 'pseudo';
+  else if (kind === 'routine') classifier = 'routine';
+  else if (kind === 'not_a_task') classifier = 'not_a_task';
+  else if (r.classifier) classifier = String(r.classifier);
+
+  var pri = String(r.priority || 'normal').toLowerCase();
+  var priorityOut = pri === 'high' ? 'High' : pri === 'low' ? 'Low' : pri === 'normal' ? 'Medium' : String(r.priority || '');
+
+  return [
+    String(r.taskId || ''),
+    String(r.projectName || r.project || r.projectCode || ''),
+    String(r.name || ''),
+    String(r.description || ''),
+    String(r.notes || ''),
+    priorityOut,
+    String(r.link || ''),
+    String(r.startDate || ''),
+    String(r.endDate || ''),
+    String(r.versions || ''),
+    String(r.status || 'Active'),
+    String(r.assigneeDisplayName || r.assigneeUsername || r.assignedTo || ''),
+    String(r.journal || ''),
+    classifier,
+  ];
+}
+
+function writeCells_(sh, rowNumber, cells) {
+  sh.getRange(rowNumber, 1, rowNumber, cells.length).setValues([cells]);
+  SpreadsheetApp.flush();
+}
+
+/** Body: { row: { taskId, userSheet, … } } → user sheet task tab */
+function writeVehicle_(body) {
+  var row = (body && body.row) || {};
+  var userSheet = String(row.userSheet || body.userSheet || '').trim();
+  if (!row.taskId) throw new Error('writeVehicle needs row.taskId');
+  if (!userSheet) throw new Error('writeVehicle needs row.userSheet');
+  var meta = findUserSheetMeta_(userSheet);
+  if (!meta || !meta.sheetId) throw new Error('unknown userSheet / missing sheetId: ' + userSheet);
+  var ss = SpreadsheetApp.openById(meta.sheetId);
+  var sh = sheet_(ss, 'task');
+  var n = resolveTaskWriteRow_(sh, row.taskId);
+  writeCells_(sh, n, taskRowToCells_(row));
+  return { userSheet: meta.userSheet, userRow: n, sheetId: meta.sheetId };
+}
+
+/** Body: { row } → master task tab */
+function writeDepot_(body) {
+  var row = (body && body.row) || {};
+  if (!row.taskId) throw new Error('writeDepot needs row.taskId');
+  var ss = master_();
+  var sh = sheet_(ss, 'task');
+  var n = resolveTaskWriteRow_(sh, row.taskId);
+  writeCells_(sh, n, taskRowToCells_(row));
+  return { masterRow: n };
+}
+
+/**
+ * Body: { taskId, userSheet, masterRow, userRow }
+ * Writes mapping A–D on first empty / matching Task Id row.
+ */
+function writeMapping_(body) {
+  var taskId = String((body && body.taskId) || '').trim();
+  var userSheet = String((body && body.userSheet) || '').trim();
+  var masterRow = Number(body && body.masterRow) || 0;
+  var userRow = Number(body && body.userRow) || 0;
+  if (!taskId) throw new Error('writeMapping needs taskId');
+  if (!userSheet) throw new Error('writeMapping needs userSheet');
+  if (!masterRow || !userRow) throw new Error('writeMapping needs masterRow and userRow');
+
+  var ss = master_();
+  var sh = sheet_(ss, 'mapping');
+  var last = Math.max(sh.getLastRow(), DATA_ROW - 1);
+  var target = 0;
+  if (last >= DATA_ROW) {
+    var ids = sh.getRange(DATA_ROW, 1, last, 1).getDisplayValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0] || '').trim() === taskId) {
+        target = DATA_ROW + i;
+        break;
+      }
+    }
+  }
+  if (!target) target = firstEmptyRow_(sh);
+  writeCells_(sh, target, [taskId, String(masterRow), userSheet, String(userRow)]);
+  return { mappingRow: target, taskId: taskId, masterRow: masterRow, userRow: userRow, userSheet: userSheet };
 }

@@ -2,7 +2,7 @@
 
 **Purpose:** Rebuild Param’s task system as a **clearly better** ts-3: cleaner, more efficient, more robust, more agile, more versatile — **without breaking the core architecture**.
 
-**Status:** Foundation + Slice 01–13 built (`npm test` green). Staging track + **live Sheets read** path; cutover via `./go-live.sh`.  
+**Status:** Foundation + Slice 01–14 built (`npm test` green). Staging track + live Sheets read; **supervised write** unlock (defaults still off); cutover via `./go-live.sh`.  
 **ts-2:** Live production — **never modify from the ts-3 track** (non-negotiable).  
 **ts-3:** Staging rebuild until one-command go-live; then production on Pages + Render.  
 **Data:** **Same live Master + User Sheets** as ts-2. All processing in **ts-3 middleware** when traffic hits ts-3.
@@ -415,9 +415,9 @@ Users should only notice the system got better — **no data reload story**.
 
 ## 12. Immediate next step
 
-**Slices 01–13 done** (control room through live Sheets **read**). Next cutover priorities:
+**Slices 01–14 done** (through supervised live **write** unlock). Next cutover priorities:
 
-1. Controlled live **write** + bridge script lock (one supervised birth)  
+1. Deploy bridge + one supervised birth against real Master (then turn writes off again)  
 2. Board freshness (poll/listen) + sync indicator  
 3. Priority clock / queue UI / intake doors as needed  
 4. Pages + Render + `./go-live.sh`  

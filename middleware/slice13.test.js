@@ -314,11 +314,11 @@ async function main() {
   const port = server.address().port;
   try {
     const health = await request(port, 'GET', '/api/health');
-    assert.strictEqual(health.json.slice, '13');
+    assert.strictEqual(health.json.slice, '14');
     assert.strictEqual(health.json.mode.storeAdapter, 'sheets');
     assert.strictEqual(health.json.mode.stagingWrites, false);
     assert.strictEqual(health.json.mode.liveBridge, true);
-    ok('health slice 13 + liveBridge + stagingWrites false');
+    ok('health slice 14 + liveBridge + stagingWrites false');
 
     const admin = await login(port, 'ts3admin', 'ts3-98860');
     const tasks = await request(port, 'GET', '/api/tasks', { token: admin.token });

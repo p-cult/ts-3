@@ -27,7 +27,7 @@ See [SLICE-13.md](../SLICE-13.md).
 ## Staging
 
 - **Reads:** live when bridge configured (Slice 13).
-- **Writes:** refused until `STAGING_WRITES=true` and bridge write helpers are unlocked.
+- **Writes:** unlocked in Slice 14 (`writeVehicle` / `writeDepot` / `writeMapping` under Script Lock). Still requires middleware gates (`STAGING_WRITES=true`, `WRITER_OF_RECORD=ts3`). See [SLICE-14.md](../SLICE-14.md).
 
 ## Local / CI
 

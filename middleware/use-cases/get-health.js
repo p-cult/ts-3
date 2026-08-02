@@ -106,7 +106,7 @@ function createGetHealth(deps) {
         app: config.appName,
         version: config.appVersion,
         foundation: true,
-        slice: '13',
+        slice: '14',
         time: new Date().toISOString(),
         startedAt: rt.startedAt,
         mode: {

@@ -32,7 +32,7 @@ function createBulkTasks({ data }) {
             const kind = normalizeKind(body.kind);
             const patch = { kind, updatedAt: new Date().toISOString() };
             if (kind !== 'sub') patch.parentTaskId = null;
-            data.updateByTaskId(row.taskId, patch);
+            await Promise.resolve(data.updateByTaskId(row.taskId, patch));
             results.push({ id, ok: true, action: 'set_kind', kind });
           } else if (action === 'set_status') {
             const newStatus = String(body.status || row.status);
@@ -46,10 +46,12 @@ function createBulkTasks({ data }) {
                 continue;
               }
             }
-            data.updateByTaskId(row.taskId, {
-              status: newStatus,
-              updatedAt: new Date().toISOString(),
-            });
+            await Promise.resolve(
+              data.updateByTaskId(row.taskId, {
+                status: newStatus,
+                updatedAt: new Date().toISOString(),
+              })
+            );
             results.push({ id, ok: true, action: 'set_status' });
           } else {
             results.push({ id, ok: false, error: 'unknown action' });

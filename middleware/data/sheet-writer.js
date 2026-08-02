@@ -33,7 +33,7 @@ function createSheetWriter(store) {
      */
     commitBirth(row) {
       refuseOrBadRequest(row, 'commitBirth');
-      return store.commitBirth(pickVisibleFields(row));
+      return Promise.resolve(store.commitBirth(pickVisibleFields(row)));
     },
 
     /**
@@ -43,15 +43,15 @@ function createSheetWriter(store) {
      */
     updateByTaskId(taskId, patch) {
       refuseOrBadRequest(patch, 'updateByTaskId');
-      return store.updateByTaskId(taskId, pickVisibleFields(patch));
+      return Promise.resolve(store.updateByTaskId(taskId, pickVisibleFields(patch)));
     },
 
     updateByRef(ref, patch) {
       refuseOrBadRequest(patch, 'updateByRef');
       if (typeof store.updateByRef === 'function') {
-        return store.updateByRef(ref, pickVisibleFields(patch));
+        return Promise.resolve(store.updateByRef(ref, pickVisibleFields(patch)));
       }
-      return null;
+      return Promise.resolve(null);
     },
   };
 }

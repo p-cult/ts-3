@@ -145,7 +145,7 @@ function createUpdateTask({ data }) {
 
       patch.updatedAt = new Date().toISOString();
 
-      const updated = data.updateByTaskId(row.taskId, patch);
+      const updated = await Promise.resolve(data.updateByTaskId(row.taskId, patch));
       const nameMap = new Map(
         data.listUsers().map((u) => [u.username, u.displayName || u.username])
       );

@@ -1,0 +1,14 @@
+---
+description: Always show latest ts-3 UI in the Cursor in-app browser during development
+alwaysApply: true
+---
+
+# Show latest dev in the in-app browser
+
+When developing ts-3 in Cursor, **always** keep the product visible in the Cursor Simple Browser / IDE browser after meaningful UI or end-to-end work:
+
+1. Ensure `./run.sh` (or the existing server on `http://127.0.0.1:4303`) is up.
+2. Open or refresh `http://127.0.0.1:4303/` in the in-app browser (cursor-ide-browser MCP).
+3. Prefer a hard reload when `frontend/index.html` or static assets changed so the user sees the latest build, not a cached tab.
+4. After login-gated features, use staging credentials if needed (`ts3admin` / `ts3-98860` or `ts3usr1` / `ts3-98860`) so the board shows the feature under test.
+5. Do this as part of finishing a UI-facing change — not only when the user asks to “open the browser.”

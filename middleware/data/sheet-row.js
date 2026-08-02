@@ -191,10 +191,44 @@ function normalizeSheetUserRow(input) {
   };
 }
 
+/**
+ * Middleware task row → A–N cell array for bridge writes.
+ */
+function taskRowToCells(row) {
+  const r = row || {};
+  const kind = String(r.kind || 'main').toLowerCase();
+  let classifier = '';
+  if (kind === 'pseudo') classifier = 'pseudo';
+  else if (kind === 'routine') classifier = 'routine';
+  else if (kind === 'not_a_task') classifier = 'not_a_task';
+
+  const pri = String(r.priority || 'normal').toLowerCase();
+  const priorityOut =
+    pri === 'high' ? 'High' : pri === 'low' ? 'Low' : pri === 'normal' ? 'Medium' : String(r.priority || '');
+
+  return [
+    String(r.taskId || ''),
+    String(r.projectName || r.project || r.projectCode || ''),
+    String(r.name || ''),
+    String(r.description || ''),
+    String(r.notes || ''),
+    priorityOut,
+    String(r.link || ''),
+    String(r.startDate || ''),
+    String(r.endDate || ''),
+    String(r.versions || ''),
+    String(r.status || 'Active'),
+    String(r.assigneeDisplayName || r.assigneeUsername || r.assignedTo || ''),
+    String(r.journal || ''),
+    classifier,
+  ];
+}
+
 module.exports = {
   normalizeSheetTaskRow,
   normalizeSheetProjectRow,
   normalizeSheetUserRow,
   normalizeStatus,
   normalizePriority,
+  taskRowToCells,
 };

@@ -80,12 +80,14 @@ function createReviewTask({ data }) {
         iteration: Number(row.reviewIteration) || 0,
       });
 
-      const updated = data.updateByRef(id, {
-        link: nextLink,
-        linkVersion,
-        reviewState: 'under_review',
-        updatedAt: at,
-      });
+      const updated = await Promise.resolve(
+        data.updateByRef(id, {
+          link: nextLink,
+          linkVersion,
+          reviewState: 'under_review',
+          updatedAt: at,
+        })
+      );
       return {
         ok: true,
         reviewState: updated.reviewState,
@@ -143,11 +145,13 @@ function createReviewTask({ data }) {
         action: 'rework',
         iteration,
       });
-      const updated = data.updateByRef(id, {
-        reviewState: 'rework',
-        reviewIteration: iteration,
-        updatedAt: at,
-      });
+      const updated = await Promise.resolve(
+        data.updateByRef(id, {
+          reviewState: 'rework',
+          reviewIteration: iteration,
+          updatedAt: at,
+        })
+      );
       return {
         ok: true,
         reviewState: updated.reviewState,
@@ -174,10 +178,12 @@ function createReviewTask({ data }) {
         action: 'approve',
         iteration: Number(row.reviewIteration) || 0,
       });
-      const updated = data.updateByRef(id, {
-        reviewState: 'approved',
-        updatedAt: at,
-      });
+      const updated = await Promise.resolve(
+        data.updateByRef(id, {
+          reviewState: 'approved',
+          updatedAt: at,
+        })
+      );
       return {
         ok: true,
         reviewState: updated.reviewState,

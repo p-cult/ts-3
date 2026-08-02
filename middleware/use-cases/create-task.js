@@ -159,7 +159,7 @@ function createCreateTask({ data, config }) {
         updatedAt: now,
       };
 
-      const saved = data.commitBirth(row);
+      const saved = await Promise.resolve(data.commitBirth(row));
 
       const nameMap = new Map(
         data.listUsers().map((u) => [u.username, u.displayName || u.username])

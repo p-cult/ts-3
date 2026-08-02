@@ -215,25 +215,51 @@ function createSheetsData(opts = {}) {
     }
   }
 
-  function pushLiveBirth(row) {
-    if (!useLiveBridge) return;
-    // Fire-and-forget sync shape — birth hallway stays mint→vehicle→depot→mapping
-    return Promise.resolve()
-      .then(() => bridge.writeVehicle({ row }))
-      .then(() => bridge.writeDepot({ row }))
-      .then(() =>
-        bridge.writeMapping({
-          taskId: row.taskId,
-          userSheet: row.userSheet,
-          assigneeUsername: row.assigneeUsername,
-        })
-      )
-      .catch((err) => {
-        log.warn('live bridge birth write failed', {
-          err: String(err && err.message),
-        });
-        throw err;
+  /**
+   * Live birth: vehicle → depot → mapping (law order).
+   * Bridge returns row coords; mapping write needs masterRow + userRow.
+   */
+  async function pushLiveBirth(row) {
+    if (!useLiveBridge) return { ok: true, skipped: true };
+    try {
+      const vehicleRes = await bridge.writeVehicle({ row });
+      const depotRes = await bridge.writeDepot({ row });
+      const vData = (vehicleRes && vehicleRes.data) || vehicleRes || {};
+      const dData = (depotRes && depotRes.data) || depotRes || {};
+      const userRow = Number(vData.userRow) || 0;
+      const masterRow = Number(dData.masterRow) || 0;
+      const mappingRes = await bridge.writeMapping({
+        taskId: row.taskId,
+        userSheet: row.userSheet,
+        assigneeUsername: row.assigneeUsername,
+        masterRow,
+        userRow,
       });
+      log.info('live bridge birth ok', {
+        taskId: row.taskId,
+        userSheet: row.userSheet,
+        masterRow,
+        userRow,
+      });
+      return {
+        ok: true,
+        masterRow,
+        userRow,
+        mapping: (mappingRes && mappingRes.data) || mappingRes,
+      };
+    } catch (err) {
+      log.warn('live bridge birth write failed', {
+        err: String(err && err.message),
+      });
+      throw err;
+    }
+  }
+
+  async function pushLivePatch(row) {
+    if (!useLiveBridge || !row) return { ok: true, skipped: true };
+    await bridge.writeDepot({ row });
+    await bridge.writeVehicle({ row });
+    return { ok: true };
   }
 
   function gateWrite(op, fn) {
@@ -297,36 +323,49 @@ function createSheetsData(opts = {}) {
     listProjects: () => inner.listProjects(),
     findProject: (c) => inner.findProject(c),
 
+    /**
+     * Mirror birth, then live push when bridge on.
+     * Live failure rolls back the mirror so API cannot claim success silently.
+     * @returns {object|Promise<object>}
+     */
     commitBirth: (row) =>
       gateWrite('commitBirth', () => {
         const saved = inner.commitBirth(row);
-        if (useLiveBridge) {
-          // Sync path — errors surface to caller when bridge rejects
-          // (tests use fixture-only; live smoke uses WRITER_OF_RECORD=ts3)
-          const p = pushLiveBirth(saved);
-          if (p && typeof p.then === 'function') {
-            // Keep sync API; attach for observability only when not awaited by use-case
-            p.catch(() => {});
-          }
-        }
-        return saved;
+        if (!useLiveBridge) return saved;
+        return pushLiveBirth(saved)
+          .then(() => saved)
+          .catch((err) => {
+            try {
+              inner.deleteByTaskId(saved.taskId);
+            } catch (_) {
+              /* keep original bridge error */
+            }
+            throw err;
+          });
       }),
     updateByTaskId: (id, p) =>
       gateWrite('updateByTaskId', () => {
         const saved = inner.updateByTaskId(id, p);
-        if (useLiveBridge && saved) {
-          Promise.resolve()
-            .then(() => bridge.writeDepot({ row: saved }))
-            .then(() => bridge.writeVehicle({ row: saved }))
-            .catch((err) =>
-              log.warn('live bridge patch failed', {
-                err: String(err && err.message),
-              })
-            );
-        }
-        return saved;
+        if (!useLiveBridge || !saved) return saved;
+        return pushLivePatch(saved)
+          .then(() => saved)
+          .catch((err) => {
+            log.warn('live bridge patch failed', {
+              err: String(err && err.message),
+            });
+            throw err;
+          });
       }),
-    updateByRef: (r, p) => gateWrite('updateByRef', () => inner.updateByRef(r, p)),
+    updateByRef: (r, p) =>
+      gateWrite('updateByRef', () => {
+        const saved = inner.updateByRef(r, p);
+        if (!useLiveBridge || !saved) return saved;
+        return pushLivePatch(saved)
+          .then(() => saved)
+          .catch((err) => {
+            throw err;
+          });
+      }),
     reassignByTaskId: (id, a, u) =>
       gateWrite('reassignByTaskId', () => inner.reassignByTaskId(id, a, u)),
     deleteByTaskId: (id) => gateWrite('deleteByTaskId', () => inner.deleteByTaskId(id)),

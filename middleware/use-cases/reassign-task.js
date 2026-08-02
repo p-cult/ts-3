@@ -27,9 +27,14 @@ function createReassignTask({ data }) {
       if (!target) throw badRequest('assignee user not found');
 
       // ONLY assignee mapping. Freeze everything else including Task ID atom, ref, subTag etc.
-      const updated = data.reassignByTaskId ? 
-        data.reassignByTaskId(row.taskId, target.username, target.userSheet) :
-        data.updateByTaskId(row.taskId, { assigneeUsername: target.username, userSheet: target.userSheet });
+      const updated = await Promise.resolve(
+        data.reassignByTaskId
+          ? data.reassignByTaskId(row.taskId, target.username, target.userSheet)
+          : data.updateByTaskId(row.taskId, {
+              assigneeUsername: target.username,
+              userSheet: target.userSheet,
+            })
+      );
 
       if (!updated) throw notFound('task not found');
 

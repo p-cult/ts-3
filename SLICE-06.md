@@ -10,7 +10,7 @@
 2. `APP_MODE=staging`
 3. `WRITER_OF_RECORD=ts3` (otherwise refuse — ts-2 remains writer-of-record)
 
-Optional live path: `USE_LIVE_BRIDGE=true` + bridge URL/secret → `writeVehicle` / `writeDepot` / `writeMapping` after mirror birth.
+Optional live path: `USE_LIVE_BRIDGE=true` + bridge URL/secret → live birth (unlocked in **[SLICE-14.md](SLICE-14.md)**).
 
 ## Health + UI
 

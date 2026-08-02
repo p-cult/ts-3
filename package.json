@@ -6,7 +6,7 @@
   "main": "middleware/server.js",
   "scripts": {
     "start": "node middleware/server.js",
-    "test": "node middleware/foundation.test.js && node middleware/slice01.test.js && node middleware/slice02.test.js && node middleware/slice03.test.js && node middleware/slice04.test.js && node middleware/slice05.test.js && node middleware/slice06.test.js && node middleware/slice07.test.js && node middleware/slice08.test.js && node middleware/slice09.test.js && node middleware/slice10.test.js && node middleware/slice11.test.js && node middleware/slice12.test.js && node middleware/slice13.test.js",
+    "test": "node middleware/foundation.test.js && node middleware/slice01.test.js && node middleware/slice02.test.js && node middleware/slice03.test.js && node middleware/slice04.test.js && node middleware/slice05.test.js && node middleware/slice06.test.js && node middleware/slice07.test.js && node middleware/slice08.test.js && node middleware/slice09.test.js && node middleware/slice10.test.js && node middleware/slice11.test.js && node middleware/slice12.test.js && node middleware/slice13.test.js && node middleware/slice14.test.js",
     "foundation-test": "node middleware/foundation.test.js",
     "slice01-test": "node middleware/slice01.test.js",
     "slice02-test": "node middleware/slice02.test.js",

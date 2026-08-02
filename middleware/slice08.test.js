@@ -123,6 +123,56 @@ async function main() {
     });
     assert.strictEqual(routine.status, 201);
     const rref = routine.json.task.ref;
+    assert.strictEqual(routine.json.task.kind, 'routine');
+    assert.strictEqual(routine.json.task.kindIcon, 'R');
+
+    const asP2 = await request(port, 'GET', '/api/tasks/' + encodeURIComponent(rref), {
+      token: usr.token,
+    });
+    assert.strictEqual(asP2.status, 200);
+    assert.strictEqual(asP2.json.task.kind, 'routine');
+    assert.ok(!asP2.json.task.kindIcon, 'P2 must not see kindIcon');
+    const p2Done = await request(port, 'PATCH', '/api/tasks/' + encodeURIComponent(rref), {
+      token: usr.token,
+      body: { status: 'Done' },
+    });
+    assert.strictEqual(p2Done.status, 200, JSON.stringify(p2Done.json));
+    assert.strictEqual(p2Done.json.task.status, 'Done');
+    assert.strictEqual(p2Done.json.task.kind, 'routine');
+    ok('P2 sees kind; routine Done without links');
+
+    // Task-completion Approve: notes mark; status stays Done (ts-3)
+    const { TASK_APPROVED_MARK, serializeStatus, hasTaskApprovedMark } = require('./data/sheet-row');
+    const mainAppr = await request(port, 'POST', '/api/tasks', {
+      token: admin.token,
+      body: {
+        projectCode: 'PRJ001',
+        name: 'Approve Persist ' + Date.now(),
+        link: 'https://ex.com/appr',
+        assigneeUsername: 'ts3usr1',
+      },
+    });
+    const aref = mainAppr.json.task.ref;
+    await request(port, 'POST', '/api/tasks/' + encodeURIComponent(aref) + '/review/submit', {
+      token: usr.token,
+      body: { ratings: [{ url: 'https://ex.com/appr', stars: 3 }] },
+    });
+    await request(port, 'PATCH', '/api/tasks/' + encodeURIComponent(aref), {
+      token: usr.token,
+      body: { status: 'Done' },
+    });
+    const fb = await request(port, 'POST', '/api/tasks/' + encodeURIComponent(aref) + '/review/feedback', {
+      token: mod.token,
+      body: { notes: TASK_APPROVED_MARK + ' Task completion approved.' },
+    });
+    assert.strictEqual(fb.status, 200, JSON.stringify(fb.json));
+    const got = await request(port, 'GET', '/api/tasks/' + encodeURIComponent(aref), {
+      token: admin.token,
+    });
+    assert.ok(hasTaskApprovedMark(got.json.task.notes), 'approve mark on notes');
+    assert.strictEqual(got.json.task.status, 'Done');
+    assert.strictEqual(serializeStatus(got.json.task.status), 'Done');
+    ok('Approve feedback persists notes mark; status stays Done (ts-3)');
 
     const active = await request(port, 'GET', '/api/tasks?board=active', {
       token: usr.token,

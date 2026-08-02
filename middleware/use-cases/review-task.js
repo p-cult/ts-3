@@ -10,6 +10,10 @@ const {
 const { isReviewable } = require('../domain/kinds');
 const { canViewTask } = require('../domain/tasks');
 const {
+  ensureTaskApprovedMark,
+  hasTaskApprovedMark,
+} = require('../data/sheet-row');
+const {
   unauthorized,
   forbidden,
   notFound,
@@ -116,6 +120,17 @@ function createReviewTask({ data }) {
         action: 'feedback',
         iteration: Number(row.reviewIteration) || 0,
       });
+      // Task-completion Approve: persist ⟦TASK_APPROVED⟧ on notes AND write
+      // sheet column K as Approved (status stays Done in the app).
+      if (hasTaskApprovedMark(text)) {
+        await Promise.resolve(
+          data.updateByRef(id, {
+            notes: ensureTaskApprovedMark(row.notes),
+            status: 'Done',
+            updatedAt: at,
+          })
+        );
+      }
       return {
         ok: true,
         reviewState: normalizeReviewState(row.reviewState),

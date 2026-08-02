@@ -90,6 +90,7 @@ async function main() {
     assert.strictEqual(hinted.reviewHint, 'under_review');
     const approved = applyStatusHints('Culture showreel short version changes (done; approved)');
     assert.strictEqual(approved.status, 'Done');
+    assert.ok(approved.completionApproved);
     assert.ok(/culture showreel/i.test(approved.name));
     const json = parseInjectText(
       JSON.stringify([{ name: 'Poster', project: 'Sample Project', assignee: 'anya' }])

@@ -84,9 +84,9 @@ async function main() {
 
   try {
     const s = createSheetsData({
-      stagingWrites: true,
+      stagingWrites: false,
       appMode: 'production',
-      writerOfRecord: 'ts3',
+      writerOfRecord: 'ts2',
       fixturePath: fixture,
     });
     assert.throws(
@@ -98,11 +98,36 @@ async function main() {
           userSheet: 'u',
           assigneeUsername: 'ts3admin',
         }),
-      (e) => /APP_MODE/i.test(e.message)
+      (e) => /WRITER_OF_RECORD/i.test(e.message)
     );
-    ok('refuses write when APP_MODE!=staging');
+    ok('production still refuses when WRITER_OF_RECORD=ts2');
   } catch (e) {
-    fail('appMode gate', e);
+    fail('production ts2 gate', e);
+  }
+
+  try {
+    const s = createSheetsData({
+      stagingWrites: false,
+      appMode: 'production',
+      writerOfRecord: 'ts3',
+      fixturePath: fixture,
+    });
+    const row = s.commitBirth({
+      taskId: 'PRJ0029001C01',
+      projectCode: 'PRJ002',
+      projectName: 'Other Project',
+      name: 'Production Sole Write',
+      status: 'Active',
+      assigneeUsername: 'ts3admin',
+      userSheet: 'user-ts3admin',
+      kind: 'main',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    assert.strictEqual(row.name, 'Production Sole Write');
+    ok('production + WRITER_OF_RECORD=ts3 allows sole-writer birth');
+  } catch (e) {
+    fail('production sole write', e);
   }
 
   try {

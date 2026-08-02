@@ -117,8 +117,40 @@ async function main() {
     assert.strictEqual(cells.length, 14);
     assert.strictEqual(cells[0], 'PRJ0011001A01');
     assert.strictEqual(cells[5], 'Medium');
-    assert.strictEqual(cells[10], 'Active');
-    ok('taskRowToCells produces A–N');
+    assert.strictEqual(cells[10], 'Assigned');
+    const birthCells = taskRowToCells(
+      {
+        taskId: 'PRJ0011001A01',
+        projectName: 'Sample Project',
+        name: 'Poster',
+        priority: 'normal',
+        status: 'Active',
+        assigneeUsername: 'anya',
+        kind: 'main',
+      },
+      { birth: true }
+    );
+    assert.strictEqual(birthCells[10], 'Assigned');
+    const doneCells = taskRowToCells({
+      taskId: 'PRJ0011001A01',
+      name: 'Poster',
+      status: 'Done',
+      notes: '⟦TASK_APPROVED⟧',
+    });
+    assert.strictEqual(doneCells[10], 'Approved');
+    assert.strictEqual(
+      taskRowToCells({ taskId: 'PRJ0011001A01', name: 'X', status: 'Done' })[10],
+      'Completed'
+    );
+    assert.strictEqual(
+      taskRowToCells({ taskId: 'PRJ0011001A01', name: 'X', status: 'Pause' })[10],
+      'Pause'
+    );
+    assert.strictEqual(
+      taskRowToCells({ taskId: 'PRJ0011001A01', name: 'X', status: 'Resume' })[10],
+      'Assigned'
+    );
+    ok('taskRowToCells A–N uses Master sheet K vocab');
   } catch (e) {
     fail('cells unit', e);
   }

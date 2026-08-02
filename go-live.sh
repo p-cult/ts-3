@@ -55,16 +55,20 @@ CHECKLIST
 # --- Production flip (document only — operator runs on Render/Pages) ---
 echo "[4/4] Production flip (operator steps — not auto-applied)"
 cat <<'FLIP'
-  1. Pause ts-2 public writers (retire ts-2 app role; keep Sheets)
+  1. STOP ts-2 middleware/UI (so only ts-3 can touch Sheets)
   2. Deploy middleware to Render with:
        APP_MODE=production
        WRITER_OF_RECORD=ts3
+       USE_LIVE_BRIDGE=true
+       STORE_ADAPTER=sheets
+       BRIDGE_PROTOCOL=thin
        NODE_ENV=production
        CORS_ORIGIN=<Pages origin>
+     Local rehearsal: ./run-sole.sh
   3. Bake/publish frontend to GitHub Pages (API → Render URL)
   4. Point public URL at ts-3 Pages UI
   5. Verify: P1 board · P2 create · P3 review · P4 admin · one birth on live sheets
-  6. Confirm /api/health reports appMode=production
+  6. Confirm /api/health banner: "ts-3 sole sheet reader/writer"
 FLIP
 
 echo ""

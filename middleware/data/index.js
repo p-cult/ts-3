@@ -7,6 +7,8 @@ const { createSideStores } = require('./side-store');
 const { createSheetWriter } = require('./sheet-writer');
 const { createHistoryWriter } = require('./history-writer');
 const { createQueueStore } = require('./queue-store');
+const { createOutboxStore } = require('./outbox-store');
+const { createSheetsWorker } = require('../sync/sheets-worker');
 const { createBridgeClient } = require('../bridge/client');
 const { withRetry, isRetryable } = require('./retry');
 const { notImplemented } = require('../errors');
@@ -15,15 +17,42 @@ const { joinVisibleAndHistory } = require('../domain/field-class');
 function createDataAccess(deps) {
   const config = deps.config;
   const log = deps.log;
-  const refSecret = config.sessionSecret || process.env.SESSION_SECRET || 'dev-ref-secret';
+  const prodMode =
+    !!config.isProd || String(config.appMode || '').toLowerCase() === 'production';
+  let refSecret = config.sessionSecret || process.env.SESSION_SECRET || '';
+  if (!refSecret) {
+    if (prodMode) {
+      throw new Error('SESSION_SECRET required when APP_MODE/NODE_ENV is production');
+    }
+    refSecret = 'dev-ref-secret';
+  } else if (prodMode && refSecret === 'dev-ref-secret') {
+    throw new Error('dev-ref-secret is forbidden in production');
+  }
   const adapter = String(config.storeAdapter || 'memory').toLowerCase();
 
   const bridge = createBridgeClient({
     bridgeUrl: config.bridgeUrl,
     bridgeSecret: config.bridgeSecret,
+    masterSheetId: config.masterSheetId,
+    bridgeProtocol: config.bridgeProtocol,
     fetchImpl: config.fetchImpl,
     log,
   });
+
+  const sideDir = path.join(
+    config.dataDir || path.join(__dirname, '..', '..', 'data'),
+    'side'
+  );
+  const outboxDir = path.join(
+    config.dataDir || path.join(__dirname, '..', '..', 'data'),
+    'outbox'
+  );
+  const side = createSideStores({ dataDir: sideDir });
+  const queue = createQueueStore({ dataDir: sideDir });
+  const outbox =
+    adapter === 'sheets' && !!config.useLiveBridge
+      ? createOutboxStore({ dataDir: outboxDir, log })
+      : null;
 
   let inner;
   if (adapter === 'sheets') {
@@ -33,7 +62,9 @@ function createDataAccess(deps) {
       appMode: config.appMode || 'staging',
       writerOfRecord: config.writerOfRecord || 'ts2',
       useLiveBridge: !!config.useLiveBridge,
+      outboxAwaitBirth: !!config.outboxAwaitBirth,
       bridge,
+      outbox,
       fixturePath: config.sheetsFixturePath || undefined,
       log,
     });
@@ -41,14 +72,18 @@ function createDataAccess(deps) {
     inner = createMemoryData({ refSecret });
   }
 
-  const sideDir = path.join(
-    config.dataDir || path.join(__dirname, '..', '..', 'data'),
-    'side'
-  );
-  const side = createSideStores({ dataDir: sideDir });
-  const queue = createQueueStore({ dataDir: sideDir });
   const sheets = createSheetWriter(inner);
   const history = createHistoryWriter(side);
+
+  const sheetsWorker =
+    outbox && inner && typeof inner.pushLiveBirth === 'function'
+      ? createSheetsWorker({
+          outbox,
+          sheets: inner,
+          log,
+          intervalMs: Number(config.outboxPollMs) || 1500,
+        })
+      : null;
 
   function deleteByTaskId(id) {
     const row = inner.findByTaskId(id);
@@ -79,7 +114,11 @@ function createDataAccess(deps) {
     isRetryable,
 
     async ping() {
-      return inner.ping();
+      const base = await inner.ping();
+      if (outbox) {
+        base.outbox = outbox.stats();
+      }
+      return base;
     },
 
     async bridgeStatus() {
@@ -141,8 +180,22 @@ function createDataAccess(deps) {
         ? () => inner.refreshFromBridge()
         : async () => ({ ok: false, reason: 'not sheets' }),
 
+    outboxStats: () => (outbox ? outbox.stats() : null),
+    syncStatusForTask: (taskId) =>
+      outbox && typeof outbox.statusForTask === 'function'
+        ? outbox.statusForTask(taskId)
+        : 'synced',
+    startSheetsWorker: () => {
+      if (sheetsWorker) sheetsWorker.start();
+    },
+    stopSheetsWorker: () => {
+      if (sheetsWorker) sheetsWorker.stop();
+    },
+
     _side: side,
     _queue: queue,
+    _outbox: outbox,
+    _sheetsWorker: sheetsWorker,
     _sheetWriter: sheets,
     _historyWriter: history,
     _bridge: bridge,

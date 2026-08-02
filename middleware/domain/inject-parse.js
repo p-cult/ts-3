@@ -76,7 +76,7 @@ const PAREN_STATUS = [
     status: 'Done',
     reviewHint: 'under_review',
   },
-  { re: /\(\s*done\s*;\s*approved\s*\)/i, status: 'Done', reviewHint: 'none' },
+  { re: /\(\s*done\s*;\s*approved\s*\)/i, status: 'Done', reviewHint: 'none', completionApproved: true },
   { re: /\(\s*not\s*added\s*but\s*done\s*\)/i, status: 'Done', reviewHint: 'none' },
   { re: /\(\s*on\s*review\s*\)/i, status: 'Active', reviewHint: 'under_review' },
   { re: /\(\s*on\s*going\s*\)/i, status: 'Active', reviewHint: 'none' },
@@ -84,7 +84,7 @@ const PAREN_STATUS = [
   { re: /\(\s*on\s*process(?:\s+already)?\s*\)/i, status: 'Active', reviewHint: 'none' },
   { re: /\(\s*currently\s*searching[^)]*\)/i, status: 'Active', reviewHint: 'none' },
   { re: /\(\s*done\s*\)/i, status: 'Done', reviewHint: 'none' },
-  { re: /\(\s*approved\s*\)/i, status: 'Done', reviewHint: 'none' },
+  { re: /\(\s*approved\s*\)/i, status: 'Done', reviewHint: 'none', completionApproved: true },
 ];
 
 const TRAIL_STATUS = [
@@ -115,11 +115,13 @@ function applyStatusHints(rawName) {
   let name = String(rawName || '').trim();
   let status = 'Active';
   let reviewHint = 'none';
+  let completionApproved = false;
 
   for (const h of PAREN_STATUS) {
     if (!h.re.test(name)) continue;
     if (h.status === 'Done') status = 'Done';
     if (h.reviewHint && h.reviewHint !== 'none') reviewHint = h.reviewHint;
+    if (h.completionApproved) completionApproved = true;
     name = name.replace(h.re, '').replace(/\s{2,}/g, ' ').trim();
   }
 
@@ -127,6 +129,7 @@ function applyStatusHints(rawName) {
     if (!h.re.test(name)) continue;
     if (h.status === 'Done') status = 'Done';
     if (h.reviewHint && h.reviewHint !== 'none') reviewHint = h.reviewHint;
+    if (h.completionApproved) completionApproved = true;
     if (h.stripWord) {
       name = name.replace(/\bdone\b/i, '').replace(/\s{2,}/g, ' ').trim();
     } else {
@@ -136,7 +139,7 @@ function applyStatusHints(rawName) {
 
   name = name.replace(/\s*[-–—;,]+\s*$/, '').trim();
   name = name.replace(/\(\s*\)/g, '').replace(/\s{2,}/g, ' ').trim();
-  return { name, status, reviewHint };
+  return { name, status, reviewHint, completionApproved };
 }
 
 function cleanReportDate(raw) {
@@ -183,6 +186,7 @@ function parseJson(text) {
       notes: String(row.notes || '').trim(),
       status: row.status || hinted.status,
       reviewHint: hinted.reviewHint,
+      completionApproved: !!hinted.completionApproved,
       link: String(row.link || row.url || '').trim(),
     });
   });
@@ -254,6 +258,7 @@ function parseDelimited(text, delim) {
       notes: iNotes >= 0 ? cells[iNotes] || '' : '',
       status: hinted.status,
       reviewHint: hinted.reviewHint,
+      completionApproved: !!hinted.completionApproved,
       link: iLink >= 0 ? cells[iLink] || '' : '',
     });
   }
@@ -321,6 +326,7 @@ function parseFreeform(text) {
       notes,
       status: hinted.status,
       reviewHint: hinted.reviewHint,
+      completionApproved: !!hinted.completionApproved,
       link: '',
     });
   }

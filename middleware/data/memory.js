@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { validate, parse, usedSubtasksFor, employeeSuffix } = require('../domain/taskid');
 const { refFor } = require('../domain/ref');
+const { normalizeStatus } = require('../domain/status');
 
 function loadSeed(seedPath) {
   const p = seedPath || path.join(__dirname, 'seed.json');
@@ -37,6 +38,7 @@ function createMemoryData(opts = {}) {
     delete row.publicId; // never a parallel identity
     row.kind = row.kind || 'main';
     row.link = row.link || '';
+    row.status = normalizeStatus(row.status || 'Active');
     row.parentTaskId = row.parentTaskId || null;
     row.reviewState = String(row.reviewState || 'none').toLowerCase() || 'none';
     row.linkVersion = Number(row.linkVersion) || 0;

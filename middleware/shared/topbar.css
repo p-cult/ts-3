@@ -1,0 +1,36 @@
+/* Shared topbar — ONE file, loaded by both the board (frontend/index.html)
+   and the admin page (middleware/admin/admin.html). Page-agnostic: it only
+   assumes the skin CSS variables (--skin-*) are already defined by the page
+   that includes it. Edit here only — do not fork a copy into either page. */
+.topbar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px; height: 25px;
+  padding: 0 var(--skin-gap); background: var(--skin-surface); border-bottom: 0;
+  font-size: 12px; color: var(--skin-ink-soft); position: sticky; top: 0; z-index: 6;
+}
+.topbar-items { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+
+.topbar .devguide { margin: 0; cursor: pointer; user-select: none; display: flex; align-items: center; gap: 20px; }
+.topbar .devguide input {
+  width: 14px; height: 14px; cursor: pointer; margin: 0 2px 0 0; accent-color: var(--skin-accent);
+  opacity: 1; pointer-events: auto; visibility: visible;
+  flex-shrink: 0;
+}
+.topbar .devguide .lbl { cursor: pointer; margin: 0; padding-left: 18px; font-size: 12px; color: var(--skin-ink-soft); }
+
+.topbar .user-tools { display: flex; gap: 8px; align-items: center; }
+.topbar .user-pill {
+  background: none; border: none; padding: 0; display: flex; align-items: center; gap: 4px;
+  color: var(--skin-ink-soft); font-size: 12px; height: auto;
+}
+.topbar .user-pill svg { width: 14px; height: 14px; fill: currentColor; }
+.topbar .user-pill-role { font-weight: 400; }
+.topbar .signout-button {
+  background: none; border: none; padding: 0; height: auto; width: auto; color: var(--skin-accent);
+  cursor: pointer; font-size: 12px; font-weight: 600; text-decoration: underline; font-family: inherit;
+}
+.topbar .signout-button:hover { opacity: 0.7; }
+.topbar .signin-link {
+  background: none; border: none; padding: 0; height: auto; width: auto; color: var(--skin-accent);
+  cursor: pointer; font-size: 12px; font-weight: 600; text-decoration: underline; font-family: inherit;
+}
+.topbar .signin-link:hover { opacity: 0.7; }

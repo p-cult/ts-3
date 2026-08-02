@@ -54,6 +54,10 @@ function createApp(overrides = {}) {
 
   runtime.markStarted();
 
+  if (typeof data.startSheetsWorker === 'function') {
+    data.startSheetsWorker();
+  }
+
   return {
     config,
     log: appLog,

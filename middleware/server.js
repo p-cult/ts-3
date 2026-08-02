@@ -6,9 +6,10 @@
  */
 
 const http = require('http');
+const path = require('path');
 const { config: defaultConfig } = require('./config');
 const { log, setLevel } = require('./log');
-const { sendError, AppError, notFound, forbidden } = require('./errors');
+const { sendError, AppError, notFound, forbidden, CODE } = require('./errors');
 const { parseRequestUrl, requestId } = require('./http');
 const { tryServeStatic } = require('./static');
 const { createContext } = require('./context');
@@ -20,6 +21,7 @@ const {
 } = require('./auth/sessions');
 const { permissionsFor, roleCode } = require('./domain/roles');
 const { PROFILE } = require('./domain/profiles');
+const { createRateLimiter, clientIp } = require('./http/rate-limit');
 
 function applyCors(req, res, config) {
   const origin = config.corsOrigin;
@@ -98,6 +100,10 @@ function createRequestListener(opts = {}) {
   const { config, router, useCases, data } = app;
   setLevel(config.logLevel);
 
+  const rate = createRateLimiter({ windowMs: config.rateWindowMs || 60000 });
+  const maxLogins = Number(config.rateMaxLogins) || 10;
+  const maxWrites = Number(config.rateMaxWrites) || 60;
+
   return async function onRequest(req, res) {
     const id = requestId(req);
     const started = Date.now();
@@ -135,13 +141,34 @@ function createRequestListener(opts = {}) {
           });
           return;
         }
+
+        const method = String(req.method || 'GET').toUpperCase();
+        const ip = clientIp(req);
+        if (pathname === '/api/login' && method === 'POST') {
+          if (!rate.underLimit('l:' + ip, maxLogins)) {
+            throw new AppError(CODE.RATE_LIMIT, 'too many login attempts, try again shortly');
+          }
+        } else if (method !== 'GET' && method !== 'HEAD') {
+          if (!rate.underLimit('w:' + ip, maxWrites)) {
+            throw new AppError(CODE.RATE_LIMIT, 'too many requests, please slow down');
+          }
+        }
+
         const matched = router.match(req.method, pathname);
         if (!matched) throw notFound(`No route ${req.method} ${pathname}`);
         ctx.params = matched.params;
         assertCsrfIfNeeded(ctx);
         await matched.handler(ctx);
       } else if (req.method === 'GET' || req.method === 'HEAD') {
-        tryServeStatic(res, config.frontendDir, pathname);
+        if (pathname === '/shared' || pathname.startsWith('/shared/')) {
+          const sharedRoot = path.join(__dirname, 'shared');
+          const rel = pathname === '/shared' || pathname === '/shared/'
+            ? '/index.html'
+            : pathname.slice('/shared'.length);
+          tryServeStatic(res, sharedRoot, rel);
+        } else {
+          tryServeStatic(res, config.frontendDir, pathname);
+        }
       } else {
         throw notFound(`No route ${req.method} ${pathname}`);
       }
@@ -202,15 +229,41 @@ function startServer(overrides = {}) {
   async function hydrateIfNeeded() {
     if (!config.useLiveBridge) return;
     if (!app.data || typeof app.data.refreshFromBridge !== 'function') return;
+    const prodSheets =
+      String(config.appMode || '').toLowerCase() === 'production'
+      && String(config.storeAdapter || '').toLowerCase() === 'sheets';
     try {
       const r = await app.data.refreshFromBridge();
       log.info('live bridge hydrate', r || {});
+      if (app.data && typeof app.data === 'object') {
+        app.data.hydrateOk = !!(r && r.ok !== false);
+        app.data.hydrateAt = new Date().toISOString();
+        if (r && r.reason) app.data.hydrateReason = r.reason;
+      }
       if (r && r.ok === false) {
+        if (prodSheets) {
+          throw new Error(
+            'live bridge hydrate incomplete — refusing to serve fixture as production ('
+            + String(r.reason || 'unknown')
+            + ')'
+          );
+        }
         log.warn('live bridge hydrate incomplete — serving prior mirror', {
           reason: r.reason,
         });
       }
     } catch (err) {
+      if (app.data && typeof app.data === 'object') {
+        app.data.hydrateOk = false;
+        app.data.hydrateAt = new Date().toISOString();
+        app.data.hydrateReason = String(err && err.message ? err.message : err);
+      }
+      if (prodSheets) {
+        log.error('live bridge hydrate failed — refusing production start', {
+          err: String(err && err.message ? err.message : err),
+        });
+        throw err;
+      }
       log.warn('live bridge hydrate threw — serving prior mirror', {
         err: String(err && err.message ? err.message : err),
       });
@@ -242,6 +295,11 @@ function startServer(overrides = {}) {
             printStartupBanner(app, addr);
           }
           server.app = app;
+          server.on('close', () => {
+            if (app.data && typeof app.data.stopSheetsWorker === 'function') {
+              app.data.stopSheetsWorker();
+            }
+          });
           resolve(server);
         });
       })

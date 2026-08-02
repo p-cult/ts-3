@@ -1,11 +1,15 @@
 node_modules/
 .env
 .env.local
+bridge-credentials.txt
+*.secrets.txt
 *.log
 .DS_Store
 .pid
 data/local/
 data/side/
+data/outbox/
+dist/
 tmp/
 .idea/
 .vscode/

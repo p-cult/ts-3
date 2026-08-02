@@ -70,6 +70,8 @@ async function main() {
   try {
     const sheets = createSheetsData({
       stagingWrites: false,
+      writerOfRecord: 'ts3',
+      appMode: 'staging',
       useLiveBridge: false,
       fixturePath: path.join(__dirname, 'data', 'fixtures', 'sheets-depot.json'),
     });
@@ -169,6 +171,7 @@ async function main() {
       ...baseConfig,
       storeAdapter: 'sheets',
       stagingWrites: false,
+      writerOfRecord: 'ts3',
       useLiveBridge: false,
       appMode: 'staging',
       isDev: true,

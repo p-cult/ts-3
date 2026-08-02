@@ -622,7 +622,7 @@ async function main() {
       ok('reassign: P3/P4 only, ref+id frozen, user validation');
     }
 
-    // P2 status: create/submit → Active (system); PATCH limited to Pause/Resume/Done
+    // P2 status: create → Active; PATCH Pause/Resume/Done
     {
       const usr = await login(port, 'ts3usr1', 'ts3-98860');
       const t = await request(port, 'POST', '/api/tasks', {
@@ -630,10 +630,9 @@ async function main() {
         body: { projectCode: 'PRJ001', name: 'P2Status ' + Date.now() }
       });
       assert.strictEqual(t.status, 201);
-      assert.strictEqual(t.json.task.status, 'Active', 'P2 create/submit must birth Active');
+      assert.strictEqual(t.json.task.status, 'Active', 'P2 create must birth Active');
       const id = t.json.task.ref;
 
-      // P2 can set Pause
       const pPause = await request(port, 'PATCH', '/api/tasks/' + id, {
         token: usr.token,
         body: { status: 'Pause' }
@@ -641,7 +640,6 @@ async function main() {
       assert.strictEqual(pPause.status, 200);
       assert.strictEqual(pPause.json.task.status, 'Pause');
 
-      // P2 can set Resume
       const pResume = await request(port, 'PATCH', '/api/tasks/' + id, {
         token: usr.token,
         body: { status: 'Resume' }
@@ -649,7 +647,6 @@ async function main() {
       assert.strictEqual(pResume.status, 200);
       assert.strictEqual(pResume.json.task.status, 'Resume');
 
-      // P2 can set Done
       const pDone = await request(port, 'PATCH', '/api/tasks/' + id, {
         token: usr.token,
         body: { status: 'Done' }
@@ -657,21 +654,18 @@ async function main() {
       assert.strictEqual(pDone.status, 200);
       assert.strictEqual(pDone.json.task.status, 'Done');
 
-      // P2 cannot set Draft
       const badDraft = await request(port, 'PATCH', '/api/tasks/' + id, {
         token: usr.token,
         body: { status: 'Draft' }
       });
       assert.strictEqual(badDraft.status, 403);
 
-      // P2 cannot set Active (user-initiated PATCH still forbidden)
       const badActive = await request(port, 'PATCH', '/api/tasks/' + id, {
         token: usr.token,
         body: { status: 'Active' }
       });
       assert.strictEqual(badActive.status, 403);
 
-      // P2 cannot set Blocked
       const badBlocked = await request(port, 'PATCH', '/api/tasks/' + id, {
         token: usr.token,
         body: { status: 'Blocked' }

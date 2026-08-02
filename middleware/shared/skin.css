@@ -1,0 +1,37 @@
+/* Shared SKIN tokens — ONE file, the single source of truth for the whole
+   product's look. Loaded by BOTH the board (frontend/index.html) and the admin
+   page (middleware/admin/admin.html) via <link>, BEFORE topbar.css/chrome.css.
+
+   To reskin the entire app, change only the values here. Neither page keeps its
+   own copy of these tokens any more — that duplication is exactly what let the
+   two pages drift apart before (and once silently replaced "TASK SHEET" with
+   "PARAM"). Edit here only; do not re-add a :root token block to either page.
+
+   Light look only — dark mode intentionally not used. */
+:root {
+  --skin-bg:        #f7f4ee;
+  --skin-surface:   #fffdf8;
+  --skin-surface-strong: #f0ebe2;
+  --skin-ink:       #25221d;
+  --skin-ink-soft:  #6f675c;
+  --skin-accent:    #4f7a3a;
+  --skin-accent-ink:#ffffff;
+  --skin-line:      #ded5c8;
+  --skin-radius:    8px;
+  --skin-gap:       20px;
+  --skin-font:      ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --skin-shadow:    0 16px 42px rgba(32, 28, 22, 0.08);
+  --skin-pill-h:    27px; /* 20% shorter */
+  --pri-high:       #a63d4f;
+  --pri-medium:     #c99b25;
+  --pri-low:        #2f6f9f;
+  /* Task status colors */
+  --stat-assigned:  #4f7a3a;  /* medium sap green */
+  --stat-ongoing:   #c99b25;  /* medium chrome yellow */
+  --stat-paused:    #808080;  /* 30% grey */
+  --stat-rejected:  #d97766;  /* medium pastel brick red */
+  --stat-approved:  #4f7a3a;  /* medium sap green — shown as "Completed" */
+  --stat-completed: #9a9a9a;  /* grey: done, WAITING for approval */
+  --stat-revision:  #c99b25;  /* chrome yellow: sent back, work resumes */
+  --stat-cancelled: #55504a;  /* dark warm grey: closed without approval */
+}

@@ -3,6 +3,7 @@
 const { canViewTask, toPublicTask } = require('../domain/tasks');
 const { PROFILE, normalizeProfile } = require('../domain/profiles');
 const { notFound, forbidden } = require('../errors');
+const { applyAll } = require('../priority');
 
 function createGetTask({ data }) {
   return {
@@ -55,14 +56,14 @@ function createGetTask({ data }) {
         }
       }
 
-      return {
-        task: toPublicTask(row, nameMap, {
-          profile,
-          stages,
-          reviewSummary,
-          refSecret: data.refSecret,
-        }),
-      };
+      const task = toPublicTask(row, nameMap, {
+        profile,
+        stages,
+        reviewSummary,
+        refSecret: data.refSecret,
+      });
+      if (task) applyAll([task]);
+      return { task };
     },
   };
 }

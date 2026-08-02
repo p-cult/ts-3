@@ -4,7 +4,9 @@ const { scopeTasks, toPublicTask, nestHierarchy } = require('../domain/tasks');
 const { PROFILE, normalizeProfile } = require('../domain/profiles');
 const { normalizeReviewState } = require('../domain/review');
 const { isLoggedKind, countsAsCompleted } = require('../domain/classifier');
+const { isFinishedStatus } = require('../domain/status');
 const { forbidden } = require('../errors');
+const { applyAll } = require('../priority');
 
 function createListTasks({ data }) {
   return {
@@ -41,7 +43,9 @@ function createListTasks({ data }) {
         }
         scoped = scoped.filter((t) => isLoggedKind(t.kind));
       } else if (board === 'active') {
-        // main board: hide approved and logged diary rows
+        // Same silhouette as UI Board: open work only (not Done).
+        scoped = scoped.filter((t) => !isFinishedStatus(t.status));
+        // Hide file-approved + logged diary rows (legacy board=active contract)
         scoped = scoped.filter(
           (t) => normalizeReviewState(t.reviewState) !== 'approved'
         );
@@ -81,6 +85,8 @@ function createListTasks({ data }) {
           refSecret: data.refSecret,
         });
       });
+
+      applyAll(tasks);
 
       if (nested) {
         return { tasks, hierarchy: nestHierarchy(tasks) };

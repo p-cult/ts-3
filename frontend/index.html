@@ -3,81 +3,51 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Param Task — ts-3 Staging</title>
+  <title>Task Board — ts-3 Staging</title>
+  <!-- ts-2 product chrome (skin + topbar + chrome + header/brand) -->
+  <link rel="stylesheet" href="/shared/param.css" />
   <style>
+    /*
+      ts-3 board/app tokens — alias the ts-2 skin.
+      Skin values live in /shared/skin.css (bundled via param.css).
+    */
     :root {
-      --bg: #f4f1ec; --ink: #1c1b19; --muted: #6b6560; --card: #fff;
-      --line: #e0dbd3; --accent: #2f5d50; --accent-soft: #e8f2ee;
-      --danger: #8a3030; --warn: #8a6d1d; --radius: 12px;
-      --font: "Segoe UI", system-ui, sans-serif;
+      --bg: var(--skin-bg, #f7f4ee);
+      --ink: var(--skin-ink, #25221d);
+      --muted: var(--skin-ink-soft, #6f675c);
+      --card: var(--skin-surface, #fffdf8);
+      --line: var(--skin-line, #ded5c8);
+      --accent: var(--skin-accent, #4f7a3a);
+      --accent-soft: color-mix(in srgb, var(--skin-accent, #4f7a3a) 16%, var(--skin-surface, #fffdf8));
+      --danger: var(--pri-high, #a63d4f);
+      --warn: var(--pri-medium, #c99b25);
+      --radius: var(--skin-radius, 8px);
+      --font: var(--skin-font, ui-sans-serif, system-ui, sans-serif);
     }
     * { box-sizing: border-box; }
     /* Author display:* must not defeat the hidden attribute (Inject was leaking onto Board). */
     [hidden] { display: none !important; }
     body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.45; }
-    header {
-      display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between;
-      padding: .85rem 1rem; background: var(--card); border-bottom: 1px solid var(--line);
-      position: sticky; top: 0; z-index: 5;
+    /* badge / tabs / btn / task / chip / staging / pills → /shared/skin-map.css */
+    .muted { font-size: .88rem; }
+    main {
+      max-width: var(--ts-content-max, 56rem);
+      margin: 0 auto;
+      padding: 1rem var(--skin-gap, 20px);
+      box-sizing: border-box;
     }
-    h1 { margin: 0; font-size: 1.1rem; }
-    .badge { font-size: .72rem; padding: .12rem .45rem; border-radius: 999px; background: #f0e6c8; color: var(--warn); font-weight: 600; }
-    .muted { color: var(--muted); font-size: .88rem; }
-    main { max-width: 56rem; margin: 0 auto; padding: 1rem; }
-    .staging-banner {
-      margin: 0 0 .75rem; padding: .55rem .75rem; border-radius: 8px;
-      font-size: .82rem; font-weight: 650; border: 1px solid #e0c48a;
-      background: #fff8e8; color: #6b4e00;
-    }
-    .staging-banner.is-writes {
-      border-color: #e8a0a0; background: #fdecea; color: #8a1f1f;
-    }
-    .tabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .85rem; }
-    .tab { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: .35rem .75rem; cursor: pointer; font: inherit; }
-    .tab.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .tab-count {
-      display: inline-block; min-width: 1.15rem; margin-left: .3rem;
-      padding: .05rem .35rem; border-radius: 999px; font-size: .7rem; font-weight: 700;
-      background: #f0e6c8; color: var(--warn); vertical-align: middle;
-    }
-    .tab.on .tab-count { background: rgba(255,255,255,.25); color: #fff; }
-    .tab-count[hidden] { display: none !important; }
-    .btn { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: .4rem .75rem; font: inherit; cursor: pointer; }
-    .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .btn.danger { color: var(--danger); }
-    .btn:disabled { opacity: .45; cursor: not-allowed; }
-    .toolbar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-    .task, .log-row {
-      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: .75rem .9rem; margin-bottom: .55rem;
-    }
-    .task.sub { margin-left: 1.1rem; border-left: 3px solid var(--accent-soft); }
-    .task h3 { margin: 0 0 .2rem; font-size: .98rem; }
-    .meta { font-size: .82rem; color: var(--muted); }
-    .subs-line { font-size: .78rem; color: var(--muted); margin-top: .15rem; }
-    .chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
-    .chip { font-size: .72rem; padding: .08rem .4rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
-    .chip.kind { background: #efe8ff; color: #4b3f72; font-weight: 700; }
-    .chip.chip-status { background: #eef1f4; color: #3a4450; font-weight: 650; }
-    .chip.chip-waiting { background: #fff3e0; color: #9a5b00; font-weight: 650; }
-    .chip.chip-task-approved { background: #e7f6ec; color: #1b6b3a; font-weight: 700; }
-    .chip.rev-needs { background: #fff3e0; color: #9a5b00; font-weight: 650; }
-    .chip.rev-rework { background: #fde8e8; color: #a32020; font-weight: 700; }
     .rework-notes {
       margin-top: .45rem; padding: .5rem .65rem;
-      background: #fdf2f2; border: 1px solid #f0c4c4; border-radius: 8px;
-      font-size: .85rem; line-height: 1.4; color: var(--ink);
+      font-size: .85rem; line-height: 1.4;
     }
     .rework-notes .rework-notes-label {
-      display: block; font-size: .75rem; font-weight: 700; color: #a32020; margin-bottom: .2rem;
+      display: block; font-size: .75rem; font-weight: 700; margin-bottom: .2rem;
     }
     .rework-notes .rework-notes-body { white-space: pre-wrap; word-break: break-word; }
-    .bar { height: 6px; background: #ece7e0; border-radius: 99px; margin-top: .4rem; overflow: hidden; max-width: 12rem; }
-    .bar > i { display: block; height: 100%; background: var(--accent); }
     .link-ico { display: inline-flex; width: 1.4rem; height: 1.4rem; align-items: center; justify-content: center;
       border-radius: 6px; background: var(--accent-soft); color: var(--accent); text-decoration: none; font-size: .85rem; margin-left: .25rem; }
     .notes-smart {
-      position: relative; border: 1px solid var(--line); border-radius: 8px; background: #fff;
+      position: relative; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card);
       overflow: hidden; min-height: 5rem;
     }
     .notes-backdrop, .notes-smart textarea[data-f="notes"] {
@@ -91,11 +61,11 @@
     .notes-backdrop {
       display: none; position: absolute; left: 0; top: 0;
       pointer-events: none !important; user-select: none !important;
-      color: var(--ink); background: #fff; overflow: hidden; z-index: 0;
+      color: var(--ink); background: var(--card); overflow: hidden; z-index: 0;
     }
     .notes-smart textarea[data-f="notes"] {
       position: relative; z-index: 1; display: block;
-      background: #fff !important; color: var(--ink) !important;
+      background: var(--card) !important; color: var(--ink) !important;
       caret-color: var(--ink); resize: vertical; min-height: 5rem;
       overflow-x: hidden; overflow-y: auto;
     }
@@ -292,25 +262,21 @@
       margin: .25rem 0 0; font-size: .72rem; color: var(--muted);
     }
     .actions { margin-top: .45rem; display: flex; flex-wrap: wrap; gap: .35rem; }
-    .empty { color: var(--muted); padding: 1rem 0; }
-    dialog { border: 1px solid var(--line); border-radius: var(--radius); padding: 0; width: min(26rem, calc(100% - 1.5rem)); }
-    dialog::backdrop { background: rgba(0,0,0,.35); }
+    .empty { /* color/padding → skin-map */ }
+    dialog { width: min(26rem, calc(100% - 1.5rem)); }
     .dlg { padding: 1rem 1.1rem; }
     label { display: block; font-size: .82rem; margin: .45rem 0 .15rem; }
-    input, select, textarea { width: 100%; font: inherit; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: 8px; }
+    input, select, textarea { width: 100%; }
     textarea { min-height: 3.2rem; }
     .row { display: flex; gap: .4rem; margin-top: .8rem; flex-wrap: wrap; }
-    .err { color: var(--danger); font-size: .85rem; min-height: 1.1em; }
-    .filters { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
     .filters input, .filters select { width: auto; min-width: 6rem; }
-    .smart-filter { margin: 0 0 .75rem; }
+    .smart-filter { /* chrome → skin-map */ margin: 0 0 .75rem; }
     .sf-chips { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 0; margin-bottom: .35rem; }
     .sf-chips:empty { display: none; }
     .sf-chip {
       display: inline-flex; align-items: center; gap: .3rem;
       font-size: .78rem; font-weight: 650; padding: .2rem .45rem .2rem .55rem;
-      border-radius: 999px; background: var(--accent-soft); color: var(--accent);
-      border: 1px solid #c5ddd4;
+      /* colors → skin-map */
     }
     .sf-chip button {
       border: 0; background: transparent; color: inherit; cursor: pointer;
@@ -321,8 +287,8 @@
     .sf-input-wrap input { width: 100%; }
     .sf-suggest {
       position: absolute; left: 0; right: 0; top: calc(100% + .2rem); z-index: 8;
-      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
-      box-shadow: 0 8px 24px rgba(28, 27, 25, .08); max-height: 14rem; overflow: auto;
+      max-height: 14rem; overflow: auto;
+      /* surface/shadow → skin-map */
     }
     .sf-suggest button {
       display: block; width: 100%; text-align: left; border: 0; background: transparent;
@@ -372,14 +338,13 @@
     .inject-summary { font-size: .85rem; margin: .25rem 0; }
     .inject-bulk {
       display: flex; flex-direction: column; gap: .55rem;
-      padding: .65rem .75rem; background: var(--card); border: 1px solid var(--line);
-      border-radius: var(--radius); font-size: .85rem;
+      padding: .65rem .75rem; font-size: .85rem;
+      /* surface → skin-map */
     }
     .inject-bulk[hidden] { display: none !important; }
     .inject-panel {
       display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem;
-      padding: .5rem .55rem; border-radius: 8px; background: #faf8f6;
-      border: 1px solid var(--line);
+      padding: .5rem .55rem; /* surface/border → skin-map */
     }
     .inject-panel-label {
       flex: 0 0 100%; margin: 0; font-size: .72rem; font-weight: 700;
@@ -391,8 +356,14 @@
     }
     .inject-panel input[type="search"] { min-width: 11rem; }
     .inject-panel .inject-meta { margin-left: .15rem; }
-    .inject-panel-apply { background: #f4faf6; border-color: #c5ddd0; }
+    .inject-panel-apply { /* colors → skin-map */ }
     .inject-panel-apply .btn.primary { min-width: 9rem; }
+    .needs-bulk[hidden] { display: none !important; }
+    .needs-pick {
+      float: left; margin: .2rem .55rem 0 0; cursor: pointer;
+    }
+    .needs-pick input { width: auto; margin: 0; cursor: pointer; }
+    .task.needs-pickable::after { content: ""; display: table; clear: both; }
     .inject-group-head {
       display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .25rem;
     }
@@ -446,7 +417,7 @@
       cursor: pointer; border-right: 1px solid var(--line); color: var(--ink);
     }
     .seg-btn:last-child { border-right: 0; }
-    .seg-btn.on { background: var(--accent); color: #fff; }
+    .seg-btn.on { /* fill → skin-map */ }
     .seg-btn:disabled { opacity: .45; cursor: not-allowed; }
     /* LOCKED: admin kind radios — Normal | Pseudo | Routine only (no not_a_task) */
     .kind-radios { display: flex; flex-wrap: wrap; gap: .55rem 1rem; margin-top: .15rem; }
@@ -456,9 +427,27 @@
     }
     .kind-radios input[type="radio"] { width: auto; margin: 0; accent-color: var(--accent); }
     .task.draft {
-      border-style: dashed; background: #faf8f5; border-color: #cfc8bc;
+      border-style: dashed;
+      background: var(--skin-surface-strong, #f0ebe2);
+      border-color: var(--skin-line, #ded5c8);
     }
     .task.draft.collapsed { padding-top: .55rem; padding-bottom: .55rem; }
+    .task.draft.is-submitted {
+      border-style: solid;
+      border-color: color-mix(in srgb, var(--skin-accent, #4f7a3a) 35%, var(--skin-line, #ded5c8));
+      background: color-mix(in srgb, var(--skin-accent, #4f7a3a) 8%, var(--skin-surface, #fffdf8));
+    }
+    .task.draft.is-submitted .draft-plus {
+      background: color-mix(in srgb, var(--skin-accent, #4f7a3a) 28%, var(--skin-surface, #fffdf8));
+      color: var(--skin-accent, #4f7a3a);
+    }
+    .draft-submitted-badge {
+      display: inline-flex; align-items: center;
+      font-size: .82rem; font-weight: 700; letter-spacing: .02em;
+      color: var(--skin-accent, #4f7a3a);
+      background: color-mix(in srgb, var(--skin-accent, #4f7a3a) 16%, var(--skin-surface, #fffdf8));
+      border-radius: 999px; padding: .2rem .65rem;
+    }
     .draft-head {
       display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
     }
@@ -470,12 +459,20 @@
     .draft-body { margin-top: .55rem; }
     .draft-body .fld { margin-bottom: .35rem; }
     .draft-body label { margin-top: .25rem; }
-    .pill {
-      border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent);
-      border-radius: 999px; padding: .35rem .85rem; font: inherit; font-weight: 600; cursor: pointer;
+    .draft-body .fld[data-dfld="project"] {
+      position: sticky; top: 0; z-index: 2;
+      background: #faf8f5; padding: .35rem 0 .45rem; margin-bottom: .5rem;
+      border-bottom: 1px solid var(--line);
     }
-    .pill:hover { background: var(--accent); color: #fff; }
-    #draftBar { margin-bottom: .65rem; }
+    .draft-body .fld[data-dfld="project"] select {
+      width: 100%; max-width: 28rem; font: inherit; font-size: .95rem;
+      padding: .45rem .55rem; border: 1px solid var(--accent); border-radius: 8px;
+      background: #fff;
+    }
+    .draft-body .fld[data-dfld="project"] .hint-sm { margin: .25rem 0 0; }
+    /* .pill → skin-map.css */
+    #draftBar { margin-bottom: .65rem; display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+    #draftBar[hidden] { display: none !important; }
     .task.editing { border-color: var(--accent); }
     .task .edit-body { margin-top: .55rem; padding-top: .45rem; border-top: 1px dashed var(--line); }
     .task .edit-body .fld { margin-bottom: .35rem; }
@@ -490,37 +487,69 @@
       header { padding: .65rem .75rem; }
     }
     @media print {
-      header .toolbar, .tabs, .btn, dialog, .filters, .smart-filter, .inject-box, .task.draft, #draftBar { display: none !important; }
-      body { background: #fff; }
+      header .toolbar, .tabs, .btn, dialog, .filters, .smart-filter, .inject-box, .needs-bulk, .task.draft, #draftBar { display: none !important; }
+    body { background: #fff; }
       .task, .log-row { break-inside: avoid; box-shadow: none; }
       a[href]::after { content: " (" attr(href) ")"; font-size: .75rem; color: #444; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>Param Task <span class="badge">STAGING</span></h1>
-      <div class="muted" id="whoLine">Public (P1)</div>
-    </div>
-    <div class="toolbar">
+  <header class="app ts-header">
+    <div class="header-inner">
+    <span class="brand">
+      <span class="brand-wordmark" aria-label="PARAM"><svg viewBox='0 0 629.01 133.91' role='img' aria-label='PARAM'><defs><linearGradient id='paramLogoGradient' x1='-53.61' y1='186.62' x2='362' y2='-343.15' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='#e5515f'/><stop offset='.19' stop-color='#e5555c'/><stop offset='.38' stop-color='#e76155'/><stop offset='.57' stop-color='#e97548'/><stop offset='.76' stop-color='#ed9136'/><stop offset='.95' stop-color='#f2b520'/><stop offset='1' stop-color='#f4c01a'/></linearGradient><linearGradient id='paramLogoGradient1' x1='98.83' y1='306.21' x2='514.44' y2='-223.55' href='#paramLogoGradient'/><linearGradient id='paramLogoGradient2' x1='32.05' y1='253.83' x2='447.67' y2='-275.94' href='#paramLogoGradient'/><linearGradient id='paramLogoGradient3' x1='165.07' y1='358.19' x2='580.69' y2='-171.58' href='#paramLogoGradient'/><linearGradient id='paramLogoGradient4' x1='271.17' y1='441.43' x2='686.79' y2='-88.34' href='#paramLogoGradient'/></defs><path fill='url(#paramLogoGradient)' d='M115.59,34.86V0h-63.91C23.18,0,0,22.62,0,50.41v80.32h24.56v-36.47h39.35c29.1,0,51.68-31.93,51.68-59.4ZM91.03,34.86c0,15.47-13.15,35.44-27.12,35.44H24.56v-19.89c0-14.59,12.16-26.45,27.12-26.45h39.35v10.9Z'/><path fill='url(#paramLogoGradient1)' d='M260.92,53.91v78.29h24.56V53.91c0-16.52,13.77-29.95,30.7-29.95h18.42V0h-18.42c-30.47,0-55.27,24.19-55.27,53.91Z'/><path fill='url(#paramLogoGradient2)' d='M239.85,83.49v-34.86h-.27C236.85,21.37,213.23,0,184.58,0h-40.94v23.96h40.94c15.08,0,27.65,10.66,30.22,24.67h-29.65c-28.5,0-51.68,22.62-51.68,50.41v34.86h54.7c28.5,0,51.68-22.62,51.68-50.41ZM158.04,99.04c0-14.59,12.16-26.45,27.12-26.45h30.14v10.9c0,14.59-12.16,26.45-27.12,26.45h-30.14v-10.9Z'/><path fill='url(#paramLogoGradient3)' d='M399.48,0h-40.94v23.96h40.94c15.08,0,27.65,10.66,30.22,24.67h-29.65c-28.5,0-51.68,22.62-51.68,50.41v34.86h54.7c28.5,0,51.68-22.62,51.68-50.41v-34.86h-.27c-2.73-27.26-26.35-48.63-55-48.63ZM430.19,80.28v3.21c0,14.59-12.16,26.45-27.12,26.45h-30.14v-10.9c0-14.59,12.16-26.45,27.12-26.45h30.14v7.69Z'/><path fill='url(#paramLogoGradient4)' d='M599.03,0c-12.44,0-25.18,4.07-35.82,11.31V0h-29.98c-14.52,0-29.44,5.53-40.96,15.17-12.53,10.5-19.43,24.25-19.43,38.74v77.99h24.56V53.91c0-16.87,19.26-29.95,35.82-29.95h5.42v107.95h24.56V53.91c0-16.87,19.26-29.95,35.82-29.95h5.42v107.95h24.56V0h-29.98Z'/></svg></span>
+      <div class="brand-copy">
+        <h1>TASK BOARD <span class="badge" id="modeBadge" hidden>STAGING</span></h1>
+      </div>
+    </span>
+    <div class="toolbar auth-tools">
+      <span class="auth-who" id="whoLine" hidden></span>
       <button class="btn" type="button" id="btnLogin">Log in</button>
       <button class="btn" type="button" id="btnLogout" hidden>Log out</button>
+    </div>
     </div>
   </header>
   <main>
     <div id="stagingBanner" class="staging-banner" hidden role="status"></div>
+
+    <section class="summary-panel" id="summaryPanel" hidden>
+      <div class="summary-panel-head">
+        <div class="summary-panel-title">Overview</div>
+        <button class="summary-toggle" id="summaryToggle" type="button" aria-expanded="false" aria-controls="summaryBody" aria-label="Expand overview">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+      </div>
+      <div class="summary-panel-body" id="summaryBody">
+        <div class="ov-cards">
+          <div class="ov-card"><span>Total</span><strong id="statTotal">0</strong></div>
+          <div class="ov-card"><span>Scheduled</span><strong id="statScheduled">0</strong></div>
+          <div class="ov-card"><span>Completed</span><strong id="statCompleted">0</strong></div>
+        </div>
+        <div class="ov-users" id="ovUsers" style="display:none">
+          <button class="ov-nav ov-nav--prev" id="ovPrev" type="button" aria-label="Previous">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="ov-strips" id="ovStrips"></div>
+          <button class="ov-nav ov-nav--next" id="ovNext" type="button" aria-label="Next">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
     <div class="tabs" id="tabs">
       <button type="button" class="tab on" data-view="board">Board</button>
+      <button type="button" class="tab" data-view="logged" id="tabLogged" hidden>Logged</button>
       <button type="button" class="tab" data-view="needs" id="tabNeeds" hidden>
         Needs attention<span class="tab-count" id="tabNeedsCount" hidden>0</span>
       </button>
       <button type="button" class="tab" data-view="completed" id="tabDone">Completed</button>
-      <button type="button" class="tab" data-view="logs" id="tabLogs" hidden>Logs</button>
+      <button type="button" class="tab" data-view="logs" id="tabLogs" hidden>Activity</button>
       <button type="button" class="tab" data-view="inject" id="tabInject" hidden>Inject</button>
     </div>
     <div id="boardView">
-      <p class="muted" id="hint">Loading…</p>
+      <p class="muted" id="hint" hidden></p>
 
       <div id="smartFilter" class="smart-filter" hidden>
         <div class="sf-chips" id="sfChips"></div>
@@ -532,9 +561,42 @@
       </div>
 
       <div id="draftBar" hidden>
+        <button type="button" class="pill" id="btnMyTasks" hidden>
+          My Task<span class="tab-count" id="myTasksCount" hidden>0</span>
+        </button>
         <button type="button" class="pill" id="btnAddDraft">+ Add task</button>
       </div>
       <div id="draftList"></div>
+
+      <div class="inject-bulk needs-bulk" id="needsBulkBar" hidden>
+        <div class="inject-panel" id="needsFocusPanel">
+          <p class="inject-panel-label">Focus</p>
+          <label>Show
+            <select id="needsFocus" aria-label="Focus needs attention list">
+              <option value="all">All needing attention</option>
+              <option value="waiting">Waiting approval</option>
+              <option value="files">Needs file review</option>
+              <option value="rework">Rework</option>
+            </select>
+          </label>
+          <span class="inject-meta" id="needsFilterMeta">0 in focus</span>
+        </div>
+        <div class="inject-panel" id="needsSelectPanel" hidden>
+          <p class="inject-panel-label">Select</p>
+          <label>
+            <input type="checkbox" id="needsSelectAll" />
+            Select all in focus
+          </label>
+          <button class="btn" type="button" id="needsClearSelection">Clear selection</button>
+          <span class="inject-meta" id="needsSelectedMeta">0 selected</span>
+        </div>
+        <div class="inject-panel inject-panel-apply" id="needsApplyPanel" hidden>
+          <p class="inject-panel-label">Apply to selected</p>
+          <button class="btn primary" type="button" id="needsBulkApprove"
+            title="Approve Done tasks that are waiting for completion approval">Approve tasks</button>
+          <span class="inject-meta" id="needsApplyMeta">Only Waiting approval rows · file Review stays per-task</span>
+        </div>
+      </div>
 
       <div id="taskList"></div>
       <div class="empty" id="empty" hidden>No tasks.</div>
@@ -644,7 +706,7 @@
   <dialog id="loginDlg">
     <form class="dlg" id="loginForm" method="dialog">
       <h2>Log in</h2>
-      <p class="muted">Primary: ts3admin / ts3-98860 (P4) · ts3usr1 / ts3-98860 (P2)</p>
+      <p class="muted" id="loginHint">Primary: ts3admin / ts3-98860 (P4) · ts3usr1 / ts3-98860 (P2)</p>
       <label>Username</label><input id="lu" autocomplete="username" required />
       <label>Password</label><input id="lp" type="password" autocomplete="current-password" required />
       <div class="err" id="loginErr"></div>
@@ -659,11 +721,13 @@
   (function () {
     const TOKEN_KEY = 'ts3_token', CSRF_KEY = 'ts3_csrf';
     const state = {
-      me: null, permissions: null, tasks: [], viewTasks: [], hierarchy: null, projects: [], users: [],
+      me: null, permissions: null, tasks: [], viewTasks: [], allTasks: [], hierarchy: null, projects: [], users: [],
       view: 'board', logs: [], allForParent: [], attentionCount: 0, filterTags: [],
+      needsFocus: 'all', needsSelected: {},
       injectPlan: null, injectResolutions: {}, injectSelected: {},
       injectProjectOverrides: {}, injectItemProjects: {}, injectItemKinds: {},
       projectsSource: '',
+      summaryOpen: false,
     };
     const SF_MAX = 4;
     const $ = (id) => document.getElementById(id);
@@ -735,13 +799,16 @@
     }
 
     function parseIstStamp(str) {
-      const m = String(str || '').trim().match(/^(\d{2})-([A-Za-z]{3})\s*\|\s*(\d{2}):(\d{2})$/);
+      const m = String(str || '').trim().match(/^(\d{1,2})-([A-Za-z]{3})(?:\s*\|\s*(\d{1,2}):(\d{2}))?$/);
       if (!m) return null;
       const mon = IST_MONTH_IX[m[2]];
       if (mon == null) return null;
       const y = istYearNow();
+      const day = String(m[1]).padStart(2, '0');
       const mm = String(mon + 1).padStart(2, '0');
-      const iso = y + '-' + mm + '-' + m[1] + 'T' + m[3] + ':' + m[4] + ':00+05:30';
+      const hh = String(m[3] != null ? m[3] : '0').padStart(2, '0');
+      const mi = String(m[4] != null ? m[4] : '0').padStart(2, '0');
+      const iso = y + '-' + mm + '-' + day + 'T' + hh + ':' + mi + ':00+05:30';
       const d = new Date(iso);
       return isNaN(d.getTime()) ? null : d;
     }
@@ -757,10 +824,13 @@
     }
 
     /**
-     * Done is allowed only when every link is rated 2★ or 3★.
-     * No links → Done stays off (nothing rated).
+     * Done is allowed when every link is rated 2★ or 3★.
+     * Routine / pseudo / not_a_task: no link gate (logged kinds).
+     * Main/sub with no links → Done stays off.
      */
     function taskAllLinksReadyForDone(t) {
+      const k = taskKindKey(t);
+      if (k === 'routine' || k === 'pseudo' || k === 'not_a_task') return true;
       const links = linksFromTask(t);
       if (!links.length) return false;
       return links.every((l) => {
@@ -794,7 +864,8 @@
 
     /**
      * Status choices by role (API values).
-     * P2: Pause | resume-token | Done (gated); Done locked → [].
+     * P2 locked when Done → [].
+     * P2 otherwise: Pause | Resume (when paused) | Done (when links ready).
      * Admin: Draft | Active | Blocked | Pause | Done — never a second Active/Resume pair.
      */
     function statusChoicesForRole(t) {
@@ -893,9 +964,9 @@
     }
 
     /**
-     * Task-level completion approval (Done → admin Approve → Approved tag).
+     * Task-level completion approval (Done → admin Approve → Approved chip).
      * Completely separate from file 3★ / reviewState.
-     * Marker lives in notes and/or review feedback history (P3 can write feedback only).
+     * Marker lives in notes and/or review feedback history — there is no Approved status.
      */
     const TASK_APPROVED_MARK = '⟦TASK_APPROVED⟧';
 
@@ -916,7 +987,7 @@
       return String(text == null ? '' : text).indexOf(TASK_APPROVED_MARK) >= 0;
     }
 
-    /** True when admin has approved this Done task’s completion. */
+    /** True when admin has approved completion (⟦TASK_APPROVED⟧ in notes/history). */
     function isTaskCompletionApproved(t) {
       if (!t) return false;
       if (textHasTaskApprovalMark(t.notes)) return true;
@@ -930,21 +1001,54 @@
       return false;
     }
 
+    /**
+     * Only main/sub Done rows need task-level Approve.
+     * Routine / pseudo / not_a_task never wait for that gate.
+     */
+    function taskNeedsCompletionApproval(t) {
+      if (!t || String(t.status || '') !== 'Done') return false;
+      const k = taskKindKey(t);
+      return k !== 'routine' && k !== 'pseudo' && k !== 'not_a_task';
+    }
+
+    /**
+     * Completed tab: Done + approval mark (main/sub), or Done restricted kinds
+     * (routine / pseudo / not_a_task — no Approve step). Same look as before;
+     * prevents Done rows vanishing from every tab.
+     */
+    function isDoneOnCompletedTab(t) {
+      if (!t || String(t.status || '') !== 'Done') return false;
+      const k = taskKindKey(t);
+      if (k === 'routine' || k === 'pseudo' || k === 'not_a_task') return true;
+      return isTaskCompletionApproved(t);
+    }
+
     function canApproveTaskCompletion(t) {
       return !!(t
         && perms().canReviewModerate
-        && String(t.status || '') === 'Done'
-        && !isTaskCompletionApproved(t)
-        && (t.kind === 'main' || t.kind === 'sub' || !t.kindIcon));
+        && taskNeedsCompletionApproval(t)
+        && !isTaskCompletionApproved(t));
+    }
+
+    function doneStatusLockedBanner(t) {
+      if (isTaskCompletionApproved(t)) {
+        return 'Done — task Approved by admin (status locked).';
+      }
+      if (!taskNeedsCompletionApproval(t)) {
+        return 'Done — status locked.';
+      }
+      return 'Done — Waiting for approval (status locked).';
     }
 
     async function approveTaskCompletion(t) {
       if (!canApproveTaskCompletion(t)) throw new Error('Cannot approve this task');
       const ref = t.ref;
+      // Feedback persists ⟦TASK_APPROVED⟧ for durability (P3 path).
       await api('POST', '/api/tasks/' + encodeURIComponent(ref) + '/review/feedback', {
         notes: TASK_APPROVED_MARK + ' Task completion approved.',
       });
-      // P4 can also persist on notes for list durability; P3 relies on history enrichment.
+      // Do NOT PATCH status to Approved — there is no Approved status.
+      // P4 also PATCHes notes for list durability.
       if (perms().editScope === 'all') {
         await api('PATCH', '/api/tasks/' + encodeURIComponent(ref), {
           notes: notesWithTaskApprovalMark(t.notes),
@@ -952,11 +1056,16 @@
       }
     }
 
-    /** Fetch history/notes for Done tasks so completion-approval markers are visible. */
+    /** Fetch history/notes for Done tasks so approval markers are visible. */
     async function enrichDoneCompletionApprovals(tasks) {
       const list = Array.isArray(tasks) ? tasks : [];
+      // List already includes notes (⟦TASK_APPROVED⟧ lives there). Only detail-fetch
+      // rows that omit notes entirely — otherwise we fire ~100 parallel GETs at the
+      // live bridge and hard-refresh stalls for ages.
       const need = list.filter((t) => (
-        String(t.status || '') === 'Done' && !isTaskCompletionApproved(t)
+        taskNeedsCompletionApproval(t)
+        && !isTaskCompletionApproved(t)
+        && t.notes == null
       ));
       if (!need.length) return list;
       await Promise.all(need.map(async (t) => {
@@ -965,11 +1074,25 @@
           const detail = d && d.task;
           if (!detail) return;
           if (detail.notes != null) t.notes = detail.notes;
+          if (detail.status != null) t.status = detail.status;
           if (detail.review) t.review = detail.review;
           if (detail.reviewState != null) t.reviewState = detail.reviewState;
         } catch (e) { /* keep list row */ }
       }));
       return list;
+    }
+
+    function taskRecencyMs(t) {
+      return Date.parse(t && t.createdAt) || Date.parse(t && t.updatedAt) || 0;
+    }
+
+    /** Newest added first (board + nested subs). */
+    function sortTasksNewestFirst(tasks) {
+      return (Array.isArray(tasks) ? tasks.slice() : []).sort((a, b) => {
+        const d = taskRecencyMs(b) - taskRecencyMs(a);
+        if (d) return d;
+        return String((a && a.name) || '').localeCompare(String((b && b.name) || ''));
+      });
     }
 
     function nest(tasks) {
@@ -979,7 +1102,10 @@
         if (t.parentRef && byId.has(t.parentRef)) byId.get(t.parentRef).children.push(t);
         else roots.push(t);
       });
-      return roots;
+      return sortTasksNewestFirst(roots).map((r) => {
+        if (r.children && r.children.length) r.children = sortTasksNewestFirst(r.children);
+        return r;
+      });
     }
 
     function taskKindKey(t) {
@@ -997,6 +1123,7 @@
       const val = String(tag.value || '');
       if (type === 'status') {
         const st = String(t.status || '');
+        // Filter tag Active matches Active|Resume
         if (val === 'Active') return st === 'Active' || st === STATUS_API_RESUME;
         return st === val;
       }
@@ -1052,7 +1179,7 @@
     function syncSmartFilterUi() {
       const bar = $('smartFilter');
       if (!bar) return;
-      const boardish = state.view === 'board' || state.view === 'needs' || state.view === 'completed';
+      const boardish = state.view === 'board' || state.view === 'needs' || state.view === 'completed' || state.view === 'mine';
       bar.hidden = !boardish;
       const chips = $('sfChips');
       const input = $('sfInput');
@@ -1697,10 +1824,27 @@
         + '</div>';
     }
 
+    function safeLinkHref(raw) {
+      const url = String(raw || '').trim();
+      if (!url) return '';
+      // Allow http(s) and protocol-relative; block javascript:/data:/etc.
+      if (/^(https?:)?\/\//i.test(url)) return url.replace(/"/g, '');
+      if (/^[./?#]/i.test(url) && !/^[a-z][a-z0-9+.-]*:/i.test(url)) {
+        return url.replace(/"/g, '');
+      }
+      return '';
+    }
+
     function linkOpenHtml(entry) {
-      const url = String((entry && entry.url) || '').replace(/"/g, '');
+      const url = safeLinkHref((entry && entry.url) || '');
       const ft = linkFileType(url);
       const label = linkDisplayName(entry);
+      if (!url) {
+        return '<span class="task-link-open is-blocked" title="Link blocked">'
+          + '<span class="task-link-ft is-' + ft + '" aria-hidden="true"></span>'
+          + '<span class="task-link-label">' + escapeHtml(label) + '</span>'
+          + '</span>';
+      }
       return '<a class="task-link-open" href="' + url + '" target="_blank" rel="noopener" title="'
         + escapeHtml(url) + '">'
         + '<span class="task-link-ft is-' + ft + '" aria-hidden="true"></span>'
@@ -1950,12 +2094,13 @@
 
     /**
      * Needs attention (P2 + admin): action still required.
-     * Includes Done tasks waiting for task-level Approve (not yet Approved).
+     * Includes Done main/sub waiting for task-level Approve (not yet Approved chip).
+     * Routine / pseudo / not_a_task never need that Approve step.
      */
     function taskNeedsAttention(t) {
       if (!t) return false;
       if (String(t.status || '') === 'Done') {
-        return !isTaskCompletionApproved(t); // waiting for Approve task
+        return taskNeedsCompletionApproval(t) && !isTaskCompletionApproved(t);
       }
       const rState = normalizeUiReviewState(t);
       // under_review covers newly submitted files awaiting first rating
@@ -1969,11 +2114,375 @@
       return false;
     }
 
+    /**
+     * Bucket for Needs attention Focus panel.
+     * waiting = Done awaiting task-level Approve; rework = file rework;
+     * files = under_review or low-star files needing Review.
+     */
+    function needsAttentionBucket(t) {
+      if (!t || !taskNeedsAttention(t)) return null;
+      if (String(t.status || '') === 'Done'
+          && taskNeedsCompletionApproval(t)
+          && !isTaskCompletionApproved(t)) {
+        return 'waiting';
+      }
+      const rState = normalizeUiReviewState(t);
+      if (rState === 'rework') return 'rework';
+      return 'files';
+    }
+
+    function needsFocusList(tasks) {
+      const list = Array.isArray(tasks) ? tasks : [];
+      const focus = state.needsFocus || 'all';
+      if (focus === 'all') return list;
+      return list.filter((t) => needsAttentionBucket(t) === focus);
+    }
+
+    function canUseNeedsBulk() {
+      return !!(state.me && perms().canReviewModerate);
+    }
+
+    function pruneNeedsSelection() {
+      const live = new Set((state.tasks || []).map((t) => t.ref).filter(Boolean));
+      Object.keys(state.needsSelected || {}).forEach((ref) => {
+        if (!live.has(ref)) delete state.needsSelected[ref];
+      });
+    }
+
+    function syncNeedsBulkUi() {
+      const bar = $('needsBulkBar');
+      if (!bar) return;
+      const onNeeds = state.view === 'needs' && !!state.me;
+      bar.hidden = !onNeeds;
+      if (!onNeeds) return;
+
+      const canBulk = canUseNeedsBulk();
+      if ($('needsSelectPanel')) $('needsSelectPanel').hidden = !canBulk;
+      if ($('needsApplyPanel')) $('needsApplyPanel').hidden = !canBulk;
+
+      const focusSel = $('needsFocus');
+      if (focusSel && focusSel.value !== (state.needsFocus || 'all')) {
+        focusSel.value = state.needsFocus || 'all';
+      }
+
+      const inFocus = (state.tasks || []).length;
+      if ($('needsFilterMeta')) {
+        $('needsFilterMeta').textContent = inFocus + ' in focus';
+      }
+
+      const selectedRefs = Object.keys(state.needsSelected || {}).filter((k) => state.needsSelected[k]);
+      const selectedN = selectedRefs.length;
+      if ($('needsSelectedMeta')) {
+        $('needsSelectedMeta').textContent = selectedN + ' selected';
+      }
+
+      const approvables = selectedRefs.filter((ref) => {
+        const t = (state.tasks || []).find((x) => x.ref === ref)
+          || (state.viewTasks || []).find((x) => x.ref === ref)
+          || (state.allTasks || []).find((x) => x.ref === ref);
+        return t && canApproveTaskCompletion(t);
+      }).length;
+      if ($('needsApplyMeta')) {
+        $('needsApplyMeta').textContent = approvables
+          ? (approvables + ' of selected can be approved now · file Review stays per-task')
+          : 'Only Waiting approval rows · file Review stays per-task';
+      }
+      const approveBtn = $('needsBulkApprove');
+      if (approveBtn) {
+        approveBtn.disabled = !approvables;
+        approveBtn.textContent = approvables
+          ? ('Approve tasks (' + approvables + ')')
+          : 'Approve tasks';
+      }
+
+      const allCb = $('needsSelectAll');
+      if (allCb && canBulk) {
+        const refs = (state.tasks || []).map((t) => t.ref).filter(Boolean);
+        const allOn = refs.length > 0 && refs.every((r) => state.needsSelected[r]);
+        const someOn = refs.some((r) => state.needsSelected[r]);
+        allCb.checked = allOn;
+        allCb.indeterminate = someOn && !allOn;
+      }
+    }
+
+    function setNeedsSelectionInFocus(on) {
+      (state.tasks || []).forEach((t) => {
+        if (!t || !t.ref) return;
+        if (on) state.needsSelected[t.ref] = true;
+        else delete state.needsSelected[t.ref];
+      });
+      syncNeedsBulkUi();
+      document.querySelectorAll('#taskList .task.needs-pickable .needs-pick input').forEach((cb) => {
+        const card = cb.closest('.task');
+        const ref = card && card.dataset.ref;
+        cb.checked = !!(ref && state.needsSelected[ref]);
+      });
+    }
+
+    function clearNeedsSelection() {
+      state.needsSelected = {};
+      setNeedsSelectionInFocus(false);
+    }
+
+    function applyNeedsFocusAndRender() {
+      const all = state.allTasks || [];
+      state.viewTasks = filterTasksForView(all);
+      state.tasks = applySmartFilters(state.viewTasks);
+      pruneNeedsSelection();
+      renderBoard();
+    }
+
+    async function bulkApproveNeedsSelected() {
+      const refs = Object.keys(state.needsSelected || {}).filter((k) => state.needsSelected[k]);
+      const targets = refs.map((ref) => (
+        (state.tasks || []).find((x) => x.ref === ref)
+        || (state.allTasks || []).find((x) => x.ref === ref)
+      )).filter((t) => t && canApproveTaskCompletion(t));
+      if (!targets.length) {
+        alert('No selected tasks are Waiting for approval.');
+        return;
+      }
+      const btn = $('needsBulkApprove');
+      if (btn) btn.disabled = true;
+      let ok = 0;
+      const errors = [];
+      for (let i = 0; i < targets.length; i++) {
+        try {
+          await approveTaskCompletion(targets[i]);
+          ok += 1;
+          delete state.needsSelected[targets[i].ref];
+        } catch (err) {
+          errors.push((targets[i].name || targets[i].ref) + ': ' + (err.message || 'failed'));
+        }
+      }
+      try {
+        await refreshTasks();
+      } catch (e) { /* render from last state */ }
+      if (errors.length) {
+        alert('Approved ' + ok + ' of ' + targets.length + '.\n' + errors.slice(0, 5).join('\n'));
+      }
+    }
+
+    function isAssignedToMe(t) {
+      return !!(state.me && t && t.assigneeUsername
+        && t.assigneeUsername === state.me.username);
+    }
+
+    function taskIsHighPriority(t) {
+      return String((t && t.priority) || '').toLowerCase() === 'high';
+    }
+
+    function taskIsOverdue(t) {
+      if (!t || String(t.status || '') === 'Done') return false;
+      if (typeof t.overdue === 'boolean') return t.overdue;
+      const end = parseIstStamp(t.endDate);
+      if (!end) return false;
+      return end.getTime() < Date.now();
+    }
+
+    /** Display label High | Medium | Low (API: high | normal | low). */
+    function priorityDisplayLabel(p) {
+      const s = String(p || '').toLowerCase();
+      if (s === 'high') return 'High';
+      if (s === 'low') return 'Low';
+      return 'Medium';
+    }
+
+    function priorityGlyphInfo(t) {
+      const level = priorityDisplayLabel(t && t.priority);
+      const isOverdue = !!t && !!t.overdue && String(t.status || '') !== 'Done';
+      const byMod = t && t.prioritySetBy === 'moderator';
+      const dotGlyph = t && t.prioritySource === 'override' ? (byMod ? '⬟' : '⭑') : '●';
+      const dotKind = t && t.prioritySource === 'override' ? (byMod ? ' dot-mod' : ' dot-admin') : '';
+      const title = isOverdue
+        ? 'Overdue — past deadline'
+        : (t && t.prioritySource === 'override'
+          ? 'Priority set by admin'
+          : (t && t.prioritySource === 'clock'
+            ? 'Priority from deadline clock'
+            : 'Priority'));
+      return { level, isOverdue, dotGlyph, dotKind, title: title + ' · ' + level };
+    }
+
+    /* —— Countdown / duration timer pill (from task-sheet; priority glyph replaces hourglass) —— */
+    const TIMER_MINUTES_PER_HOUR = 60;
+    const TIMER_MINUTES_PER_DAY = 24 * TIMER_MINUTES_PER_HOUR;
+    let timerTickHandle = null;
+
+    function formatTimerDuration(milliseconds) {
+      if (!Number.isFinite(milliseconds)) return '-';
+      const totalMinutes = Math.max(0, Math.floor(Math.abs(milliseconds) / 60000));
+      const days = Math.floor(totalMinutes / TIMER_MINUTES_PER_DAY);
+      const hours = Math.floor((totalMinutes % TIMER_MINUTES_PER_DAY) / TIMER_MINUTES_PER_HOUR);
+      const minutes = totalMinutes % TIMER_MINUTES_PER_HOUR;
+      if (days > 0) {
+        return String(days) + ':' + String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+      }
+      return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+    }
+
+    function timerDurationContext(durationText) {
+      if (!durationText || durationText === '-') return 'HH:MM';
+      return durationText.split(':').length === 3 ? 'D:HH:MM' : 'HH:MM';
+    }
+
+    function timerBaseClass(priority) {
+      const key = String(priority || '').toLowerCase();
+      if (key === 'high') return 'time-unit--high';
+      if (key === 'medium' || key === 'normal') return 'time-unit--medium';
+      if (key === 'low') return 'time-unit--low';
+      return 'time-unit--fallback';
+    }
+
+    function getTimerToneClass(priority, milliseconds) {
+      const hasTime = Number.isFinite(milliseconds);
+      if (!hasTime) return 'time-unit--fallback';
+      // Past deadline → full brick red (never medium/orange, never washed “relaxed”)
+      if (milliseconds < 0) return 'time-unit--high time-unit--urgent';
+      const hasPriority = !!String(priority || '').trim();
+      if (!hasPriority) return 'time-unit--fallback';
+      const hours = Math.abs(milliseconds) / 3600000;
+      const urgency = hours <= 4 ? 'time-unit--urgent' : hours <= 24 ? 'time-unit--normal' : 'time-unit--relaxed';
+      return timerBaseClass(priority) + ' ' + urgency;
+    }
+
+    /** Open tasks: ms until deadline. Done: time taken start→updated/end. */
+    function taskTimerMs(t) {
+      if (!t) return null;
+      if (String(t.status || '') === 'Done') {
+        const start = parseIstStamp(t.startDate);
+        let end = null;
+        if (t.updatedAt) {
+          const u = new Date(t.updatedAt);
+          if (!isNaN(u.getTime())) end = u;
+        }
+        if (!end) end = parseIstStamp(t.endDate);
+        if (!start || !end || end.getTime() < start.getTime()) return null;
+        return end.getTime() - start.getTime();
+      }
+      const deadline = parseIstStamp(t.endDate);
+      if (!deadline) return null;
+      return deadline.getTime() - Date.now();
+    }
+
+    function buildTimerPillEl(t) {
+      const ms = taskTimerMs(t);
+      const text = formatTimerDuration(ms);
+      const pri = priorityGlyphInfo(t);
+      const line = document.createElement('span');
+      line.className = 'time-unit ' + getTimerToneClass(t && t.priority, ms);
+      line.dataset.timerMode = String(t && t.status || '') === 'Done' ? 'duration' : 'countdown';
+      if (t && t.endDate) line.dataset.timerEnd = String(t.endDate);
+      if (t && t.startDate) line.dataset.timerStart = String(t.startDate);
+      if (t && t.updatedAt) line.dataset.timerUpdated = String(t.updatedAt);
+      if (t && t.priority) line.dataset.timerPri = String(t.priority);
+      if (t && t.prioritySource) line.dataset.timerPriSource = String(t.prioritySource);
+      if (t && t.prioritySetBy) line.dataset.timerPriBy = String(t.prioritySetBy);
+      if (t && t.overdue) line.dataset.timerOverdue = '1';
+      line.dataset.timerStatus = String((t && t.status) || '');
+      const timeOverdue = Number.isFinite(ms) && ms < 0 && line.dataset.timerMode === 'countdown';
+      const timeTitle = line.dataset.timerMode === 'duration'
+        ? 'Time taken'
+        : (timeOverdue ? 'Overdue by ' + text : 'Time left · ' + text);
+      line.title = timeTitle + ' · ' + pri.title;
+      line.setAttribute('aria-label', line.title);
+
+      const iconWrap = document.createElement('span');
+      iconWrap.className = 'time-icon-wrap pri-' + pri.level + (pri.isOverdue ? ' is-overdue' : '');
+      iconWrap.innerHTML = '<span class="priority-dot' + pri.dotKind + '" aria-hidden="true">'
+        + pri.dotGlyph + '</span>';
+
+      const stack = document.createElement('span');
+      stack.className = 'time-inline';
+      const contextSpan = document.createElement('span');
+      contextSpan.className = 'time-context';
+      contextSpan.textContent = timerDurationContext(text);
+      const valueSpan = document.createElement('span');
+      valueSpan.className = 'meta-value';
+      valueSpan.textContent = text;
+      stack.appendChild(contextSpan);
+      stack.appendChild(valueSpan);
+      line.appendChild(iconWrap);
+      line.appendChild(stack);
+      return line;
+    }
+
+    function refreshTimerPillEl(line) {
+      if (!line) return;
+      const fake = {
+        status: line.dataset.timerStatus || '',
+        endDate: line.dataset.timerEnd || '',
+        startDate: line.dataset.timerStart || '',
+        updatedAt: line.dataset.timerUpdated || '',
+        priority: line.dataset.timerPri || '',
+        prioritySource: line.dataset.timerPriSource || '',
+        prioritySetBy: line.dataset.timerPriBy || '',
+        overdue: line.dataset.timerOverdue === '1',
+      };
+      const ms = taskTimerMs(fake);
+      const text = formatTimerDuration(ms);
+      const pri = priorityGlyphInfo(fake);
+      line.className = 'time-unit ' + getTimerToneClass(fake.priority, ms);
+      const iconWrap = line.querySelector('.time-icon-wrap');
+      if (iconWrap) {
+        iconWrap.className = 'time-icon-wrap pri-' + pri.level + (pri.isOverdue ? ' is-overdue' : '');
+        const dot = iconWrap.querySelector('.priority-dot');
+        if (dot) {
+          dot.className = 'priority-dot' + pri.dotKind;
+          dot.textContent = pri.dotGlyph;
+        }
+      }
+      const valueSpan = line.querySelector('.meta-value');
+      const contextSpan = line.querySelector('.time-context');
+      if (valueSpan) valueSpan.textContent = text;
+      if (contextSpan) contextSpan.textContent = timerDurationContext(text);
+      const timeOverdue = Number.isFinite(ms) && ms < 0 && line.dataset.timerMode === 'countdown';
+      const timeTitle = line.dataset.timerMode === 'duration'
+        ? 'Time taken'
+        : (timeOverdue ? 'Overdue by ' + text : 'Time left · ' + text);
+      line.title = timeTitle + ' · ' + pri.title;
+      line.setAttribute('aria-label', line.title);
+    }
+
+    function tickAllTimerPills() {
+      document.querySelectorAll('#taskList .time-unit[data-timer-mode]').forEach(refreshTimerPillEl);
+    }
+
+    function ensureTimerTicker() {
+      if (timerTickHandle) return;
+      timerTickHandle = window.setInterval(tickAllTimerPills, 30000);
+    }
+
+    /**
+     * My Task: assigned to me AND (needs action | high priority | past deadline).
+     * Includes Vinod / all signed-in roles for their own assignee.
+     */
+    function taskIsMyActionable(t) {
+      if (!isAssignedToMe(t)) return false;
+      if (taskNeedsAttention(t)) return true;
+      if (String(t.status || '') === 'Done') return false;
+      return taskIsHighPriority(t) || taskIsOverdue(t);
+    }
+
+    function syncMyTasksBadge(count) {
+      const n = Math.max(0, Number(count) || 0);
+      const btn = $('btnMyTasks');
+      const badge = $('myTasksCount');
+      if (!badge) return;
+      if (!btn || btn.hidden || n < 1) {
+        badge.hidden = true;
+        badge.textContent = '0';
+        return;
+      }
+      badge.hidden = false;
+      badge.textContent = n > 99 ? '99+' : String(n);
+    }
+
     /** Newest added first, then soonest / past deadline. */
     function sortTasksNeedsAttention(tasks) {
       return (Array.isArray(tasks) ? tasks.slice() : []).sort((a, b) => {
-        const ca = Date.parse(a && a.createdAt) || Date.parse(a && a.updatedAt) || 0;
-        const cb = Date.parse(b && b.createdAt) || Date.parse(b && b.updatedAt) || 0;
+        const ca = taskRecencyMs(a);
+        const cb = taskRecencyMs(b);
         if (cb !== ca) return cb - ca;
         const ea = parseIstStamp(a && a.endDate);
         const eb = parseIstStamp(b && b.endDate);
@@ -2166,7 +2675,7 @@
     /** Task status chip — API resume token always displays as Active. */
     function taskStatusChipLabel(t) {
       const st = String((t && t.status) || '').trim();
-      return st ? ('status:' + statusDisplayLabel(st)) : 'status:—';
+      return st ? statusDisplayLabel(st) : '—';
     }
 
     function renderTask(t, isSub) {
@@ -2199,34 +2708,56 @@
 
       el.innerHTML =
         '<div class="task-compact">'
+        + '<div class="task-topline"></div>'
         + '<h3></h3><div class="meta"></div><div class="subs-line" hidden></div><div class="chips"></div>'
         + taskLinksCompactHtml(t)
         + renderBar(t.stages) + reviewHtml + '<div class="actions"></div>'
         + '<div class="history-body" hidden></div>'
         + '</div><div class="edit-body" hidden></div><div class="review-body" hidden></div>';
 
+      if (state.view === 'needs' && canUseNeedsBulk() && t.ref) {
+        el.classList.add('needs-pickable');
+        const pick = document.createElement('label');
+        pick.className = 'needs-pick';
+        pick.title = 'Select for bulk approve';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.setAttribute('aria-label', 'Select ' + (t.name || t.ref));
+        cb.checked = !!state.needsSelected[t.ref];
+        cb.onchange = () => {
+          if (cb.checked) state.needsSelected[t.ref] = true;
+          else delete state.needsSelected[t.ref];
+          syncNeedsBulkUi();
+        };
+        pick.appendChild(cb);
+        el.querySelector('.task-compact').prepend(pick);
+      }
+
       el.querySelector('h3').textContent = t.name || '';
       el.querySelector('.meta').textContent =
-        (t.projectName || t.projectCode) + ' · ' + (t.assigneeDisplayName || t.assigneeUsername || '')
+        (t.assigneeDisplayName || t.assigneeUsername || '')
+        + ' · ' + (t.projectName || t.projectCode)
         + (t.startDate ? ' · start ' + t.startDate : '')
         + (t.endDate ? ' · end ' + t.endDate : '')
         + (iter && role() !== 'P1' && isNeeds ? ' · iter ' + iter : '');
       if (isMainCard(t, isSub)) {
         const stats = subDoneStats(t);
         const line = el.querySelector('.subs-line');
-        line.hidden = false;
-        line.textContent = stats.y === 0
-          ? 'No subs'
-          : ('Subs: ' + stats.x + '/' + stats.y + ' done');
+        if (stats.y > 0) {
+          line.hidden = false;
+          line.textContent = 'Subs: ' + stats.x + '/' + stats.y + ' done';
+        }
       }
-      const chips = el.querySelector('.chips');
-      if (kindChip) chips.insertAdjacentHTML('beforeend', kindChip);
+      const topline = el.querySelector('.task-topline');
+      topline.appendChild(buildTimerPillEl(t));
       const statusChip = document.createElement('span');
       statusChip.className = 'chip chip-status';
       statusChip.textContent = taskStatusChipLabel(t);
-      chips.appendChild(statusChip);
-      // Task-level completion approval (Done only) — not file review.
-      if (role() !== 'P1' && String(t.status || '') === 'Done') {
+      topline.appendChild(statusChip);
+      if (kindChip) topline.insertAdjacentHTML('beforeend', kindChip);
+      const chips = el.querySelector('.chips');
+      // Task-level completion approval (Done main/sub only) — not file review.
+      if (role() !== 'P1' && taskNeedsCompletionApproval(t)) {
         const doneChip = document.createElement('span');
         if (isTaskCompletionApproved(t)) {
           doneChip.className = 'chip chip-task-approved';
@@ -2290,7 +2821,8 @@
         actions.appendChild(ab);
       }
       // History: assignee + moderators (P2+)
-      if (role() !== 'P1' && (taskHasAnyLink(t) || rState !== 'none' || String(t.status || '') === 'Done')) {
+      if (role() !== 'P1' && (taskHasAnyLink(t) || rState !== 'none'
+          || String(t.status || '') === 'Done')) {
         const hb = document.createElement('button');
         hb.type = 'button';
         hb.className = 'btn';
@@ -2302,8 +2834,102 @@
       return el;
     }
 
+    function setBoardHint(msg) {
+      const el = $('hint');
+      if (!el) return;
+      const t = String(msg || '').trim();
+      el.textContent = t;
+      el.hidden = !t;
+    }
+
     function escapeHtml(s) {
       return String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    /* —— Overview (ts-2 SummaryPanel) — counts from live sheet tasks via state.allTasks —— */
+    function isLoggedEntry(t) {
+      const k = taskKindKey(t);
+      return k === 'routine' || k === 'not_a_task';
+    }
+    function isOverviewCompleted(t) {
+      return String(t && t.status || '') === 'Done';
+    }
+    function overviewTaskList() {
+      return state.allTasks || [];
+    }
+    function overviewAssigneeKey(t) {
+      return String((t && (t.assigneeUsername || t.assigneeDisplayName)) || '').trim();
+    }
+    function overviewAssigneeLabel(who) {
+      const key = String(who || '').trim();
+      if (!key) return '—';
+      const users = state.users || [];
+      const byUser = users.find((u) => String(u.username || '') === key);
+      if (byUser) return byUser.displayName || byUser.username || key;
+      const hit = overviewTaskList().find((t) => overviewAssigneeKey(t) === key);
+      if (hit && hit.assigneeDisplayName) return hit.assigneeDisplayName;
+      return key;
+    }
+    function syncOverviewVisibility() {
+      const panel = $('summaryPanel');
+      if (!panel) return;
+      const boardish = state.view === 'board' || state.view === 'needs'
+        || state.view === 'completed' || state.view === 'mine';
+      panel.hidden = !boardish;
+    }
+    function setSummaryOpen(open) {
+      state.summaryOpen = !!open;
+      const panel = $('summaryPanel');
+      const btn = $('summaryToggle');
+      if (!panel || !btn) return;
+      panel.classList.toggle('is-open', state.summaryOpen);
+      btn.setAttribute('aria-expanded', String(state.summaryOpen));
+      btn.setAttribute('aria-label', state.summaryOpen ? 'Collapse overview' : 'Expand overview');
+    }
+    function updateOvNav() {
+      const el = $('ovStrips');
+      if (!el || !$('ovPrev') || !$('ovNext')) return;
+      const overflow = el.scrollWidth > el.clientWidth + 1;
+      $('ovPrev').disabled = !overflow || el.scrollLeft <= 0;
+      $('ovNext').disabled = !overflow || el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+    }
+    function renderOverviewStrips() {
+      const byUser = new Map();
+      overviewTaskList().forEach((t) => {
+        const who = overviewAssigneeKey(t);
+        if (!who || isLoggedEntry(t)) return;
+        if (!byUser.has(who)) byUser.set(who, { total: 0, scheduled: 0, completed: 0 });
+        const s = byUser.get(who);
+        s.total += 1;
+        if (isOverviewCompleted(t)) s.completed += 1; else s.scheduled += 1;
+      });
+      const row = $('ovUsers');
+      if (!row) return;
+      if (!byUser.size) { row.style.display = 'none'; return; }
+      row.style.display = '';
+      const pad2 = (n) => String(n).padStart(2, '0');
+      const stat = (label, n) =>
+        `<span class="ov-strip-stat"><small>${escapeHtml(label)}</small><b>${pad2(n)}</b></span>`;
+      $('ovStrips').innerHTML = [...byUser.entries()]
+        .sort((a, b) => overviewAssigneeLabel(a[0]).localeCompare(overviewAssigneeLabel(b[0])))
+        .map(([who, s]) => `<div class="ov-strip">
+        <span class="ov-strip-name">${escapeHtml(overviewAssigneeLabel(who))}</span><span class="ov-strip-dot">●</span>
+        ${stat('Total', s.total)}<span class="ov-strip-sep">|</span>
+        ${stat('Scheduled', s.scheduled)}<span class="ov-strip-sep">|</span>
+        ${stat('Completed', s.completed)}
+      </div>`).join('');
+      updateOvNav();
+    }
+    function updateOverview() {
+      if (!$('statTotal')) return;
+      syncOverviewVisibility();
+      const list = overviewTaskList().filter((t) => !isLoggedEntry(t));
+      const scheduled = list.filter((t) => !isOverviewCompleted(t));
+      const completed = list.filter((t) => isOverviewCompleted(t));
+      $('statTotal').textContent = String(list.length);
+      $('statScheduled').textContent = String(scheduled.length);
+      $('statCompleted').textContent = String(completed.length);
+      renderOverviewStrips();
     }
 
     function renderBoard() {
@@ -2316,21 +2942,11 @@
       if (filteredOut) {
         $('empty').textContent = 'No tasks match the current filters.';
         $('empty').hidden = false;
+      } else if (state.view === 'mine' && !roots.length) {
+        $('empty').textContent = 'No My Task items — nothing needs action, high priority, or overdue.';
+        $('empty').hidden = false;
       } else {
         $('empty').textContent = 'No tasks.';
-      }
-      if (state.view === 'needs') {
-        $('hint').textContent = 'Needs attention: rework, pending ratings, 1★/2★ files, and Done waiting for Approve task. Sorted newest first, then soonest deadline.';
-      } else if (state.view === 'completed') {
-        $('hint').textContent = 'Completed: Done tasks already Approved. Waiting for Approve task stays on Needs attention. Board never shows Done.';
-      } else if (role() === 'P1') {
-        $('hint').textContent = 'Public: main tasks with nested subs. Link icon opens work in a new tab when present.';
-      } else if (role() === 'P2') {
-        $('hint').textContent = 'Your tasks (not Done). Use Needs attention for rework, pending review, and Done waiting approval.';
-      } else if (role() === 'P3') {
-        $('hint').textContent = 'Board: open work. Needs attention lists review work and Done tasks waiting for Approve task.';
-      } else {
-        $('hint').textContent = 'Admin board (not Done). Needs attention covers under review, rework, 1★/2★, and Done waiting approval.';
       }
       syncSmartFilterUi();
       function walk(list, sub) {
@@ -2341,6 +2957,9 @@
       }
       walk(roots, false);
       syncDraftBar();
+      ensureTimerTicker();
+      tickAllTimerPills();
+      syncNeedsBulkUi();
     }
 
     function renderLogs() {
@@ -2378,23 +2997,30 @@
       const m = await api('GET', '/api/me');
       state.me = m.user; state.permissions = m.permissions;
       if (m.user) {
-        $('whoLine').textContent = m.user.displayName + ' · ' + m.role;
+        $('whoLine').textContent = m.user.displayName || m.user.username || '';
+        $('whoLine').hidden = !$('whoLine').textContent;
         $('btnLogin').hidden = true; $('btnLogout').hidden = false;
         $('tabLogs').hidden = !perms().canViewLogs;
+        if ($('tabLogged')) $('tabLogged').hidden = !perms().canViewLogs;
         $('reportsPanel').hidden = !perms().canViewReports;
         $('tabInject').hidden = !perms().canAdmin;
         // Needs attention: P2 + P3/P4 (any signed-in user)
         $('tabNeeds').hidden = false;
         $('tabDone').hidden = false;
+        if ($('btnMyTasks')) $('btnMyTasks').hidden = false;
       } else {
-        $('whoLine').textContent = 'Public (P1)';
+        $('whoLine').textContent = '';
+        $('whoLine').hidden = true;
         $('btnLogin').hidden = false; $('btnLogout').hidden = true;
         $('tabLogs').hidden = true;
+        if ($('tabLogged')) $('tabLogged').hidden = true;
         $('reportsPanel').hidden = true;
         $('tabInject').hidden = true;
         $('tabNeeds').hidden = true;
         $('tabDone').hidden = true;
         syncNeedsAttentionBadge(0);
+        syncMyTasksBadge(0);
+        if ($('btnMyTasks')) $('btnMyTasks').hidden = true;
         if (state.view !== 'board') switchView('board');
       }
       syncDraftBar();
@@ -2408,14 +3034,21 @@
     function filterTasksForView(tasks) {
       const list = Array.isArray(tasks) ? tasks : [];
       if (state.view === 'completed') {
-        // Only Done + task-level Approved (Done waiting → Needs attention)
-        return list.filter((t) => String(t.status || '') === 'Done' && isTaskCompletionApproved(t));
+        // Done + Approved mark (main/sub), or Done restricted kinds
+        return list.filter(isDoneOnCompletedTab);
+      }
+      if (state.view === 'logged') {
+        return list.filter(isLoggedEntry);
       }
       if (state.view === 'board') {
-        return list.filter((t) => String(t.status || '') !== 'Done');
+        // Open work only — diary/routine rows live on Logged
+        return list.filter((t) => String(t.status || '') !== 'Done' && !isLoggedEntry(t));
+      }
+      if (state.view === 'mine') {
+        return sortTasksNeedsAttention(list.filter(taskIsMyActionable));
       }
       if (state.view === 'needs') {
-        return sortTasksNeedsAttention(list.filter(taskNeedsAttention));
+        return sortTasksNeedsAttention(needsFocusList(list.filter(taskNeedsAttention)));
       }
       return list;
     }
@@ -2424,14 +3057,18 @@
       if (state.view === 'logs') return;
       const r = await api('GET', '/api/tasks?' + boardQuery());
       let all = r.tasks || [];
-      // Enrich Done rows so “waiting approval” vs Approved is accurate for Needs attention badge.
+      // Enrich Done rows so “waiting approval” vs Approved chip is accurate for Needs attention badge.
       await enrichDoneCompletionApprovals(all);
       const attention = all.filter(taskNeedsAttention);
       syncNeedsAttentionBadge(attention.length);
+      syncMyTasksBadge(all.filter(taskIsMyActionable).length);
+      state.allTasks = all;
       state.viewTasks = filterTasksForView(all);
       state.tasks = applySmartFilters(state.viewTasks);
       state.hierarchy = null;
       state.allForParent = all.filter((t) => String(t.status || '') !== 'Done');
+      pruneNeedsSelection();
+      updateOverview();
       renderBoard();
     }
 
@@ -2448,13 +3085,23 @@
     }
 
     function syncDraftBar() {
-      const show = canShowDrafts();
-      if ($('draftBar')) $('draftBar').hidden = !show;
-      if ($('draftList')) $('draftList').hidden = !show;
-      if (!show) return;
+      const loggedIn = !!(state.me);
+      const boardish = state.view === 'board' || state.view === 'mine';
+      const showBar = loggedIn && boardish;
+      if ($('draftBar')) $('draftBar').hidden = !showBar;
+      if ($('draftList')) $('draftList').hidden = !(showBar && state.view === 'board');
+      if ($('btnMyTasks')) {
+        $('btnMyTasks').hidden = !loggedIn;
+        $('btnMyTasks').classList.toggle('on', state.view === 'mine');
+      }
+      if ($('btnAddDraft')) {
+        $('btnAddDraft').hidden = !canShowDrafts();
+      }
+      if (!showBar) return;
       // refresh project options inside existing dummies without wiping typed values
       document.querySelectorAll('#draftList .task.draft').forEach((card) => {
         refreshDummyProjects(card);
+        fillDummyAssigneeOptions(card);
         syncDummyParentVisibility(card);
         syncDummyStagesVisibility(card);
       });
@@ -2601,13 +3248,41 @@
 
     function refreshDummyProjects(card) {
       const sel = dq(card, '[data-f="project"]');
+      if (!sel) return;
+      const hint = dq(card, '[data-f="projectHint"]');
       const prev = sel.value;
       sel.innerHTML = '';
+      const ph = document.createElement('option');
+      ph.value = '';
+      ph.textContent = state.projects.length ? '— Select project —' : '— No projects loaded —';
+      sel.appendChild(ph);
       state.projects.forEach((p) => {
-        const o = document.createElement('option'); o.value = p.code; o.textContent = p.name; sel.appendChild(o);
+        const o = document.createElement('option');
+        o.value = p.code;
+        o.textContent = p.name || p.label || p.code;
+        sel.appendChild(o);
       });
       if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
-      else if (state.projects[0]) sel.value = state.projects[0].code;
+      else sel.value = '';
+      if (hint) {
+        if (!state.projects.length) {
+          hint.hidden = false;
+          hint.textContent = 'No projects yet — open Inject → Refresh from master, or reload after login.';
+        } else {
+          hint.hidden = false;
+          hint.textContent = 'Required — pick a project before SUBMIT.';
+        }
+      }
+      syncDummySubmitEnabled(card);
+    }
+
+    function syncDummySubmitEnabled(card) {
+      const btn = dq(card, '[data-act="submit"]');
+      const sel = dq(card, '[data-f="project"]');
+      if (!btn || !sel) return;
+      const ok = !!String(sel.value || '').trim();
+      btn.disabled = !ok;
+      btn.title = ok ? '' : 'Select a project first';
     }
 
     function updateDummySummary(card) {
@@ -2638,7 +3313,12 @@
         + '<button type="button" class="btn" data-act="discard">Discard</button>'
         + '</div>'
         + '<div class="draft-body">'
-        + '<div class="fld" data-dfld="project"><label>Project</label><select data-f="project"></select></div>'
+        + '<div class="fld" data-dfld="project"><label>Project <span class="muted">(required)</span></label>'
+        + '<select data-f="project" required aria-label="Project"></select>'
+        + '<p class="hint-sm" data-f="projectHint" hidden></p></div>'
+        + '<div class="fld" data-dfld="assignee" hidden><label>Assign to</label>'
+        + '<select data-f="assignee" aria-label="Assign to"></select>'
+        + '<p class="hint-sm">Defaults to you — admins are users too.</p></div>'
         + '<div class="fld"><label>Name</label><input data-f="name" placeholder="Task name" /></div>'
         + '<div class="fld"><label>Description</label><textarea data-f="desc"></textarea></div>'
         + notesFieldHtml()
@@ -2678,6 +3358,7 @@
         + '</div>';
 
       refreshDummyProjects(card);
+      fillDummyAssigneeOptions(card);
       setDummyMs(card, 'main');
       const start = istNowStamp();
       dq(card, '[data-f="start"]').value = start;
@@ -2706,20 +3387,40 @@
       sel.disabled = true;
     }
 
-    function addDummyDraft() {
+    async function addDummyDraft() {
       if (!canShowDrafts()) return;
+      if (!state.projects.length) {
+        await refreshProjects();
+      }
+      if (canReassignRole() && !(state.users || []).length) {
+        await refreshUsers();
+      }
       const id = 'd' + (++draftSeq) + '_' + Date.now().toString(36);
       const card = buildDummyCard(id);
       $('draftList').prepend(card);
       setDummyCollapsed(card, false);
       $('empty').hidden = true;
+      const proj = dq(card, '[data-f="project"]');
+      if (proj) {
+        try { proj.focus(); } catch (_) { /* */ }
+        try { card.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (_) { /* */ }
+      }
     }
 
     async function submitDummyCard(card) {
       const errEl = dq(card, '[data-f="err"]');
       errEl.textContent = '';
+      if (card.dataset.submitted === '1' || card.dataset.submitting === '1') return;
       if (!perms().canCreate) {
         errEl.textContent = 'You cannot create tasks.';
+        return;
+      }
+      const projectCode = (dq(card, '[data-f="project"]') && dq(card, '[data-f="project"]').value) || '';
+      if (!projectCode) {
+        errEl.textContent = 'Project is required — pick one at the top of this draft.';
+        setDummyCollapsed(card, false);
+        const proj = dq(card, '[data-f="project"]');
+        if (proj) try { proj.focus(); } catch (_) { /* */ }
         return;
       }
       const name = dq(card, '[data-f="name"]').value.trim();
@@ -2749,7 +3450,7 @@
         if (endEl) endEl.value = endDate;
       }
       const body = {
-        projectCode: dq(card, '[data-f="project"]').value,
+        projectCode,
         name,
         description: dq(card, '[data-f="desc"]').value,
         notes: notesVal,
@@ -2757,6 +3458,11 @@
         startDate,
         endDate,
       };
+      const assigneeFld = dq(card, '[data-dfld="assignee"]');
+      const assigneeSel = dq(card, '[data-f="assignee"]');
+      if (canReassignRole() && assigneeFld && !assigneeFld.hidden && assigneeSel && assigneeSel.value) {
+        body.assigneeUsername = assigneeSel.value;
+      }
       // Status is not chosen on draft — API create births status=Active (system path).
       const priFld = dq(card, '[data-dfld="priority"]');
       if (priFld && !priFld.hidden) body.priority = dq(card, '[data-f="priority"]').value;
@@ -2776,17 +3482,29 @@
         // P2 (and non-admin): parent alone — never send kind
         body.parentRef = dq(card, '[data-f="parent"]').value;
       }
+
+      const submitBtn = dq(card, '[data-act="submit"]');
+      card.dataset.submitting = '1';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting…';
+      }
+
       try {
         if (dummyStagesAllowed(card)) {
           const stageCheck = parseStageTokensClient(dq(card, '[data-f="stages"]').value);
           if (!stageCheck.ok) {
             errEl.textContent = stageCheck.error;
             setDummyCollapsed(card, false);
+            card.dataset.submitting = '';
+            syncDummySubmitEnabled(card);
+            if (submitBtn) submitBtn.textContent = 'SUBMIT';
             return;
           }
         }
         const created = await api('POST', '/api/tasks', body);
         const createdRef = created && created.task && created.task.ref;
+        const syncStatus = created && created.task && created.task.syncStatus;
         if (dummyStagesAllowed(card)) {
           const tokens = syncDummyStagesUi(card, { rewrite: true, clearError: true });
           if (tokens.length && createdRef) {
@@ -2796,23 +3514,67 @@
             });
           }
         }
-        card.remove();
+        let reviewWarn = '';
         if (body.link && createdRef) {
           try {
             await markNeedsReview(createdRef, body.link);
           } catch (revErr) {
-            await refreshTasks();
-            $('hint').textContent = 'Task saved, but Needs review failed: '
+            reviewWarn = 'Task saved, but Needs review failed: '
               + (revErr && revErr.message ? revErr.message : 'submit error')
-              + ' — open EDIT and UPDATE to retry.';
-            return;
+              + ' — open the task and UPDATE to retry.';
           }
         }
+        markDraftSubmitted(card, name, reviewWarn, syncStatus);
         await refreshTasks();
       } catch (err) {
         errEl.textContent = err.message;
         setDummyCollapsed(card, false);
+        card.dataset.submitting = '';
+        syncDummySubmitEnabled(card);
+        if (submitBtn) submitBtn.textContent = 'SUBMIT';
       }
+    }
+
+    function markDraftSubmitted(card, taskName, reviewWarn, syncStatus) {
+      card.dataset.submitted = '1';
+      card.dataset.submitting = '';
+      card.classList.add('is-submitted');
+      setDummyCollapsed(card, true);
+
+      const summary = dq(card, '.draft-summary');
+      if (summary) summary.textContent = taskName || 'Untitled draft';
+
+      const head = dq(card, '.draft-head');
+      if (head && !dq(card, '.draft-submitted-badge')) {
+        const badge = document.createElement('span');
+        badge.className = 'draft-submitted-badge';
+        badge.textContent = 'Submitted';
+        head.insertBefore(badge, dq(card, '[data-act="toggle"]') || null);
+      }
+
+      // Freeze actions — draft is done
+      card.querySelectorAll('button, input, select, textarea').forEach((n) => {
+        n.disabled = true;
+      });
+      const discard = dq(card, '[data-act="discard"]');
+      if (discard) discard.hidden = true;
+      const toggle = dq(card, '[data-act="toggle"]');
+      if (toggle) toggle.hidden = true;
+
+      if (reviewWarn) {
+        setBoardHint(reviewWarn);
+      } else if (syncStatus === 'pending') {
+        setBoardHint('Submitted: ' + (taskName || 'task') + ' — saving to Sheets in background…');
+      } else {
+        setBoardHint('Submitted: ' + (taskName || 'task') + ' — on the board.');
+      }
+
+      window.setTimeout(() => {
+        if (card && card.parentNode) card.remove();
+        if ($('hint') && String($('hint').textContent || '').indexOf('Submitted:') === 0) {
+          setBoardHint('');
+        }
+      }, 10000);
     }
 
     function onDraftListClick(e) {
@@ -2866,6 +3628,7 @@
         syncDummyParentVisibility(card);
         syncDummyStagesVisibility(card);
       }
+      if (e.target.matches('[data-f="project"]')) syncDummySubmitEnabled(card);
       if (e.target.matches('[data-f="name"]')) updateDummySummary(card);
       if (e.target.matches('[data-f="stages"]')) syncDummyStagesUi(card);
     }
@@ -2981,9 +3744,62 @@
     }
 
     async function refreshUsers() {
-      if (!state.me || !canReassignRole()) { state.users = []; return; }
+      // Admins are users too — load people for create-assignee + reassign.
+      if (!state.me || !(canReassignRole() || perms().canCreate)) {
+        state.users = [];
+        return;
+      }
       try { state.users = (await api('GET', '/api/users')).users || []; }
       catch (e) { state.users = []; }
+    }
+
+    /** Real people for assignee picks — include P3/P4 admins; drop empty stubs. */
+    function assignableUsers() {
+      return (state.users || []).filter((u) => {
+        if (!u || !u.username) return false;
+        const p = Number(u.profile) || 0;
+        const sheet = String(u.userSheet || '');
+        // Keep admins and normal profiles; skip unassigned placeholder rows
+        if (p <= 0 && /^user-\d+$/i.test(String(u.username))) return false;
+        if (sheet && !/^user-/i.test(sheet)) return false;
+        return true;
+      });
+    }
+
+    function fillDummyAssigneeOptions(card) {
+      const sel = dq(card, '[data-f="assignee"]');
+      const fld = dq(card, '[data-dfld="assignee"]');
+      if (!sel || !fld) return;
+      const show = canReassignRole();
+      fld.hidden = !show;
+      if (!show) {
+        sel.innerHTML = '';
+        return;
+      }
+      const prev = sel.value || (state.me && state.me.username) || '';
+      sel.innerHTML = '';
+      const people = assignableUsers();
+      if (!people.length) {
+        const o = document.createElement('option');
+        o.value = (state.me && state.me.username) || '';
+        o.textContent = (state.me && (state.me.displayName || state.me.username)) || '— me —';
+        sel.appendChild(o);
+        sel.value = o.value;
+        return;
+      }
+      people.forEach((u) => {
+        const o = document.createElement('option');
+        o.value = u.username;
+        const label = (u.displayName || u.username) + ' (' + u.username + ')';
+        o.textContent = label;
+        sel.appendChild(o);
+      });
+      if (prev && people.some((u) => u.username === prev)) sel.value = prev;
+      else if (state.me && people.some((u) => u.username === state.me.username)) {
+        sel.value = state.me.username;
+      } else {
+        sel.value = people[0].username;
+      }
     }
 
     async function refreshLogs() {
@@ -3005,9 +3821,10 @@
     }
 
     function switchView(v) {
+      const leavingNeeds = state.view === 'needs' && v !== 'needs';
       state.view = v;
       document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.view === v));
-      const boardish = v === 'board' || v === 'needs' || v === 'completed';
+      const boardish = v === 'board' || v === 'needs' || v === 'completed' || v === 'mine' || v === 'logged';
       const onInject = v === 'inject';
       $('boardView').hidden = !boardish;
       $('logsView').hidden = v !== 'logs';
@@ -3017,10 +3834,17 @@
       }
       // Board chrome never belongs on Inject
       if ($('draftBar') && onInject) $('draftBar').hidden = true;
-      if ($('hint')) {
-        if (onInject) $('hint').textContent = 'Inject tab only — process purge/split here, then Inject into system.';
+      if (leavingNeeds) {
+        state.needsSelected = {};
+        if ($('needsSelectAll')) {
+          $('needsSelectAll').checked = false;
+          $('needsSelectAll').indeterminate = false;
+        }
       }
       syncSmartFilterUi();
+      syncDraftBar();
+      syncNeedsBulkUi();
+      syncOverviewVisibility();
       if (v === 'logs') {
         hideSfSuggest();
         refreshLogs().catch((e) => alert(e.message));
@@ -3028,7 +3852,7 @@
         hideSfSuggest();
         fillInjectAssignee().catch(() => {});
       } else {
-        refreshTasks().catch((e) => { $('hint').textContent = e.message; });
+        refreshTasks().catch((e) => { setBoardHint(e.message); });
       }
     }
 
@@ -3586,7 +4410,8 @@
         g.members.forEach((m) => {
           const p = document.createElement('div');
           const when = m.reportDate ? '[' + m.reportDate + '] ' : '';
-          const st = m.status && m.status !== 'Active' ? ' → ' + m.status : '';
+          const st = m.status && m.status !== 'Active' && m.status !== STATUS_API_RESUME
+            ? ' → ' + statusDisplayLabel(m.status) : '';
           const body = when + (m.raw || m.name) + st;
           if (primary) {
             const kept = primary && m.id === primary.id;
@@ -3886,8 +4711,8 @@
           banner.hidden = false;
           banner.textContent = 'This kind only allows status changes.';
         }
-        ['project','desc','notes','links','priority','parent','stages','start','end'].forEach((f) => setEditFld(card, f, false));
-        setEditFld(card, 'ms', showAdminKind);
+        ['project','desc','notes','links','priority','parent','stages','start','end','ms'].forEach((f) => setEditFld(card, f, false));
+        setEditMs(card, 'main');
         setEditFld(card, 'kind', showAdminKind);
         setEditFld(card, 'name', true);
         if (nameEl) nameEl.hidden = true;
@@ -3896,9 +4721,7 @@
         en(stSel, !p2DoneLocked);
         setEditKindControlsEnabled(card, showAdminKind);
         if (p2DoneLocked && banner) {
-          banner.textContent = isTaskCompletionApproved(t)
-            ? 'Done — task Approved by admin (status locked).'
-            : 'Done — Waiting for approval (status locked).';
+          banner.textContent = doneStatusLockedBanner(t);
         }
         return;
       }
@@ -4130,13 +4953,14 @@
       const opt0 = document.createElement('option');
       opt0.value = ''; opt0.textContent = '— Select user —';
       sel.appendChild(opt0);
-      (state.users || []).forEach((u) => {
+      const people = assignableUsers();
+      people.forEach((u) => {
         const o = document.createElement('option');
         o.value = u.username;
         o.textContent = (u.displayName || u.username) + ' (' + u.username + ')';
         sel.appendChild(o);
       });
-      if (selectedUsername && (state.users || []).some((u) => u.username === selectedUsername)) {
+      if (selectedUsername && people.some((u) => u.username === selectedUsername)) {
         sel.value = selectedUsername;
       } else {
         sel.value = '';
@@ -4762,8 +5586,6 @@
       const rid = String(t.ref || '').replace(/[^A-Za-z0-9_-]/g, '_');
       return ''
         + '<div class="banner muted" data-f="banner" hidden></div>'
-        + '<div class="fld" data-efld="project" hidden><label>Project</label>'
-        + '<input data-f="projectRo" readonly /></div>'
         + '<div class="fld" data-efld="name"><label>Name</label>'
         + '<input data-f="name" /><p class="muted" data-f="nameRo" hidden></p></div>'
         + '<div class="fld" data-efld="desc"><label>Description</label><textarea data-f="desc"></textarea></div>'
@@ -4831,6 +5653,7 @@
       if (errEl) errEl.textContent = '';
 
       const kindVal = applyKindToEditCard(el, t);
+      el.dataset.origKind = kindVal;
       const nameEl = eq(el, '[data-f="name"]');
       const nameRo = eq(el, '[data-f="nameRo"]');
       nameEl.value = t.name || '';
@@ -4841,7 +5664,6 @@
       const editScopeEarly = el.querySelector('.edit-body') || el;
       fillLinkList(editScopeEarly, linksFromTask(t), { plain: true });
       markApprovedLinkRows(editScopeEarly, t);
-      eq(el, '[data-f="projectRo"]').value = t.projectName || t.projectCode || '';
       eq(el, '[data-f="startRo"]').textContent = t.startDate || '—';
       eq(el, '[data-f="end"]').value = t.endDate || '';
       eq(el, '[data-f="endRo"]').textContent = t.endDate || '—';
@@ -4849,7 +5671,8 @@
 
       const stSel = eq(el, '[data-f="status"]');
       const curStatus = t.status || '';
-      fillStatusSelect(stSel, t, { p2DoneLocked: role() === 'P2' && curStatus === 'Done' });
+      const p2DoneLocked = role() === 'P2' && curStatus === 'Done';
+      fillStatusSelect(stSel, t, { p2DoneLocked });
 
       if (t.stages && t.stages.tokens) {
         eq(el, '[data-f="stages"]').value = (t.stages.tokens || []).join(' ');
@@ -4872,9 +5695,9 @@
       if (restricted) {
         banner.hidden = false;
         banner.textContent = 'This kind only allows status changes.';
-        // Hide content fields; keep admin kind/ms so they can switch back to Normal
-        ['project','desc','notes','links','priority','parent','stages','start','end'].forEach((f) => setEditFld(el, f, false));
-        setEditFld(el, 'ms', showAdminKind);
+        // Hide content fields; keep admin kind radios (Normal = Make Task). Hide Main/Sub — not used for P/R/N.
+        ['desc','notes','links','priority','parent','stages','start','end','ms'].forEach((f) => setEditFld(el, f, false));
+        setEditMs(el, 'main');
         setEditFld(el, 'kind', showAdminKind);
         setEditFld(el, 'name', true);
         nameEl.hidden = true;
@@ -4885,13 +5708,10 @@
         if (p2DoneLocked) {
           en(stSel, false);
           banner.hidden = false;
-          banner.textContent = isTaskCompletionApproved(t)
-            ? 'Done — task Approved by admin (status locked).'
-            : 'Done — Waiting for approval (status locked).';
+          banner.textContent = doneStatusLockedBanner(t);
         }
       } else {
         banner.hidden = true;
-        setEditFld(el, 'project', false);
         setEditFld(el, 'name', !statusOnlyRole);
         setEditFld(el, 'desc', !statusOnlyRole);
         setEditFld(el, 'notes', !statusOnlyRole);
@@ -4944,9 +5764,7 @@
         en(stSel, (full || statusOnlyRole) && !p2DoneLocked);
         if (p2DoneLocked) {
           banner.hidden = false;
-          banner.textContent = isTaskCompletionApproved(t)
-            ? 'Done — task Approved by admin (status locked).'
-            : 'Done — Waiting for approval (status locked).';
+          banner.textContent = doneStatusLockedBanner(t);
         }
         en(eq(el, '[data-f="priority"]'), scope === 'all');
         const endEditable = full && !statusOnlyRole && curStatus !== 'Done';
@@ -4986,12 +5804,19 @@
         if (errEl) errEl.textContent = 'Missing task ref.';
         return;
       }
+      const updateBtn = card.querySelector('.edit-body [data-act="update"]');
+      const updateLabel = updateBtn ? updateBtn.textContent : 'UPDATE';
+      function setUpdating(on) {
+        if (!updateBtn) return;
+        updateBtn.disabled = !!on;
+        updateBtn.textContent = on ? 'Updating…' : updateLabel;
+      }
       const taskRow = (state.tasks || []).find((x) => x.ref === id)
         || (state.allForParent || []).find((x) => x.ref === id)
         || null;
       const stSel = eq(card, '[data-f="status"]');
       const liveKind = isAdminKindUi() ? resolvedEditKind(card) : null;
-      let origKind = 'main';
+      let origKind = card.dataset.origKind || 'main';
       if (taskRow) {
         if (taskRow.kind) origKind = taskRow.kind;
         else if (taskRow.kindIcon === 'P') origKind = 'pseudo';
@@ -4999,22 +5824,37 @@
         else if (taskRow.kindIcon === 'N') origKind = 'not_a_task';
         else if (taskRow.parentRef) origKind = 'sub';
       }
-      const restrictedMode = isRestrictedKindVal(liveKind || origKind);
+      // Stay on restricted path when the *saved* kind is P/R/N even if the UI
+      // is flipped toward Normal (Make Task) or Main/Sub was toggled.
+      const restrictedMode = isRestrictedKindVal(origKind) || isRestrictedKindVal(liveKind);
+      setUpdating(true);
       try {
         if (restrictedMode) {
           const st = statusPayloadFromSel(stSel, taskRow);
           if (role() === 'P2' && !st) {
             errEl.textContent = p2StatusPickHint(taskRow);
+            setUpdating(false);
             return;
           }
           const patch = { status: st || stSel.value };
-          if (liveKind && liveKind !== origKind) patch.kind = liveKind;
+          if (isRestrictedKindVal(origKind) && liveKind === 'main') {
+            // Make Task
+            patch.kind = 'main';
+          } else if (!isRestrictedKindVal(origKind) && isRestrictedKindVal(liveKind)) {
+            // Admin: Normal → Pseudo/Routine
+            patch.kind = liveKind;
+          } else if (isRestrictedKindVal(origKind) && liveKind && liveKind !== origKind && liveKind !== 'main') {
+            errEl.textContent = 'Switch Kind to Normal to convert, or change status only.';
+            setUpdating(false);
+            return;
+          }
           await api('PATCH', '/api/tasks/' + encodeURIComponent(id), patch);
         } else {
           const body = {};
           if (stSel && !stSel.disabled) {
             if (role() === 'P2' && stSel.value === 'Done' && !taskAllLinksReadyForDone(taskRow)) {
               errEl.textContent = 'Done needs every link rated 2★ or 3★.';
+              setUpdating(false);
               return;
             }
             const st = statusPayloadFromSel(stSel, taskRow);
@@ -5034,6 +5874,7 @@
             const collected = collectLinksFromScope(notesScope);
             if (collected.some((l) => !String(l.name || '').trim())) {
               errEl.textContent = 'Every link needs a file name.';
+              setUpdating(false);
               return;
             }
             body.link = serializeTaskLinks(collected);
@@ -5065,7 +5906,9 @@
             if (k !== origKind) body.kind = k;
             if (k === 'sub') {
               if (!parentSel || !parentSel.value) {
-                errEl.textContent = 'Select a Main parent task.'; return;
+                errEl.textContent = 'Select a Main parent task.';
+                setUpdating(false);
+                return;
               }
               body.parentRef = parentSel.value;
             } else {
@@ -5089,6 +5932,7 @@
               const check = parseStageTokensClient(stagesEl.value);
               if (!check.ok) {
                 errEl.textContent = check.error;
+                setUpdating(false);
                 return;
               }
               const tokens = syncEditStagesUi(card, { rewrite: true, interactive: true, clearError: true });
@@ -5119,13 +5963,23 @@
                 errEl.textContent = 'Saved, but Needs review failed: '
                   + (revErr && revErr.message ? revErr.message : 'submit error');
               }
+              setUpdating(false);
+              closeInlineEdit(card);
               await refreshTasks();
               return;
             }
           }
         }
+        closeInlineEdit(card);
+        setBoardHint('Updated — saving to Sheets in background…');
+        window.setTimeout(() => {
+          if ($('hint') && String($('hint').textContent || '').indexOf('Updated —') === 0) {
+            setBoardHint('');
+          }
+        }, 4000);
         await refreshTasks();
       } catch (err) {
+        setUpdating(false);
         if (errEl) errEl.textContent = err.message;
       }
     }
@@ -5356,6 +6210,20 @@
 
     // events
     $('btnLogin').onclick = () => { $('loginErr').textContent = ''; $('loginDlg').showModal(); };
+    if ($('summaryToggle')) {
+      $('summaryToggle').addEventListener('click', () => setSummaryOpen(!state.summaryOpen));
+    }
+    if ($('ovPrev') && $('ovNext') && $('ovStrips')) {
+      $('ovPrev').addEventListener('click', () => {
+        const el = $('ovStrips');
+        el.scrollBy({ left: -el.clientWidth, behavior: 'smooth' });
+      });
+      $('ovNext').addEventListener('click', () => {
+        const el = $('ovStrips');
+        el.scrollBy({ left: el.clientWidth, behavior: 'smooth' });
+      });
+      $('ovStrips').addEventListener('scroll', updateOvNav);
+    }
     $('loginCancel').onclick = () => $('loginDlg').close();
     $('loginForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -5369,6 +6237,12 @@
       setAuth(null, null); clearAllDummies(); await boot();
     };
     $('btnAddDraft').onclick = () => addDummyDraft();
+    if ($('btnMyTasks')) {
+      $('btnMyTasks').onclick = () => {
+        if (state.view === 'mine') switchView('board');
+        else switchView('mine');
+      };
+    }
     $('draftList').addEventListener('click', onDraftListClick);
     $('draftList').addEventListener('change', onDraftListChange);
     $('draftList').addEventListener('input', onDraftListInput);
@@ -5429,6 +6303,29 @@
       });
     })();
     $('logRefresh').onclick = () => refreshLogs().catch((e) => alert(e.message));
+    (function wireNeedsBulk() {
+      const bar = $('needsBulkBar');
+      if (!bar || bar.dataset.bound) return;
+      bar.dataset.bound = '1';
+      if ($('needsFocus')) {
+        $('needsFocus').onchange = () => {
+          state.needsFocus = $('needsFocus').value || 'all';
+          applyNeedsFocusAndRender();
+        };
+      }
+      if ($('needsSelectAll')) {
+        $('needsSelectAll').onchange = () => setNeedsSelectionInFocus($('needsSelectAll').checked);
+      }
+      bar.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+        if (!btn || !bar.contains(btn)) return;
+        e.preventDefault();
+        if (btn.id === 'needsClearSelection') clearNeedsSelection();
+        else if (btn.id === 'needsBulkApprove') {
+          bulkApproveNeedsSelected().catch((err) => alert(err.message || 'Bulk approve failed'));
+        }
+      });
+    })();
     if ($('injectPreview')) {
       $('injectPreview').onclick = () => {
         if (state.view !== 'inject') switchView('inject');
@@ -5502,17 +6399,38 @@
     ['Draft', 'Active', 'Blocked', 'Pause', 'Done'].forEach((s) => {
       const o = document.createElement('option');
       o.value = s;
-      o.textContent = s;
+      o.textContent = statusDisplayLabel(s);
       $('logStatus').appendChild(o);
     });
 
     async function syncStagingBanner() {
       const el = $('stagingBanner');
-      if (!el) return;
+      const badge = $('modeBadge');
+      if (!el && !badge) return;
       try {
-        const h = await api('GET', '/api/health');
+        const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timer = ac ? setTimeout(() => ac.abort(), 2500) : null;
+        const headers = { Accept: 'application/json' };
+        const tok = getToken();
+        if (tok) headers.Authorization = 'Bearer ' + tok;
+        const res = await fetch('/api/health', {
+          method: 'GET',
+          headers,
+          credentials: 'same-origin',
+          signal: ac ? ac.signal : undefined,
+        });
+        if (timer) clearTimeout(timer);
+        if (!res.ok) {
+          if (el) el.hidden = true;
+          if (badge) badge.hidden = true;
+          return;
+        }
+        const h = await res.json();
         const b = h && h.banner;
-        if (!b || !b.staging) {
+        const staging = !!(b && b.staging);
+        if (badge) badge.hidden = !staging;
+        if (!el) return;
+        if (!staging) {
           el.hidden = true;
           return;
         }
@@ -5520,17 +6438,27 @@
         el.textContent = b.message || 'Staging';
         el.classList.toggle('is-writes', !!b.stagingWrites);
       } catch (err) {
-        el.hidden = true;
+        if (el) el.hidden = true;
+        if (badge) badge.hidden = true;
       }
     }
 
     async function boot() {
       try {
-        await syncStagingBanner();
-        await refreshMe(); await refreshProjects();
+        setBoardHint('Loading…');
+        syncOverviewVisibility();
+        updateOverview();
+        await Promise.all([
+          refreshMe(),
+          refreshProjects().catch(() => {}),
+          refreshUsers(),
+        ]);
         if (!state.me) clearAllDummies();
         await refreshTasks();
-      } catch (err) { $('hint').textContent = 'Could not load: ' + err.message; }
+        setBoardHint('');
+        // After first paint — hung health must not compete with boot requests.
+        setTimeout(() => { syncStagingBanner(); }, 0);
+      } catch (err) { setBoardHint('Could not load: ' + err.message); }
     }
     boot();
   })();

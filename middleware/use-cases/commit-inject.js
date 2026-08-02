@@ -7,6 +7,7 @@
 
 const { PROFILE, normalizeProfile } = require('../domain/roles');
 const { planInject } = require('../domain/inject-plan');
+const { ensureTaskApprovedMark } = require('../data/sheet-row');
 const { unauthorized, forbidden, badRequest } = require('../errors');
 
 function createCommitInject({ data, useCases }) {
@@ -72,10 +73,14 @@ function createCommitInject({ data, useCases }) {
           // Birth always starts Active; optional follow-up status for paste hints like "done"
           if (task && task.ref && String(item.status || '') === 'Done' && useCases.updateTask) {
             try {
+              const patchBody = { status: 'Done' };
+              if (item.completionApproved) {
+                patchBody.notes = ensureTaskApprovedMark(item.notes || '');
+              }
               const patched = await useCases.updateTask.execute({
                 actor: birthActor,
                 id: task.ref,
-                body: { status: 'Done' },
+                body: patchBody,
               });
               if (patched && patched.task) task = patched.task;
             } catch (_) {

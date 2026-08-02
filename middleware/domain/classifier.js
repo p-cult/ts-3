@@ -7,6 +7,7 @@
 
 const { normalizeKind, isRestrictedKind } = require('./kinds');
 const { normalizeReviewState } = require('./review');
+const { isFinishedStatus } = require('./status');
 
 /** Kinds shown on the Logged board tab (diary / action-taken). */
 const LOGGED_KINDS = Object.freeze(['routine', 'not_a_task']);
@@ -40,7 +41,7 @@ function countsAsApproved(task) {
  */
 function countsAsCompleted(task) {
   if (!task) return false;
-  if (String(task.status || '').trim() !== 'Done') return false;
+  if (!isFinishedStatus(task.status)) return false;
   if (!isRestrictedKind(task.kind)) return true;
   return countsAsLogged(task);
 }

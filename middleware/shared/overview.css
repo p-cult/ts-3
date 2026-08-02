@@ -1,0 +1,83 @@
+/* ts-2 Overview / summary-panel — extracted for ts-3.
+   Data: state.allTasks from live sheets (same bridge as ts-2 depot). */
+.summary-panel {
+  background: var(--skin-surface); border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius); box-shadow: var(--skin-shadow);
+  margin-bottom: var(--skin-gap); overflow: hidden;
+}
+.summary-panel-head {
+  align-items: center; display: flex; gap: 12px; justify-content: space-between;
+  min-height: 42px; padding: 10px 12px 10px 16px;
+}
+.summary-panel-title {
+  color: var(--skin-ink); font-size: 1.1rem; font-weight: 500;
+  letter-spacing: 0; text-transform: uppercase;
+}
+.summary-toggle {
+  align-items: center; background: var(--skin-ink); border: 1px solid color-mix(in srgb, var(--skin-ink) 75%, #fff 25%);
+  border-radius: 999px; color: #fff; cursor: pointer; display: inline-flex;
+  height: 30px; justify-content: center; width: 30px; padding: 0;
+}
+.summary-toggle svg {
+  height: 16px; width: 16px; fill: none; stroke: currentColor; stroke-width: 2.4;
+  transform: rotate(180deg); transition: transform 160ms ease;
+}
+.summary-panel.is-open .summary-toggle svg { transform: rotate(0deg); }
+.summary-panel-body {
+  display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr);
+  max-height: 0; opacity: 0; overflow: hidden;
+  padding: 0 12px; transition: max-height 220ms ease, opacity 160ms ease, padding 220ms ease;
+}
+.summary-panel.is-open .summary-panel-body {
+  max-height: 420px; opacity: 1; padding: 0 12px 14px;
+}
+/* Overview (wireframe): three stat cards — label on top, big number below. */
+.ov-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ov-card {
+  align-items: center; background: var(--skin-surface);
+  border: 1px solid var(--skin-line); border-radius: 12px;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 4px; padding: 12px 10px; text-align: center;
+}
+.ov-card span { color: var(--skin-ink-soft); font-size: 0.78rem; font-weight: 400; }
+.ov-card strong { display: block; font-size: 1.8rem; font-weight: 600; line-height: 1; }
+/* Per-user strips: one row, horizontally scrollable, chevron nav each side. */
+.ov-users { align-items: center; display: flex; gap: 8px; justify-content: center; }
+.ov-strips {
+  display: flex; flex: 1 1 auto; gap: 14px; min-width: 0; overflow-x: auto;
+  scroll-behavior: smooth; scrollbar-width: none;
+}
+.ov-strips::-webkit-scrollbar { display: none; }
+.ov-strip {
+  align-items: center; background: var(--skin-surface);
+  border: 1px solid var(--skin-line); border-radius: 10px;
+  display: flex; flex: 0 0 auto; gap: 10px; padding: 7px 14px;
+}
+.ov-strip-name { font-size: 0.95rem; font-weight: 500; white-space: nowrap; }
+.ov-strip-dot { color: var(--skin-ink-soft); font-size: 0.45rem; }
+.ov-strip-stat { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 46px; }
+.ov-strip-stat small {
+  color: var(--skin-ink-soft); font-size: 0.58rem; font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.ov-strip-stat b { font-size: 1.05rem; font-weight: 500; line-height: 1.15; }
+.ov-strip-sep { color: var(--skin-line); font-size: 1.15rem; font-weight: 300; }
+.ov-nav {
+  align-items: center; background: var(--skin-surface); border: 1px solid var(--skin-ink);
+  border-radius: 50%; color: var(--skin-ink); cursor: pointer; display: inline-flex;
+  flex: 0 0 auto; height: 24px; justify-content: center; padding: 0; width: 24px;
+}
+.ov-nav:hover { background: var(--skin-surface-strong); }
+.ov-nav[disabled] { opacity: 0.3; cursor: default; }
+.ov-nav svg { height: 13px; width: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; }
+/* Sheet ChevronIcon points down at 0°: +90° → left, -90° → right. */
+.ov-nav--prev svg { transform: rotate(90deg); }
+.ov-nav--next svg { transform: rotate(-90deg); }
+
+@media (max-width: 760px) {
+  .ov-card strong { font-size: 1.4rem; }
+  .ov-strip-name { font-size: 0.88rem; }
+}
+@media print {
+  .summary-panel { display: none !important; }
+}

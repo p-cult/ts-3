@@ -32,8 +32,9 @@ STORE_ADAPTER=sheets
 USE_LIVE_BRIDGE=true
 BRIDGE_URL=...
 BRIDGE_SECRET=...
-WRITER_OF_RECORD=ts3         # after go-live only
-STAGING_WRITES=false         # production default
+WRITER_OF_RECORD=ts3         # after go-live only — ts-3 sole writer
+STAGING_WRITES=false         # ignored in production; staging-only supervised latch
+BRIDGE_PROTOCOL=thin         # live ts-2 Apps Script bridge (or deploy ts-3 bridge.gs later)
 QUEUE_MODE=off               # or on per policy
 PORT=10000                   # Render sets automatically
 ```
@@ -48,11 +49,26 @@ PORT=10000                   # Render sets automatically
 
 ## Staging vs production
 
-| | Staging | Production |
-|---|---------|------------|
-| Host | Oracle / laptop | Pages + Render |
+| | Staging (before) | Production (after switch) |
+|---|------------------|---------------------------|
+| Host | Oracle / laptop | Pages + Render (or `./run-sole.sh`) |
 | `APP_MODE` | `staging` | `production` |
-| Public traffic | ts-2 | ts-3 |
-| Writer-of-record | ts-2 | ts-3 |
+| Public traffic | ts-2 (until flip) | **ts-3 only** |
+| Sheet read/write | ts-2 public; ts-3 read-only or supervised | **ts-3 only** |
+| `WRITER_OF_RECORD` | `ts2` | `ts3` |
+| Local sole rehearsal | — | `./run-sole.sh` (stop ts-2 first) |
+
+Write gates:
+
+- **Staging:** needs `STAGING_WRITES=true` **and** `WRITER_OF_RECORD=ts3`
+- **Production:** needs `WRITER_OF_RECORD=ts3` only (`STAGING_WRITES` unused)
 
 See [GO-LIVE.md](GO-LIVE.md) for the cutover checklist.
+
+Bake static UI for GitHub Pages:
+
+```bash
+npm run build:pages   # writes dist/index.html → publish to p-cult/task
+```
+
+Render blueprint: `render.yaml` (in-place service `param-task-middleware`).

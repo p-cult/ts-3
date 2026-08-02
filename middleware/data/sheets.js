@@ -4,8 +4,12 @@
  * Sheets-shaped data adapter — same interface as memory.
  *
  * Reads: fixture and/or live bridge.
- * Writes: only when STAGING_WRITES=true, APP_MODE=staging, WRITER_OF_RECORD=ts3.
- * Live bridge writes optional (USE_LIVE_BRIDGE); otherwise mirror-only for supervised tests.
+ * Writes (live or mirror):
+ *   - Staging supervised: APP_MODE=staging + STAGING_WRITES=true + WRITER_OF_RECORD=ts3
+ *   - Production sole writer (after cutover): APP_MODE=production + WRITER_OF_RECORD=ts3
+ *     (STAGING_WRITES ignored — production is the write path)
+ *
+ * Live bridge writes are write-behind: mirror commits instantly; outbox syncs Sheets.
  */
 
 const fs = require('fs');
@@ -18,7 +22,13 @@ const {
   normalizeSheetTaskRow,
   normalizeSheetProjectRow,
   normalizeSheetUserRow,
+  toSheetWriteRow,
 } = require('./sheet-row');
+const {
+  isMasterUserSheetKey,
+  canonicalUserSheet,
+  normalizeUserSheetOnUser,
+} = require('../domain/user-sheet');
 
 function loadFixture(fixturePath) {
   const p =
@@ -46,6 +56,7 @@ function writeGateError(message, details) {
  *   fixture?: object,
  *   bridge?: object|null,
  *   useLiveBridge?: boolean,
+ *   outbox?: object|null,
  *   log?: object,
  * }} opts
  */
@@ -56,6 +67,8 @@ function createSheetsData(opts = {}) {
   const writerOfRecord = String(opts.writerOfRecord || 'ts2').toLowerCase();
   const bridge = opts.bridge || null;
   const useLiveBridge = !!opts.useLiveBridge && bridge && bridge.configured;
+  const outbox = opts.outbox || null;
+  const outboxAwaitBirth = !!opts.outboxAwaitBirth;
   const log = opts.log || { info() {}, warn() {}, debug() {} };
 
   const fixture = opts.fixture || loadFixture(opts.fixturePath);
@@ -64,25 +77,30 @@ function createSheetsData(opts = {}) {
   let projectsSource = 'fixture';
 
   function assertMayWrite(op) {
+    if (writerOfRecord !== 'ts3') {
+      throw writeGateError(
+        'WRITER_OF_RECORD=' +
+          writerOfRecord +
+          ' — refuse ts-3 sheet writes (set WRITER_OF_RECORD=ts3 for sole writer)',
+        { op, writerOfRecord }
+      );
+    }
+    if (appMode === 'production') {
+      // Cutover: ts-3 is sole reader/writer. STAGING_WRITES is a staging-only latch.
+      return;
+    }
+    if (appMode !== 'staging') {
+      throw writeGateError(
+        'sheet writes only when APP_MODE=staging (supervised) or production (sole writer); got ' +
+          appMode,
+        { op, appMode }
+      );
+    }
     if (!stagingWrites) {
       throw writeGateError('STAGING_WRITES=false — sheet write refused (' + op + ')', {
         op,
         stagingWrites: false,
       });
-    }
-    if (appMode !== 'staging') {
-      throw writeGateError(
-        'sheet writes only allowed when APP_MODE=staging (got ' + appMode + ')',
-        { op, appMode }
-      );
-    }
-    if (writerOfRecord !== 'ts3') {
-      throw writeGateError(
-        'WRITER_OF_RECORD=' +
-          writerOfRecord +
-          ' — refuse ts-3 sheet writes (set WRITER_OF_RECORD=ts3 for supervised Staging)',
-        { op, writerOfRecord }
-      );
     }
   }
 
@@ -96,6 +114,60 @@ function createSheetsData(opts = {}) {
       if (String(u.username || '').toLowerCase() === label) return u.username;
       if (String(u.displayName || '').toLowerCase() === label) return u.username;
       if (String(u.userSheet || '').toLowerCase() === label) return u.username;
+    }
+    return '';
+  }
+
+  /**
+   * Master column L is a dropdown of users-tab keys (user-01, …).
+   * Keys come from the users tab — never remap by person name.
+   */
+  function resolveUserSheet(row, users) {
+    const fromRow = canonicalUserSheet(row);
+    if (fromRow) return fromRow;
+
+    const list = users || [];
+    const known = new Map();
+    for (const u of list) {
+      const nu = normalizeUserSheetOnUser(u);
+      const us = String(nu.userSheet || '').trim();
+      if (us) known.set(us.toLowerCase(), us);
+    }
+
+    function accept(candidate) {
+      const c = String(candidate || '').trim();
+      if (!c || c.toLowerCase() === 'unknown') return '';
+      if (known.size) {
+        const hit = known.get(c.toLowerCase());
+        if (hit) return hit;
+        return '';
+      }
+      return isMasterUserSheetKey(c) ? c : '';
+    }
+
+    const fromRaw = accept(row && row.userSheet);
+    if (fromRaw) return fromRaw;
+    const fromAssigned = accept(row && row.assignedTo);
+    if (fromAssigned) return fromAssigned;
+
+    const uname = String((row && row.assigneeUsername) || '')
+      .trim()
+      .toLowerCase();
+    const label = String((row && row.assignedTo) || '')
+      .trim()
+      .toLowerCase();
+    const display = String((row && row.assigneeDisplayName) || '')
+      .trim()
+      .toLowerCase();
+    for (const u of list) {
+      const nu = normalizeUserSheetOnUser(u);
+      const us = accept(nu.userSheet);
+      if (!us) continue;
+      if (uname && String(nu.username || '').toLowerCase() === uname) return us;
+      if (display && String(nu.displayName || '').toLowerCase() === display) return us;
+      if (label && String(nu.displayName || '').toLowerCase() === label) return us;
+      if (label && String(nu.username || '').toLowerCase() === label) return us;
+      if (label && us.toLowerCase() === label) return us;
     }
     return '';
   }
@@ -114,8 +186,38 @@ function createSheetsData(opts = {}) {
         continue;
       }
       const assigneeUsername =
-        resolveAssigneeUsername(base, users) || base.assigneeUsername;
-      const r = { ...base, assigneeUsername };
+        resolveAssigneeUsername(
+          { ...base, assignedTo: raw && raw.assignedTo },
+          users
+        ) || base.assigneeUsername;
+      const userSheet = resolveUserSheet(
+        {
+          ...base,
+          assigneeUsername,
+          assignedTo: raw && raw.assignedTo,
+        },
+        users
+      );
+      let assigneeDisplayName = base.assigneeDisplayName || '';
+      if (isMasterUserSheetKey(assigneeDisplayName)) assigneeDisplayName = '';
+      if (assigneeUsername || userSheet) {
+        const hit = (users || []).find((u) => {
+          const nu = normalizeUserSheetOnUser(u);
+          if (assigneeUsername
+            && String(nu.username || '').toLowerCase()
+              === String(assigneeUsername).toLowerCase()) {
+            return true;
+          }
+          if (userSheet
+            && String(nu.userSheet || '').toLowerCase()
+              === String(userSheet).toLowerCase()) {
+            return true;
+          }
+          return false;
+        });
+        if (hit && hit.displayName) assigneeDisplayName = hit.displayName;
+      }
+      const r = { ...base, assigneeUsername, userSheet, assigneeDisplayName };
       if (!r.taskId || !validate(r.taskId)) {
         skipped += 1;
         continue;
@@ -140,7 +242,7 @@ function createSheetsData(opts = {}) {
     const next = [];
     for (const raw of rawUsers || []) {
       const u = normalizeSheetUserRow(raw);
-      if (u) next.push(u);
+      if (u) next.push(normalizeUserSheetOnUser(u));
     }
     if (!next.length) return { replaced: false, count: state.users.length };
     state.users.length = 0;
@@ -170,17 +272,16 @@ function createSheetsData(opts = {}) {
   async function refreshFromBridge() {
     if (!useLiveBridge) return { ok: false, reason: 'bridge off' };
     try {
-      const [depotRes, usersRes, projectsRes] = await Promise.all([
-        bridge.getDepot(),
-        bridge.getUsers().catch((err) => {
-          log.warn('bridge getUsers failed', { err: String(err && err.message) });
-          return null;
-        }),
-        bridge.getProjects().catch((err) => {
-          log.warn('bridge getProjects failed', { err: String(err && err.message) });
-          return null;
-        }),
-      ]);
+      // Serialize Master reads — Apps Script chokes on parallel full-tab pulls.
+      const usersRes = await bridge.getUsers().catch((err) => {
+        log.warn('bridge getUsers failed', { err: String(err && err.message) });
+        return null;
+      });
+      const projectsRes = await bridge.getProjects().catch((err) => {
+        log.warn('bridge getProjects failed', { err: String(err && err.message) });
+        return null;
+      });
+      const depotRes = await bridge.getDepot();
       const rows = (depotRes && (depotRes.rows || depotRes.tasks)) || [];
       if (!Array.isArray(rows)) return { ok: false, reason: 'bad depot payload' };
 
@@ -224,22 +325,29 @@ function createSheetsData(opts = {}) {
   async function pushLiveBirth(row) {
     if (!useLiveBridge) return { ok: true, skipped: true };
     try {
-      const vehicleRes = await bridge.writeVehicle({ row });
-      const depotRes = await bridge.writeDepot({ row });
+      const users = inner.listUsers();
+      const userSheet = resolveUserSheet(row, users) || row.userSheet;
+      // Bridge writes K Status as-is — emit ts-3 vocabulary (Active/Done/Pause/…).
+      const sheetRow = toSheetWriteRow({ ...row, userSheet }, { birth: true });
+      const vehicleRes = await bridge.writeVehicle({ row: sheetRow, birth: true });
+      const depotRes = await bridge.writeDepot({ row: sheetRow, birth: true });
       const vData = (vehicleRes && vehicleRes.data) || vehicleRes || {};
       const dData = (depotRes && depotRes.data) || depotRes || {};
       const userRow = Number(vData.userRow) || 0;
       const masterRow = Number(dData.masterRow) || 0;
       const mappingRes = await bridge.writeMapping({
         taskId: row.taskId,
-        userSheet: row.userSheet,
+        userSheet,
         assigneeUsername: row.assigneeUsername,
         masterRow,
         userRow,
       });
+      if (outbox && typeof outbox.setRowCache === 'function') {
+        outbox.setRowCache(row.taskId, { masterRow, userRow, userSheet });
+      }
       log.info('live bridge birth ok', {
         taskId: row.taskId,
-        userSheet: row.userSheet,
+        userSheet,
         masterRow,
         userRow,
       });
@@ -259,9 +367,89 @@ function createSheetsData(opts = {}) {
 
   async function pushLivePatch(row) {
     if (!useLiveBridge || !row) return { ok: true, skipped: true };
-    await bridge.writeDepot({ row });
-    await bridge.writeVehicle({ row });
+    const users = inner.listUsers();
+    const userSheet = resolveUserSheet(row, users);
+    if (!userSheet || userSheet.toLowerCase() === 'unknown') {
+      throw new Error(
+        'cannot write task: missing users-tab key (userSheet) for assignee '
+          + String(row.assigneeUsername || row.assigneeDisplayName || '')
+      );
+    }
+    const cached = outbox && typeof outbox.getRowCache === 'function'
+      ? outbox.getRowCache(row.taskId)
+      : null;
+    const sheetRow = toSheetWriteRow({ ...row, userSheet });
+    const depotRes = await bridge.writeDepot({
+      row: sheetRow,
+      masterRow: cached && cached.masterRow,
+    });
+    const vehicleRes = await bridge.writeVehicle({
+      row: sheetRow,
+      userRow: cached && cached.userRow,
+    });
+    const dData = (depotRes && depotRes.data) || depotRes || {};
+    const vData = (vehicleRes && vehicleRes.data) || vehicleRes || {};
+    if (outbox && typeof outbox.setRowCache === 'function') {
+      outbox.setRowCache(row.taskId, {
+        masterRow: Number(dData.masterRow) || (cached && cached.masterRow) || 0,
+        userRow: Number(vData.userRow) || (cached && cached.userRow) || 0,
+        userSheet,
+      });
+    }
     return { ok: true };
+  }
+
+  function enqueueLive(op, saved) {
+    if (!useLiveBridge) {
+      return saved;
+    }
+    // Production births: await bridge so a crash cannot drop a minted Task ID.
+    if (outboxAwaitBirth && op === 'birth') {
+      return pushLiveBirth(saved).then(() => {
+        saved.syncStatus = 'synced';
+        return saved;
+      });
+    }
+    if (!outbox || typeof outbox.enqueue !== 'function') {
+      if (op === 'birth') {
+        return pushLiveBirth(saved).then(() => {
+          saved.syncStatus = 'synced';
+          return saved;
+        });
+      }
+      return pushLivePatch(saved).then(() => {
+        saved.syncStatus = 'synced';
+        return saved;
+      });
+    }
+    const users = inner.listUsers();
+    const userSheet = resolveUserSheet(saved, users) || saved.userSheet;
+    try {
+      outbox.enqueue({
+        op,
+        taskId: saved.taskId,
+        userSheet,
+        row: { ...saved, userSheet },
+      });
+      saved.syncStatus = 'pending';
+    } catch (err) {
+      log.warn('outbox enqueue failed — falling back to sync bridge', {
+        op,
+        err: String(err && err.message),
+      });
+      // Fall back to blocking bridge so we do not silently drop writes
+      if (op === 'birth') {
+        return pushLiveBirth(saved).then(() => {
+          saved.syncStatus = 'synced';
+          return saved;
+        });
+      }
+      return pushLivePatch(saved).then(() => {
+        saved.syncStatus = 'synced';
+        return saved;
+      });
+    }
+    return saved;
   }
 
   function gateWrite(op, fn) {
@@ -330,16 +518,20 @@ function createSheetsData(opts = {}) {
     findProject: (c) => inner.findProject(c),
 
     /**
-     * Mirror birth, then live push when bridge on.
-     * Live failure rolls back the mirror so API cannot claim success silently.
+     * Mirror birth instantly; Sheets sync via outbox (write-behind).
+     * Without outbox, keeps legacy await-bridge behavior.
      * @returns {object|Promise<object>}
      */
     commitBirth: (row) =>
       gateWrite('commitBirth', () => {
         const saved = inner.commitBirth(row);
         if (!useLiveBridge) return saved;
+        if (outbox) return enqueueLive('birth', saved);
         return pushLiveBirth(saved)
-          .then(() => saved)
+          .then(() => {
+            saved.syncStatus = 'synced';
+            return saved;
+          })
           .catch((err) => {
             try {
               inner.deleteByTaskId(saved.taskId);
@@ -353,8 +545,12 @@ function createSheetsData(opts = {}) {
       gateWrite('updateByTaskId', () => {
         const saved = inner.updateByTaskId(id, p);
         if (!useLiveBridge || !saved) return saved;
+        if (outbox) return enqueueLive('patch', saved);
         return pushLivePatch(saved)
-          .then(() => saved)
+          .then(() => {
+            saved.syncStatus = 'synced';
+            return saved;
+          })
           .catch((err) => {
             log.warn('live bridge patch failed', {
               err: String(err && err.message),
@@ -366,14 +562,22 @@ function createSheetsData(opts = {}) {
       gateWrite('updateByRef', () => {
         const saved = inner.updateByRef(r, p);
         if (!useLiveBridge || !saved) return saved;
+        if (outbox) return enqueueLive('patch', saved);
         return pushLivePatch(saved)
-          .then(() => saved)
+          .then(() => {
+            saved.syncStatus = 'synced';
+            return saved;
+          })
           .catch((err) => {
             throw err;
           });
       }),
     reassignByTaskId: (id, a, u) =>
-      gateWrite('reassignByTaskId', () => inner.reassignByTaskId(id, a, u)),
+      gateWrite('reassignByTaskId', () => {
+        const saved = inner.reassignByTaskId(id, a, u);
+        if (!useLiveBridge || !saved || !outbox) return saved;
+        return enqueueLive('patch', saved);
+      }),
     deleteByTaskId: (id) => gateWrite('deleteByTaskId', () => inner.deleteByTaskId(id)),
     deleteByRef: (r) => gateWrite('deleteByRef', () => inner.deleteByRef(r)),
 
@@ -381,6 +585,12 @@ function createSheetsData(opts = {}) {
     partitionsFor: (id) => inner.partitionsFor(id),
     refFor: (tid) => inner.refFor(tid),
 
+    /** Used by sync worker — flush one outbox row to Sheets. */
+    pushLiveBirth,
+    pushLivePatch,
+    resolveUserSheet: (row) => resolveUserSheet(row, inner.listUsers()),
+
+    _outbox: outbox,
     _state: inner._state,
     _unsafeMemory: () => inner._state,
   };

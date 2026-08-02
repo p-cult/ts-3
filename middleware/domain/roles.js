@@ -7,9 +7,7 @@
 const { PROFILE, roleCode, roleName, normalizeProfile } = require('./profiles');
 const { isRestrictedKind, normalizeKind } = require('./kinds');
 const { isMakeTaskEligible } = require('./classifier');
-
-const ALL_STATUSES = Object.freeze(['Draft', 'Active', 'Blocked', 'Done', 'Pause', 'Resume']);
-const USER_STATUSES = Object.freeze(['Pause', 'Resume', 'Done']);
+const { ALL_STATUSES, USER_STATUSES, coerceApiStatus } = require('./status');
 
 const PATCH_FIELDS = Object.freeze({
   [PROFILE.USER]: Object.freeze([
@@ -102,6 +100,11 @@ function authorizeTaskPatch(args) {
     }
     const next = { kind: normalizeKind(b.kind) };
     if (b.status !== undefined) {
+      const coerced = coerceApiStatus(b.status);
+      if (!coerced) {
+        return deny(403, 'forbidden', 'status not allowed');
+      }
+      b.status = coerced;
       const allowedStatuses = ALL_STATUSES.slice();
       if (!allowedStatuses.includes(b.status)) {
         return deny(403, 'forbidden', 'status not allowed');
@@ -128,6 +131,10 @@ function authorizeTaskPatch(args) {
 
   // Already P/R/N: status only (all roles)
   if (isRestrictedKind(taskKind)) {
+    // Clients sometimes echo the current kind; treat same-kind as a no-op.
+    if (b.kind !== undefined && normalizeKind(b.kind) === taskKind) {
+      delete b.kind;
+    }
     const keys = Object.keys(b).filter((k) => b[k] !== undefined);
     const blocked = keys.filter((k) => k !== 'status');
     if (blocked.length) {
@@ -138,6 +145,11 @@ function authorizeTaskPatch(args) {
       );
     }
     if (b.status !== undefined) {
+      const coerced = coerceApiStatus(b.status);
+      if (!coerced) {
+        return deny(403, 'forbidden', 'status not allowed');
+      }
+      b.status = coerced;
       const allowedStatuses =
         profile < PROFILE.MODERATOR
           ? USER_STATUSES.slice()
@@ -195,6 +207,11 @@ function authorizeTaskPatch(args) {
   }
 
   if (b.status !== undefined) {
+    const coerced = coerceApiStatus(b.status);
+      if (!coerced) {
+        return deny(403, 'forbidden', 'status not allowed');
+      }
+      b.status = coerced;
     const allowedStatuses =
       profile < PROFILE.MODERATOR
         ? (args.userAllowedStatuses && args.userAllowedStatuses.length

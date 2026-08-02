@@ -19,6 +19,7 @@ const {
 } = require('../domain/taskid');
 const { guardDuplicate, normName } = require('../domain/identity');
 const { toPublicTask } = require('../domain/tasks');
+const { applyAll } = require('../priority');
 const { normalizeKind, learnKind } = require('../domain/kinds');
 const {
   unauthorized,
@@ -26,6 +27,10 @@ const {
   badRequest,
   conflict,
 } = require('../errors');
+const {
+  canonicalUserSheet,
+  isVinodIdentity,
+} = require('../domain/user-sheet');
 
 function createCreateTask({ data, config }) {
   const refSecret = data.refSecret;
@@ -58,11 +63,18 @@ function createCreateTask({ data, config }) {
       if (!project) throw badRequest('unknown project');
 
       let assigneeUsername = actor.username;
-      if (profile >= PROFILE.SUPER_ADMIN && body.assigneeUsername) {
+      // Vinod creates as himself; other admins may pick an assignee.
+      if (isVinodIdentity(actor)) {
+        assigneeUsername = actor.username;
+      } else if (profile >= PROFILE.SUPER_ADMIN && body.assigneeUsername) {
         assigneeUsername = String(body.assigneeUsername).trim();
       }
       const assignee = data.findUser(assigneeUsername);
       if (!assignee) throw badRequest('assignee user not found');
+      const userSheet =
+        canonicalUserSheet({ ...assignee, assigneeUsername: assignee.username })
+        || String(assignee.userSheet || '').trim();
+      if (!userSheet) throw badRequest('assignee has no users-tab key (userSheet)');
 
       void normName(name);
 
@@ -148,7 +160,7 @@ function createCreateTask({ data, config }) {
         startDate: String(body.startDate || ''),
         endDate: String(body.endDate || ''),
         assigneeUsername: assignee.username,
-        userSheet: assignee.userSheet,
+        userSheet,
         kind,
         parentTaskId,
         link,
@@ -164,9 +176,15 @@ function createCreateTask({ data, config }) {
       const nameMap = new Map(
         data.listUsers().map((u) => [u.username, u.displayName || u.username])
       );
-      return {
-        task: toPublicTask(saved, nameMap, { profile, refSecret }),
-      };
+      const task = toPublicTask(saved, nameMap, { profile, refSecret });
+      if (task) {
+        applyAll([task]);
+        task.syncStatus =
+          saved.syncStatus ||
+          (data.syncStatusForTask && data.syncStatusForTask(saved.taskId)) ||
+          'synced';
+      }
+      return { task };
     },
   };
 }

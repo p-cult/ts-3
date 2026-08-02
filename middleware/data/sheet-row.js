@@ -4,29 +4,20 @@
  * Normalize live Master / User sheet rows into middleware task shape.
  * Pure — no I/O. Matches ts-2 live layout (A–N) while staying thin.
  *
- * A Task Id · B Project · C Name · D Description · E Notes · F Priority
- * G Link · H Start · I End · J Versions · K Status · L Assigned To
- * (+ optional mapping fields already attached by the bridge)
+ * Status: ts-3 vocabulary on write (Active/Done/Pause/…).
+ * Legacy ts-2 sheet words are accepted on read only.
  */
 
 const { validate, parse } = require('../domain/taskid');
+const {
+  normalizeStatus,
+  serializeStatus,
+  isRawSheetApproved,
+} = require('../domain/status');
+const { canonicalUserSheet, isMasterUserSheetKey } = require('../domain/user-sheet');
 
-const STATUS_ALIASES = Object.freeze({
-  assigned: 'Active',
-  new: 'Active',
-  ongoing: 'Active',
-  paused: 'Pause',
-  completed: 'Done',
-  approved: 'Done',
-  rejected: 'Blocked',
-  revision: 'Active',
-  draft: 'Draft',
-  active: 'Active',
-  blocked: 'Blocked',
-  done: 'Done',
-  pause: 'Pause',
-  resume: 'Resume',
-});
+/** Task-level completion approval marker (Done → Approved in UI; sheet still Done). */
+const TASK_APPROVED_MARK = '⟦TASK_APPROVED⟧';
 
 const PRIORITY_ALIASES = Object.freeze({
   high: 'high',
@@ -43,11 +34,14 @@ function cell(row, i) {
   return '';
 }
 
-function normalizeStatus(raw) {
-  const s = String(raw || '').trim();
-  if (!s) return 'Active';
-  const mapped = STATUS_ALIASES[s.toLowerCase()];
-  return mapped || s;
+function hasTaskApprovedMark(notes) {
+  return String(notes == null ? '' : notes).indexOf(TASK_APPROVED_MARK) >= 0;
+}
+
+function ensureTaskApprovedMark(notes) {
+  if (hasTaskApprovedMark(notes)) return String(notes || '');
+  const base = String(notes || '').trim();
+  return base ? base + '\n' + TASK_APPROVED_MARK : TASK_APPROVED_MARK;
 }
 
 function normalizePriority(raw) {
@@ -95,9 +89,12 @@ function normalizeSheetTaskRow(input, extras) {
   const assigneeUsername = String(
     raw.assigneeUsername || ex.assigneeUsername || ''
   ).trim();
-  const assigneeDisplayName = String(
-    raw.assigneeDisplayName || raw.assignedTo || ''
-  ).trim();
+  // Column L is often user-01 / user-02 (dropdown key) — never treat that as a display name.
+  const assignedRaw = String(raw.assignedTo || '').trim();
+  let assigneeDisplayName = String(raw.assigneeDisplayName || '').trim();
+  if (!assigneeDisplayName && assignedRaw && !isMasterUserSheetKey(assignedRaw)) {
+    assigneeDisplayName = assignedRaw;
+  }
 
   let kind = String(raw.kind || 'main').toLowerCase();
   const clf = String(raw.classifier || '').toLowerCase();
@@ -105,18 +102,26 @@ function normalizeSheetTaskRow(input, extras) {
   else if (clf === 'routine' || clf === 'r') kind = 'routine';
   else if (clf === 'not_a_task' || clf === 'n') kind = 'not_a_task';
 
+  const rawStatus = String(raw.status || '').trim();
+  const status = normalizeStatus(rawStatus);
+  let notes = String(raw.notes || '');
+  // Sheet "Approved" → Done + completion mark (ts-3 has no Approved status)
+  if (isRawSheetApproved(rawStatus)) {
+    notes = ensureTaskApprovedMark(notes);
+  }
+
   return {
     taskId,
     projectCode: (parsed && parsed.projectCode) || String(raw.projectCode || '').trim(),
     projectName,
     name: String(raw.name || '').trim(),
     description: String(raw.description || ''),
-    notes: String(raw.notes || ''),
+    notes,
     priority: normalizePriority(raw.priority),
     link: String(raw.link || ''),
     startDate: String(raw.startDate || raw.assignedDate || ''),
     endDate: String(raw.endDate || raw.deadline || ''),
-    status: normalizeStatus(raw.status),
+    status,
     assigneeUsername,
     assigneeDisplayName,
     userSheet,
@@ -129,12 +134,6 @@ function normalizeSheetTaskRow(input, extras) {
   };
 }
 
-/**
- * admin / Projects tab → { code, name, … }
- * Live master: Project · BaseCode · Edition · ProjectCode · Dropdown Label ·
- * Pseudo Name · Task Prefix · Active (data from row 11).
- * Also supports legacy A=code B=name and A=name B=baseCode.
- */
 function normalizeSheetProjectRow(input) {
   if (Array.isArray(input)) {
     const projectCode = cell(input, 3);
@@ -191,9 +190,6 @@ function normalizeSheetProjectRow(input) {
   return out;
 }
 
-/**
- * users tab → middleware user (login needs plaintext password in H when present).
- */
 function normalizeSheetUserRow(input) {
   let raw;
   if (Array.isArray(input)) {
@@ -231,9 +227,14 @@ function normalizeSheetUserRow(input) {
 }
 
 /**
- * Middleware task row → A–N cell array for bridge writes.
+ * Middleware task row → A–N cells for live Master / user sheets.
+ * Column L Assigned To MUST be the users-tab key (user-02), not display name —
+ * Master has a dropdown on L that rejects anything else.
+ * Status K uses live Master dropdown vocab (see serializeStatusForSheet).
+ * @param {object} row
+ * @param {{ birth?: boolean }=} opts
  */
-function taskRowToCells(row) {
+function taskRowToCells(row, opts) {
   const r = row || {};
   const kind = String(r.kind || 'main').toLowerCase();
   let classifier = '';
@@ -244,6 +245,18 @@ function taskRowToCells(row) {
   const pri = String(r.priority || 'normal').toLowerCase();
   const priorityOut =
     pri === 'high' ? 'High' : pri === 'low' ? 'Low' : pri === 'normal' ? 'Medium' : String(r.priority || '');
+
+  // Live Master L dropdown = user-01 / user-02 / … only (users-tab keys).
+  // Never write display names or usernames into L.
+  let assignedToOut = canonicalUserSheet(r);
+  if (!assignedToOut) {
+    const raw = String(r.userSheet || '').trim();
+    if (isMasterUserSheetKey(raw)) assignedToOut = raw;
+    else {
+      const assigned = String(r.assignedTo || '').trim();
+      assignedToOut = isMasterUserSheetKey(assigned) ? assigned : '';
+    }
+  }
 
   return [
     String(r.taskId || ''),
@@ -256,18 +269,66 @@ function taskRowToCells(row) {
     String(r.startDate || ''),
     String(r.endDate || ''),
     String(r.versions || ''),
-    String(r.status || 'Active'),
-    String(r.assigneeDisplayName || r.assigneeUsername || r.assignedTo || ''),
+    serializeStatusForSheet(r.status, {
+      birth: !!(opts && opts.birth),
+      notes: r.notes,
+    }),
+    assignedToOut,
     String(r.journal || ''),
     classifier,
   ];
 }
 
+/**
+ * ts-3 API status → live Master column K dropdown words.
+ *
+ * Contract (Phase 0 / go-live):
+ *   birth / Draft / Active / Resume → Assigned
+ *   Pause                           → Pause
+ *   Blocked                         → Rejected  (legacy sheet word; read maps back)
+ *   Done (no approval mark)         → Completed
+ *   Done + ⟦TASK_APPROVED⟧ in notes → Approved
+ *
+ * App still speaks Draft|Active|Blocked|Done|Pause|Resume; normalize on read.
+ */
+function serializeStatusForSheet(canonical, opts) {
+  const o = opts || {};
+  const n = normalizeStatus(canonical);
+  if (o.birth || n === 'Draft' || n === 'Active' || n === 'Resume') return 'Assigned';
+  if (n === 'Pause') return 'Pause';
+  if (n === 'Blocked') return 'Rejected';
+  if (n === 'Done') {
+    if (o.sheetApproved || hasTaskApprovedMark(o.notes)) return 'Approved';
+    return 'Completed';
+  }
+  const raw = String(canonical || '').trim();
+  if (/^approved$/i.test(raw)) return 'Approved';
+  if (/^completed$/i.test(raw)) return 'Completed';
+  if (/^paused$/i.test(raw)) return 'Pause';
+  if (/^rejected$/i.test(raw)) return 'Rejected';
+  if (/^assigned$/i.test(raw) || /^ongoing$/i.test(raw)) return 'Assigned';
+  return raw || 'Assigned';
+}
+
+function toSheetWriteRow(row, opts) {
+  const r = Object.assign({}, row || {});
+  r.status = serializeStatus(r.status, {
+    birth: !!(opts && opts.birth),
+  });
+  return r;
+}
+
 module.exports = {
+  TASK_APPROVED_MARK,
   normalizeSheetTaskRow,
   normalizeSheetProjectRow,
   normalizeSheetUserRow,
   normalizeStatus,
+  serializeStatus,
+  serializeStatusForSheet,
+  toSheetWriteRow,
+  hasTaskApprovedMark,
+  ensureTaskApprovedMark,
   normalizePriority,
   taskRowToCells,
 };

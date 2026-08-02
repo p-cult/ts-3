@@ -219,6 +219,7 @@ function planInject(input) {
       notes: row.notes || '',
       status: row.status || 'Active',
       reviewHint: row.reviewHint || 'none',
+      completionApproved: !!row.completionApproved,
       link: row.link || '',
       identityKey: key,
       depotDuplicate: depotHit.reason === 'duplicate',

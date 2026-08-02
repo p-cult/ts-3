@@ -5,6 +5,7 @@ const { normalizeKind, kindIcon } = require('../domain/kinds');
 const { joinVisibleAndHistory } = require('../domain/field-class');
 const { unauthorized } = require('../errors');
 const { PROFILE, normalizeProfile } = require('../domain/profiles');
+const { statusMatchesFilter } = require('../domain/status');
 
 function createListLogs({ data }) {
   return {
@@ -23,7 +24,7 @@ function createListLogs({ data }) {
         rows = rows.filter((t) => normalizeKind(t.kind) === k);
       }
       if (q.status) {
-        rows = rows.filter((t) => t.status === q.status);
+        rows = rows.filter((t) => statusMatchesFilter(t.status, q.status));
       }
       if (q.assignee) {
         rows = rows.filter((t) => t.assigneeUsername === q.assignee);

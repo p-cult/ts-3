@@ -1,0 +1,31 @@
+/* ts-2 priority chip — per-task display (clock / override / overdue pulse). */
+.priority {
+  align-items: center; display: inline-flex; gap: 4px;
+  font-size: 0.75rem; font-weight: 400;
+  margin-right: 2px;
+}
+.priority-dot {
+  flex: 0 0 auto; font-size: 0.96rem; line-height: 1;
+}
+.priority-dot.dot-admin { font-size: 1.47rem; }
+.priority-dot.dot-mod   { font-size: 0.90rem; }
+.pri-High .priority-dot { color: var(--pri-high); }
+.pri-Medium .priority-dot { color: var(--pri-medium); }
+.pri-Low .priority-dot { color: var(--pri-low); }
+.pri-High, .pri-Medium, .pri-Low { color: var(--skin-ink); }
+@keyframes pulsate-priority {
+  0%, 100% { color: var(--pri-high); opacity: 0.6; }
+  50% { color: #ff0000; opacity: 1; }
+}
+.priority.is-overdue .priority-dot {
+  animation: pulsate-priority 2s ease-in-out infinite;
+}
+
+.task-topline {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+.task-topline .priority { margin-right: 0; }

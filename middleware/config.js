@@ -82,6 +82,13 @@ const config = Object.freeze({
   sessionSecret: envString('SESSION_SECRET', ''),
   bridgeUrl: envString('BRIDGE_URL', ''),
   bridgeSecret: envString('BRIDGE_SECRET', ''),
+  /** Master spreadsheet id (same live Master as ts-2). Used by thin-bridge fallback. */
+  masterSheetId: envString(
+    'MASTER_ID',
+    envString('MASTER_SHEET_ID', '1v3rliP07LU_UEbALN64nWlUP7ut8SSDvuIEOAwM2B0E')
+  ),
+  /** auto | semantic | thin — auto speaks ts-3 actions then falls back to ts-2 read/write */
+  bridgeProtocol: envString('BRIDGE_PROTOCOL', 'auto'),
 
   /**
    * Data adapter: memory (default) | sheets (future).
@@ -102,8 +109,9 @@ const config = Object.freeze({
   stagingWrites: envBool('STAGING_WRITES', false),
 
   /**
-   * Who may mint/write on live sheets before go-live.
-   * Default ts2 = public writer-of-record; ts3 only for supervised Staging tests.
+   * Who may mint/write on live sheets.
+   * Before cutover: ts2 (public) — ts-3 refuses writes unless supervised staging.
+   * After cutover: ts3 — sole reader/writer (APP_MODE=production).
    */
   writerOfRecord: envString('WRITER_OF_RECORD', 'ts2'),
 
@@ -112,6 +120,22 @@ const config = Object.freeze({
 
   /** Production split: GitHub Pages UI origin allowed on API (empty = same-origin only) */
   corsOrigin: envString('CORS_ORIGIN', ''),
+
+  /**
+   * When true, birth writes await the live bridge (not write-behind).
+   * Default on for APP_MODE=production so a crash cannot drop a minted Task ID.
+   * Patches still use the outbox worker.
+   */
+  outboxAwaitBirth: envBool(
+    'OUTBOX_AWAIT_BIRTH',
+    envString('APP_MODE', 'staging') === 'production'
+  ),
+
+  /** Sliding-window rate limits (login + state-changing /api writes) */
+  rateWindowMs: envInt('RATE_WINDOW_MS', 60000),
+  /** Generous for integration tests; tighten via env on public Render. */
+  rateMaxLogins: envInt('RATE_MAX_LOGINS', 60),
+  rateMaxWrites: envInt('RATE_MAX_WRITES', 300),
 
   /** Defaults for data/retry.withRetry on external I/O */
   retry: Object.freeze({

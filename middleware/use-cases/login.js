@@ -1,7 +1,21 @@
 'use strict';
 
+const crypto = require('crypto');
 const { unauthorized } = require('../errors');
 const { permissionsFor, roleCode } = require('../domain/roles');
+
+/** Constant-time string compare (length mismatch still returns false safely). */
+function safeEqual(a, b) {
+  const aa = Buffer.from(String(a || ''), 'utf8');
+  const bb = Buffer.from(String(b || ''), 'utf8');
+  if (aa.length !== bb.length) {
+    const pad = Buffer.alloc(Math.max(aa.length, 1));
+    crypto.timingSafeEqual(pad, pad);
+    return false;
+  }
+  if (aa.length === 0) return false;
+  return crypto.timingSafeEqual(aa, bb);
+}
 
 function createLogin({ data, sessions }) {
   return {
@@ -15,7 +29,7 @@ function createLogin({ data, sessions }) {
         throw unauthorized('username and password required');
       }
       const user = data.findUser(username);
-      if (!user || user.password !== password) {
+      if (!user || !safeEqual(user.password, password)) {
         throw unauthorized('invalid username or password');
       }
       const out = sessions.create(user);
@@ -36,4 +50,4 @@ function createLogin({ data, sessions }) {
   };
 }
 
-module.exports = { createLogin };
+module.exports = { createLogin, safeEqual };

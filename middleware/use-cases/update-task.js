@@ -14,6 +14,11 @@ const {
   conflict,
   AppError,
 } = require('../errors');
+const {
+  canonicalUserSheet,
+  isVinodIdentity,
+} = require('../domain/user-sheet');
+const { recordOverride, applyAll, normalizePriority } = require('../priority');
 
 function createUpdateTask({ data }) {
   const refSecret = data.refSecret;
@@ -53,10 +58,13 @@ function createUpdateTask({ data }) {
         throw badRequest('maximum 4 links allowed');
       }
 
-      // DONE GATE (non-admin/P2): reject 403 if 1★ present or unrated links exist
+      // DONE GATE (non-admin): 1★ / unrated links — skip for routine/pseudo/not_a_task
       if (patch.status === 'Done') {
         const prof = normalizeProfile(actor.profile);
-        if (prof < PROFILE.SUPER_ADMIN) {
+        const kind = normalizeKind(row.kind);
+        const logged =
+          kind === 'routine' || kind === 'pseudo' || kind === 'not_a_task';
+        if (prof < PROFILE.SUPER_ADMIN && !logged) {
           const reviews = data.getReviews(row.taskId) || [];
           const last = reviews.length ? reviews[reviews.length - 1] : null;
           const ratings = (last && last.ratings) || [];
@@ -143,20 +151,58 @@ function createUpdateTask({ data }) {
       if (patch.name != null) patch.name = String(patch.name).trim();
       if (patch.name === '') throw badRequest('name cannot be empty');
 
+      if (patch.priority !== undefined) {
+        patch.priority = normalizePriority(patch.priority);
+      }
+
+      // Vinod edits stay on his users-tab sheet key (live: user-02, not assumed user-01).
+      if (isVinodIdentity(actor)) {
+        patch.assigneeUsername = actor.username;
+        const me = data.findUser(actor.username);
+        const sheet =
+          (me && (canonicalUserSheet(me) || String(me.userSheet || '').trim()))
+          || '';
+        if (sheet) patch.userSheet = sheet;
+      } else {
+        const who = patch.assigneeUsername || row.assigneeUsername;
+        const sheet = canonicalUserSheet({
+          assigneeUsername: who,
+          assigneeDisplayName: row.assigneeDisplayName,
+          userSheet: patch.userSheet || row.userSheet,
+        });
+        if (sheet) patch.userSheet = sheet;
+      }
+
       patch.updatedAt = new Date().toISOString();
 
       const updated = await Promise.resolve(data.updateByTaskId(row.taskId, patch));
+
+      // P4 hand-set priority pins while deadline string stays the same.
+      if (patch.priority !== undefined) {
+        const pub = toPublicTask(updated, new Map(), { refSecret });
+        const key = pub && pub.ref;
+        if (key) {
+          recordOverride(key, updated.endDate || '', 'admin');
+        }
+      }
+
       const nameMap = new Map(
         data.listUsers().map((u) => [u.username, u.displayName || u.username])
       );
       const stages = data.getStages(updated.taskId);
-      return {
-        task: toPublicTask(updated, nameMap, {
-          profile: actor.profile,
-          stages,
-          refSecret,
-        }),
-      };
+      const task = toPublicTask(updated, nameMap, {
+        profile: actor.profile,
+        stages,
+        refSecret,
+      });
+      if (task) {
+        applyAll([task]);
+        task.syncStatus =
+          updated.syncStatus ||
+          (data.syncStatusForTask && data.syncStatusForTask(updated.taskId)) ||
+          'synced';
+      }
+      return { task };
     },
   };
 }

@@ -1,0 +1,51 @@
+# Render blueprint — middleware API ONLY (Node).
+# Frontend is NOT deployed here — it lives on GitHub Pages (p-cult.github.io/task).
+# Data is Google Sheets via the existing thin Apps Script /exec.
+# Free tier sleeps when idle; keep-alive or first hit wakes it (~1 min cold).
+#
+# Cutover: in-place replace service name param-task-middleware.
+# Before flipping WRITER_OF_RECORD=ts3, suspend the previous (ts-2) deploy.
+services:
+  - type: web
+    name: param-task-middleware
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node middleware/server.js
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: NODE_ENV
+        value: "production"
+      - key: APP_MODE
+        value: "production"
+      - key: STORE_ADAPTER
+        value: "sheets"
+      - key: USE_LIVE_BRIDGE
+        value: "true"
+      - key: BRIDGE_PROTOCOL
+        value: "thin"
+      - key: WRITER_OF_RECORD
+        value: "ts3"
+      - key: STAGING_WRITES
+        value: "false"
+      - key: QUEUE_MODE
+        value: "off"
+      - key: OUTBOX_AWAIT_BIRTH
+        value: "true"
+      - key: CORS_ORIGIN
+        value: "https://p-cult.github.io"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: BRIDGE_URL
+        sync: false
+      - key: BRIDGE_SECRET
+        sync: false
+      - key: MASTER_ID
+        sync: false
+      - key: RATE_WINDOW_MS
+        value: "60000"
+      - key: RATE_MAX_LOGINS
+        value: "20"
+      - key: RATE_MAX_WRITES
+        value: "120"

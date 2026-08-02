@@ -194,7 +194,7 @@ async function main() {
     const pref2 = p2t.json.task.ref;
     const deny = await request(port, 'PATCH', '/api/tasks/' + encodeURIComponent(pref2), {
       token: p2.token,
-      body: { status: 'Draft' },
+      body: { status: 'Active' },
     });
     assert.strictEqual(deny.status, 403);
     const pause = await request(port, 'PATCH', '/api/tasks/' + encodeURIComponent(pref2), {
@@ -202,7 +202,7 @@ async function main() {
       body: { status: 'Pause' },
     });
     assert.strictEqual(pause.status, 200);
-    ok('P2 status: create→Active; Draft denied; Pause ok');
+    ok('P2 status: create→Active; Active denied; Pause ok');
   } catch (e) {
     fail('http polish', e);
   } finally {

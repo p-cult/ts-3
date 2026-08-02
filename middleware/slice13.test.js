@@ -115,8 +115,54 @@ async function main() {
     assert.strictEqual(normalizeStatus('Assigned'), 'Active');
     assert.strictEqual(normalizeStatus('Completed'), 'Done');
     assert.strictEqual(normalizeStatus('Paused'), 'Pause');
+    assert.strictEqual(normalizeStatus('Approved'), 'Done');
+    assert.strictEqual(normalizeStatus('Rejected'), 'Blocked');
+    assert.strictEqual(normalizeStatus('Finished'), 'Done');
+    assert.strictEqual(normalizeStatus('In Progress'), 'Active');
     assert.strictEqual(normalizePriority('Medium'), 'normal');
     assert.strictEqual(normalizePriority('High'), 'high');
+
+    const { serializeStatus, serializeStatusForSheet, toSheetWriteRow, TASK_APPROVED_MARK } = require('./data/sheet-row');
+    // In-memory / API uses ts-3 terms
+    assert.strictEqual(serializeStatus('Active', { birth: true }), 'Active');
+    assert.strictEqual(serializeStatus('Active'), 'Active');
+    assert.strictEqual(serializeStatus('Resume'), 'Resume');
+    assert.strictEqual(serializeStatus('Pause'), 'Pause');
+    assert.strictEqual(serializeStatus('Blocked'), 'Blocked');
+    assert.strictEqual(serializeStatus('Done'), 'Done');
+    assert.strictEqual(serializeStatus('Draft'), 'Draft');
+    assert.strictEqual(serializeStatus('Draft', { birth: true }), 'Active');
+    assert.strictEqual(serializeStatus('Assigned'), 'Active'); // legacy → ts-3
+    // Live Master column K vocab
+    assert.strictEqual(serializeStatusForSheet('Active', { birth: true }), 'Assigned');
+    assert.strictEqual(serializeStatusForSheet('Active'), 'Assigned');
+    assert.strictEqual(serializeStatusForSheet('Pause'), 'Pause');
+    assert.strictEqual(serializeStatusForSheet('Done'), 'Completed');
+    assert.strictEqual(
+      serializeStatusForSheet('Done', { notes: TASK_APPROVED_MARK }),
+      'Approved'
+    );
+    assert.strictEqual(serializeStatusForSheet('Blocked'), 'Rejected');
+    const { statusMatchesFilter } = require('./domain/status');
+    assert.ok(statusMatchesFilter('Resume', 'Active'));
+    assert.ok(statusMatchesFilter('Active', 'Active'));
+    assert.ok(!statusMatchesFilter('Pause', 'Active'));
+    assert.strictEqual(toSheetWriteRow({ status: 'Done', notes: TASK_APPROVED_MARK }).status, 'Done');
+    assert.strictEqual(toSheetWriteRow({ status: 'Pause' }).status, 'Pause');
+
+    const approvedRow = normalizeSheetTaskRow(
+      {
+        taskId: 'PRJ0011001A01',
+        project: 'Sample',
+        name: 'Approved poster',
+        status: 'Approved',
+        notes: 'ok',
+      },
+      { userSheet: 'user-anya', assigneeUsername: 'anya' }
+    );
+    assert.strictEqual(approvedRow.status, 'Done');
+    assert.ok(String(approvedRow.notes).indexOf(TASK_APPROVED_MARK) >= 0);
+    ok('ts-3 API status + Master sheet K mapping');
 
     const fromArr = normalizeSheetTaskRow(
       [
@@ -197,7 +243,7 @@ async function main() {
           taskId: 'PRJ0011001A77',
           project: 'Sample Project',
           name: 'Bridge Hydrated Task',
-          status: 'Assigned',
+          status: 'Active',
           priority: 'High',
           assignedTo: 'Anya',
           userSheet: 'user-anya',
@@ -225,6 +271,8 @@ async function main() {
     });
     const sheets = createSheetsData({
       stagingWrites: false,
+      writerOfRecord: 'ts3',
+      appMode: 'staging',
       useLiveBridge: true,
       bridge,
       fixturePath: path.join(__dirname, 'data', 'fixtures', 'sheets-depot.json'),
@@ -322,9 +370,11 @@ async function main() {
       ...baseConfig,
       storeAdapter: 'sheets',
       stagingWrites: false,
+      writerOfRecord: 'ts3',
       useLiveBridge: true,
       bridgeUrl: 'https://example.test/bridge',
       bridgeSecret: 'secret',
+      bridgeProtocol: 'semantic',
       fetchImpl: fetchImplFor(livePayload),
       appMode: 'staging',
       isDev: true,

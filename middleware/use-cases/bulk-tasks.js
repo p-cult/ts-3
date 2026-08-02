@@ -37,18 +37,29 @@ function createBulkTasks({ data }) {
           } else if (action === 'set_status') {
             const newStatus = String(body.status || row.status);
             if (newStatus === 'Done') {
-              const reviews = data.getReviews(row.taskId) || [];
-              const last = reviews.length ? reviews[reviews.length - 1] : null;
-              const ratings = (last && last.ratings) || [];
-              const hasLink = !!(row.link && String(row.link).trim());
-              if (hasDisqualifyingDoneRating(ratings, hasLink)) {
-                results.push({ id, ok: false, error: 'cannot set status to Done while a 1★ rating exists or links are unrated' });
-                continue;
+              const kind = normalizeKind(row.kind);
+              const logged =
+                kind === 'routine' || kind === 'pseudo' || kind === 'not_a_task';
+              if (!logged) {
+                const reviews = data.getReviews(row.taskId) || [];
+                const last = reviews.length ? reviews[reviews.length - 1] : null;
+                const ratings = (last && last.ratings) || [];
+                const hasLink = !!(row.link && String(row.link).trim());
+                if (hasDisqualifyingDoneRating(ratings, hasLink)) {
+                  results.push({ id, ok: false, error: 'cannot set status to Done while a 1★ rating exists or links are unrated' });
+                  continue;
+                }
               }
+            }
+            const { coerceApiStatus } = require('../domain/status');
+            const status = coerceApiStatus(newStatus);
+            if (!status) {
+              results.push({ id, ok: false, error: 'status not allowed' });
+              continue;
             }
             await Promise.resolve(
               data.updateByTaskId(row.taskId, {
-                status: newStatus,
+                status,
                 updatedAt: new Date().toISOString(),
               })
             );

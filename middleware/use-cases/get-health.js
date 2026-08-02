@@ -8,6 +8,23 @@
 
 const { evaluateOverall, summarizeConfig } = require('../domain/awareness');
 
+function bannerMessage(config) {
+  const mode = String(config.appMode || 'staging').toLowerCase();
+  const writer = String(config.writerOfRecord || 'ts2').toLowerCase();
+  if (mode === 'production' && writer === 'ts3') {
+    return 'Production — ts-3 sole sheet reader/writer (ts-2 must stay offline)';
+  }
+  if (mode === 'production') {
+    return 'Production — WRITER_OF_RECORD=' + writer + ' (ts-3 writes refused)';
+  }
+  if (config.stagingWrites) {
+    return (
+      'STAGING WRITES ON — ts-3 may write sheets (WRITER_OF_RECORD=' + writer + ')'
+    );
+  }
+  return 'Staging — sheet writes off (STAGING_WRITES=false)';
+}
+
 /**
  * @param {{
  *   config: object,
@@ -28,7 +45,12 @@ function createGetHealth(deps) {
 
       let dataStatus = { ok: false, kind: data.kind || 'unknown' };
       try {
-        dataStatus = await data.ping();
+        dataStatus = await Promise.race([
+          data.ping(),
+          new Promise((_, rej) =>
+            setTimeout(() => rej(new Error('data ping timeout')), 2500)
+          ),
+        ]);
       } catch (err) {
         dataStatus = {
           ok: false,
@@ -44,7 +66,12 @@ function createGetHealth(deps) {
       };
       if (typeof data.bridgeStatus === 'function') {
         try {
-          bridgeStatus = await data.bridgeStatus();
+          bridgeStatus = await Promise.race([
+            data.bridgeStatus(),
+            new Promise((_, rej) =>
+              setTimeout(() => rej(new Error('bridge ping timeout')), 2500)
+            ),
+          ]);
         } catch (err) {
           bridgeStatus = {
             ok: false,
@@ -93,6 +120,9 @@ function createGetHealth(deps) {
       const configSummary = summarizeConfig(configIssues);
       const dependencyOk = dataStatus.ok !== false && bridgeStatus.ok !== false;
 
+      const outbox =
+        typeof data.outboxStats === 'function' ? data.outboxStats() : null;
+
       const overall = evaluateOverall({
         configIssues,
         dependencyOk,
@@ -118,6 +148,7 @@ function createGetHealth(deps) {
           stagingWrites: !!config.stagingWrites,
           writerOfRecord: config.writerOfRecord || 'ts2',
           queueMode: config.queueMode || 'off',
+          writeBehind: !!outbox,
           isDev: !!config.isDev,
           isProd: !!config.isProd,
         },
@@ -126,11 +157,7 @@ function createGetHealth(deps) {
           stagingWrites: !!config.stagingWrites,
           writerOfRecord: config.writerOfRecord || 'ts2',
           queueMode: config.queueMode || 'off',
-          message: !!config.stagingWrites
-            ? 'STAGING WRITES ON — ts-3 may write sheets (WRITER_OF_RECORD=' +
-              (config.writerOfRecord || 'ts2') +
-              ')'
-            : 'Staging — sheet writes off (STAGING_WRITES=false)',
+          message: bannerMessage(config),
         },
         config: {
           ok: configSummary.ok && rt.bootstrapOk !== false,
@@ -140,6 +167,13 @@ function createGetHealth(deps) {
         dependencies: {
           data: dataStatus,
           bridge: bridgeStatus,
+          outbox: outbox || { pending: 0, dead: 0, synced: 0, oldestAgeSec: 0 },
+          hydrate: {
+            ok: config.useLiveBridge ? data.hydrateOk !== false : true,
+            at: data.hydrateAt || null,
+            reason: data.hydrateReason || null,
+            required: String(config.appMode || '') === 'production' && !!config.useLiveBridge,
+          },
         },
         selfHealing: {
           enabled: true,

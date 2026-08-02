@@ -12,6 +12,9 @@ function createListUsers({ data }) {
         users: data.listUsers().map((u) => ({
           username: u.username,
           displayName: u.displayName || u.username,
+          profile: Number(u.profile) || 0,
+          userSheet: u.userSheet || '',
+          status: u.status || '',
         })),
       };
     },

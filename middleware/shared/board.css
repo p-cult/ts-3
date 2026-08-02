@@ -1,0 +1,420 @@
+/* Full ts-2 page <style> block (extracted from frontend/index.html).
+   Includes shell + BOARD + DEV GUIDE. Prefer header.css + param.css for ts-3 chrome.
+   This file is the complete portable stylesheet for progressive porting. */
+
+/* ===== SKIN TOKENS live in middleware/shared/skin.css =====================
+   Loaded via <link> above, shared with the admin page so the look can never
+   drift between the two. To reskin the whole app, edit that ONE file.
+   Do not re-add a :root token block here. */
+/* Light look only — dark mode intentionally not used. */
+html { color-scheme: light; }
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; font-family: var(--skin-font); background: var(--skin-bg);
+  color: var(--skin-ink); line-height: 1.5;
+}
+.icon { width: 1.1em; height: 1.1em; fill: currentColor; vertical-align: -.15em; }
+
+/* Header ("topbar"): plain flexbox, not grid. Brand and controls are two
+   flex items that wrap onto their own line the moment they don't both fit
+   — driven by actual content width, not a fixed viewport breakpoint. (An
+   earlier grid-based version broke: CSS Grid sizes an "auto" track to a
+   flex child's UNWRAPPED width even when that child can flex-wrap, which
+   silently crushed the logo to zero width once the header had enough
+   controls — e.g. a signed-in admin's profile tag + Admin + sign out.) */
+header.app {
+  display: flex; flex-wrap: wrap; align-items: center;
+  row-gap: 8px; column-gap: 16px;
+  padding: 16px var(--skin-gap); background: var(--skin-surface);
+  border-bottom: 1px solid var(--skin-line);
+  /* Sticky, pinned just below the 25px shared topbar — matches the admin
+     page so the header behaves identically when navigating between them. */
+  position: sticky; top: 25px; z-index: 5;
+}
+.brand { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 200px; }
+.brand-wordmark { display: inline-flex; align-items: center; height: clamp(31px, 4.3vw, 43px); max-width: clamp(155px, 27.5vw, 221px); width: auto; flex: 0 1 auto; min-width: 0; }
+.brand-wordmark svg { height: 100%; width: auto; max-width: 100%; display: block; }
+/* .brand-copy / h1 / .subtitle sizing lives in middleware/shared/chrome.css
+   (loaded via <link> above) — do not redeclare it here. */
+.header-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  justify-content: flex-end; flex: 0 1 auto; min-width: 0;
+}
+
+/* Topbar styling lives in middleware/shared/topbar.css (loaded via <link>
+   below) — it is the same file the admin page loads, so there is exactly
+   one place to edit it. Do not redeclare .topbar rules here. */
+
+.sync-tools {
+  align-items: center; display: inline-flex; flex: 0 0 auto; gap: 0;
+  filter: drop-shadow(0 16px 42px rgba(32, 28, 22, 0.08));
+}
+.sync {
+  align-items: center; background: var(--skin-surface);
+  border: 1px solid color-mix(in srgb, var(--skin-surface) 75%, #000 25%);
+  border-radius: 999px 0 0 999px; border-right: 0; color: var(--skin-ink-soft);
+  display: inline-flex; font-size: 0.78rem; font-weight: 800; gap: 7px;
+  height: var(--skin-pill-h); line-height: 1; padding: 0 11px; white-space: nowrap;
+}
+.sync-dot { background: currentColor; border-radius: 999px; flex: 0 0 auto; height: 8px; width: 8px; }
+.sync-date { font-size: 0.7rem; font-weight: 400; opacity: 0.82; }
+.sync[data-state="updated"] { color: var(--skin-accent); }
+.sync[data-state="stale"] { color: #c99b25; }
+.sync[data-state="error"] { color: var(--pri-high); }
+.sync[data-state="syncing"] { color: #d87524; }
+.sync[data-state="syncing"] .sync-dot { animation: pulse 1s ease-in-out infinite; }
+.sync-button {
+  align-items: center; background: var(--skin-accent);
+  border: 1px solid color-mix(in srgb, var(--skin-accent) 75%, #000 25%);
+  border-radius: 0 999px 999px 0; color: #fff; cursor: pointer;
+  display: inline-flex; height: var(--skin-pill-h); justify-content: center;
+  padding: 0; width: var(--skin-pill-h);
+}
+.sync-button:disabled { cursor: wait; opacity: 0.58; }
+.sync-button svg { height: 16px; width: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; }
+
+.user-tools {
+  align-items: center; display: inline-flex; flex: 0 0 auto; gap: 0;
+  filter: drop-shadow(0 16px 42px rgba(32, 28, 22, 0.08));
+}
+.user-pill {
+  align-items: center; background: var(--skin-surface);
+  border: 1px solid color-mix(in srgb, var(--skin-surface) 75%, #000 25%);
+  border-radius: 999px 0 0 999px; border-right: 0; color: var(--skin-ink);
+  display: inline-flex; font-size: 0.78rem; font-weight: 700; gap: 7px;
+  height: var(--skin-pill-h); line-height: 1; padding: 0 11px; white-space: nowrap;
+}
+.user-pill-name { flex: 0 0 auto; }
+.user-pill-role { flex: 0 0 auto; color: var(--skin-ink-soft); font-weight: 500; }
+.signout-button {
+  align-items: center; background: var(--skin-accent);
+  border: 1px solid color-mix(in srgb, var(--skin-accent) 75%, #000 25%);
+  border-radius: 0 999px 999px 0; color: #fff; cursor: pointer;
+  display: inline-flex; height: var(--skin-pill-h); justify-content: center;
+  padding: 0 11px; font-size: 0.78rem; font-weight: 700;
+}
+.signout-button:hover { filter: brightness(1.05); }
+
+/* .admin-button lives in middleware/shared/chrome.css (loaded via <link>),
+   shared with the admin page's back button. Do not redeclare here. */
+
+.stale { display: none !important; }
+
+/* Shown only when the page can't reach its own server (e.g. opened via
+   Live Server / file preview instead of the middleware). */
+.offline {
+  display: none; margin: 0; padding: 10px var(--skin-gap);
+  background: #fde2e1; color: #8a1c17; font-size: 14px; text-align: center;
+  font-weight: 600;
+}
+.offline code { background: rgba(0,0,0,.06); padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+body[data-source="error"] .offline { display: block; }
+
+main { padding: var(--skin-gap); max-width: 1180px; margin: 0 auto; }
+.grid { display: grid; gap: var(--skin-gap); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.card {
+  background: var(--skin-surface); border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius); padding: 18px; box-shadow: var(--skin-shadow);
+}
+.card h2 { margin: 0 0 6px; font-size: 15px; text-transform: uppercase; letter-spacing: .6px; color: var(--skin-ink-soft); }
+.card p  { margin: 0; color: var(--skin-ink-soft); font-size: 14px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 9px 16px; border: 0; border-radius: 999px;
+  background: var(--skin-accent); color: var(--skin-accent-ink);
+  font: inherit; font-weight: 600; font-size: 14px;
+}
+.btn.ghost { background: transparent; color: var(--skin-ink-soft); border: 1px solid var(--skin-line); }
+footer { padding: 16px var(--skin-gap); color: var(--skin-ink-soft); font-size: 13px; text-align: center; }
+
+.userchip { display: none; align-items: center; gap: 10px; }
+.userchip .who { font-size: 14px; }
+.userchip .who b { display: block; }
+.userchip .who span { color: var(--skin-ink-soft); font-size: 12px; }
+
+/* profile-gated sections: shown only when body[data-profile] is high enough */
+[data-min-profile] { display: none; }
+body[data-profile="2"] [data-min-profile="2"],
+body[data-profile="3"] [data-min-profile="2"], body[data-profile="3"] [data-min-profile="3"],
+body[data-profile="4"] [data-min-profile="2"], body[data-profile="4"] [data-min-profile="3"], body[data-profile="4"] [data-min-profile="4"] { display: block; }
+
+.profile-tag { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: var(--skin-accent); color: var(--skin-accent-ink); }
+
+dialog {
+  border: 0; border-radius: var(--skin-radius); padding: 0; box-shadow: var(--skin-shadow);
+  background: var(--skin-surface); color: var(--skin-ink); width: 320px;
+}
+dialog::backdrop { background: rgba(0,0,0,.35); }
+.login { padding: 22px; }
+.login h3 { margin: 0 0 14px; }
+.login label { display: block; font-size: 13px; color: var(--skin-ink-soft); margin: 10px 0 4px; }
+.login input { width: 100%; padding: 9px 11px; border: 1px solid var(--skin-line); border-radius: 8px; font: inherit; background: var(--skin-bg); color: var(--skin-ink); }
+.login .row { display: flex; gap: 8px; margin-top: 16px; }
+.login .err { color: #b3261e; font-size: 13px; min-height: 16px; margin-top: 8px; }
+.hint { font-size: 12px; color: var(--skin-ink-soft); margin-top: 12px; }
+
+/* ===== BOARD ============================================================= */
+.summary-panel {
+  background: var(--skin-surface); border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius); box-shadow: var(--skin-shadow);
+  margin-bottom: var(--skin-gap); overflow: hidden;
+}
+.summary-panel-head {
+  align-items: center; display: flex; gap: 12px; justify-content: space-between;
+  min-height: 42px; padding: 10px 12px 10px 16px;
+}
+.summary-panel-title {
+  color: var(--skin-ink); font-size: 1.1rem; font-weight: 500;
+  letter-spacing: 0; text-transform: uppercase;
+}
+.summary-toggle {
+  align-items: center; background: var(--skin-ink); border: 1px solid color-mix(in srgb, var(--skin-ink) 75%, #fff 25%);
+  border-radius: 999px; color: #fff; cursor: pointer; display: inline-flex;
+  height: 30px; justify-content: center; width: 30px; padding: 0;
+}
+.summary-toggle svg {
+  height: 16px; width: 16px; fill: none; stroke: currentColor; stroke-width: 2.4;
+  transform: rotate(180deg); transition: transform 160ms ease;
+}
+.summary-panel.is-open .summary-toggle svg { transform: rotate(0deg); }
+.summary-panel-body {
+  display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr);
+  max-height: 0; opacity: 0; overflow: hidden;
+  padding: 0 12px; transition: max-height 220ms ease, opacity 160ms ease, padding 220ms ease;
+}
+.summary-panel.is-open .summary-panel-body {
+  max-height: 420px; opacity: 1; padding: 0 12px 14px;
+}
+/* Overview (wireframe): three stat cards — label on top, big number below. */
+.ov-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ov-card {
+  align-items: center; background: var(--skin-surface);
+  border: 1px solid var(--skin-line); border-radius: 12px;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 4px; padding: 12px 10px; text-align: center;
+}
+.ov-card span { color: var(--skin-ink-soft); font-size: 0.78rem; font-weight: 400; }
+.ov-card strong { display: block; font-size: 1.8rem; font-weight: 600; line-height: 1; }
+/* Per-user strips: one row, horizontally scrollable, chevron nav each side. */
+.ov-users { align-items: center; display: flex; gap: 8px; justify-content: center; }
+.ov-strips {
+  display: flex; flex: 1 1 auto; gap: 14px; min-width: 0; overflow-x: auto;
+  scroll-behavior: smooth; scrollbar-width: none;
+}
+.ov-strips::-webkit-scrollbar { display: none; }
+.ov-strip {
+  align-items: center; background: var(--skin-surface);
+  border: 1px solid var(--skin-line); border-radius: 10px;
+  display: flex; flex: 0 0 auto; gap: 10px; padding: 7px 14px;
+}
+.ov-strip-name { font-size: 0.95rem; font-weight: 500; white-space: nowrap; }
+.ov-strip-dot { color: var(--skin-ink-soft); font-size: 0.45rem; }
+.ov-strip-stat { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 46px; }
+.ov-strip-stat small {
+  color: var(--skin-ink-soft); font-size: 0.58rem; font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.ov-strip-stat b { font-size: 1.05rem; font-weight: 500; line-height: 1.15; }
+.ov-strip-sep { color: var(--skin-line); font-size: 1.15rem; font-weight: 300; }
+.ov-nav {
+  align-items: center; background: var(--skin-surface); border: 1px solid var(--skin-ink);
+  border-radius: 50%; color: var(--skin-ink); cursor: pointer; display: inline-flex;
+  flex: 0 0 auto; height: 24px; justify-content: center; padding: 0; width: 24px;
+}
+.ov-nav:hover { background: var(--skin-surface-strong); }
+.ov-nav[disabled] { opacity: 0.3; cursor: default; }
+.ov-nav svg { height: 13px; width: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; }
+/* Sheet ChevronIcon points down at 0°: +90° → left, -90° → right. */
+.ov-nav--prev svg { transform: rotate(90deg); }
+.ov-nav--next svg { transform: rotate(-90deg); }
+
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab {
+  align-items: center; background: var(--skin-surface-strong); border: 0;
+  border-radius: 12px 12px 0 0; color: var(--skin-ink-soft); cursor: pointer;
+  display: inline-flex; font: inherit; font-weight: 700; font-size: 14px;
+  gap: 10px; min-height: 44px; padding: 0 18px;
+}
+.tab.active { background: #6b8daa; color: #fff; }
+.tab-count {
+  align-items: center; background: rgba(255,255,255,.86); border-radius: 999px;
+  color: var(--skin-ink-soft); display: inline-flex; font-size: 0.82rem;
+  height: 22px; justify-content: center; min-width: 22px; padding: 0 7px;
+}
+.tab.active .tab-count { color: #6b8daa; }
+.toolbar .spacer { flex: 1; }
+
+.filters {
+  background: var(--skin-surface); border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius); box-shadow: var(--skin-shadow);
+  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: var(--skin-gap); padding: 12px 14px;
+}
+.filters select, .filters input {
+  padding: 8px 11px; border: 1px solid var(--skin-line); border-radius: 999px; font: inherit;
+  background: linear-gradient(180deg, var(--skin-surface), #fbf7ef); color: var(--skin-ink);
+}
+.filters input { min-width: 200px; }
+.completed-filter { display: none; }
+body.tab-completed .completed-filter { display: inline-block; }
+
+.task-panel {
+  background: var(--skin-surface); border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius); box-shadow: var(--skin-shadow); overflow: hidden;
+}
+.task-panel-head {
+  border-bottom: 1px solid var(--skin-line); padding: 16px 18px 0;
+}
+.task-panel-title { font-size: 1.2rem; font-weight: 800; line-height: 1; margin: 0 0 12px; }
+.task-list { display: grid; gap: 10px; padding: 12px; }
+.task-card {
+  background: rgba(255, 253, 248, 0.74); border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius); display: grid; gap: 10px; padding: 14px 16px;
+}
+.task-row { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; min-width: 0; }
+.task-row--title { flex-wrap: wrap; row-gap: 4px; }
+.task-title { font-size: 1.02rem; font-weight: 800; }
+.task-project { color: var(--skin-ink-soft); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; }
+.task-inline-divider { color: var(--skin-ink-soft); margin: 0 6px; }
+.task-desc, .task-note {
+  color: var(--skin-ink-soft); font-size: 0.9rem; line-height: 1.45; margin: 0;
+}
+.task-note { border-left: 2px solid var(--skin-line); padding-left: 10px; }
+.deadline-inline {
+  align-items: center; color: var(--skin-ink-soft); display: inline-flex;
+  font-size: 0.85rem; gap: 6px; white-space: nowrap;
+}
+.assignee-pill {
+  align-items: stretch; display: inline-flex; height: var(--skin-pill-h); min-width: 0;
+}
+.assignee-pill__name {
+  align-items: center; background: #fff; border: 1px solid #bfbfbf; border-right: 0;
+  border-radius: 10px 0 0 10px; color: var(--skin-ink); display: inline-flex;
+  font-size: 0.75rem; font-weight: 400; max-width: 150px; overflow: hidden;
+  padding: 0 9px; text-overflow: ellipsis; white-space: nowrap;
+}
+.assignee-pill__status {
+  align-items: center; background: var(--skin-ink); border: 1px solid #111;
+  border-radius: 0 10px 10px 0; color: #fff; display: inline-flex;
+  font-size: 0.75rem; font-weight: 400; justify-content: center;
+  min-width: var(--skin-pill-h); padding: 0 10px;
+}
+/* Status-based colors for assignee pill */
+.assignee-pill__status.status-assigned { background: var(--stat-assigned); }
+.assignee-pill__status.status-ongoing { background: var(--stat-ongoing); }
+.assignee-pill__status.status-paused { background: var(--stat-paused); color: #fff; }
+.assignee-pill__status.status-rejected { background: var(--stat-rejected); }
+.assignee-pill__status.status-approved { background: var(--stat-approved); }
+.assignee-pill__status.status-completed { background: var(--stat-completed); }
+.assignee-pill__status.status-revision { background: var(--stat-revision); }
+.assignee-pill__status.status-cancelled { background: var(--stat-cancelled); }
+.chip {
+  align-items: center; border-radius: 999px; display: inline-flex;
+  font-size: 0.78rem; font-weight: 800; justify-content: center;
+  line-height: 1; min-height: 26px; padding: 0 10px;
+}
+/* Priority display: colored bullet point + text */
+.priority {
+  align-items: center; display: inline-flex; gap: 4px;
+  font-size: 0.75rem; font-weight: 400;
+}
+.priority-dot {
+  flex: 0 0 auto; font-size: 0.96rem; line-height: 1; /* +20% size */
+}
+/* Symbol variants (who set the priority) — each glyph has a different
+   native ink size, so each gets its own correction to LOOK the same
+   size as the ● baseline, rather than sharing one font-size. */
+.priority-dot.dot-admin { font-size: 1.47rem; } /* ⭑ ink-matched 1.13rem +30% by Vinod's eye (09-Jul) */
+.priority-dot.dot-mod   { font-size: 0.90rem; } /* ⬟ ink-measured to match ● at 13px */
+.pri-High .priority-dot { color: var(--pri-high); }
+.pri-Medium .priority-dot { color: var(--pri-medium); }
+.pri-Low .priority-dot { color: var(--pri-low); }
+.pri-High { color: var(--skin-ink); }
+.pri-Medium { color: var(--skin-ink); }
+.pri-Low { color: var(--skin-ink); }
+/* Overdue pulsate: base red to full saturation, 2-second cycle */
+@keyframes pulsate-priority {
+  0%, 100% { color: var(--pri-high); opacity: 0.6; }
+  50% { color: #ff0000; opacity: 1; }
+}
+.priority.is-overdue .priority-dot {
+  animation: pulsate-priority 2s ease-in-out infinite;
+}
+.st-Completed { background: var(--skin-accent); color: #fff; }
+.st-Assigned { background: #6b8daa; color: #fff; }
+.st-InProgress { background: var(--pri-medium); color: #fff; }
+.tag-approved { background: var(--skin-accent); color: #fff; }
+.tag-logged { background: var(--skin-surface-strong); color: var(--skin-ink-soft); }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.empty { padding: 28px; text-align: center; color: var(--skin-ink-soft); }
+.colhide { display: none; }
+
+@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+@media (max-width: 760px) {
+  .overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ov-card strong { font-size: 1.4rem; }
+  .ov-strip-name { font-size: 0.88rem; }
+  header.app { row-gap: 8px; column-gap: 12px; padding: 12px 16px; }
+  .header-controls { justify-content: flex-start; gap: 6px; }
+}
+
+@media print {
+  header, .summary-panel, .filters, .toolbar, .offline, .devguide, .sync-tools { display: none !important; }
+  body { background: #fff; }
+  .task-card { page-break-inside: avoid; border: 1px solid #bbb; box-shadow: none; }
+}
+
+dialog.wide { width: min(560px, 92vw); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid .full { grid-column: 1 / -1; }
+.form-grid label { display: block; font-size: 13px; color: var(--skin-ink-soft); margin: 0 0 4px; }
+.form-grid input, .form-grid select, .form-grid textarea {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--skin-line); border-radius: 8px; font: inherit;
+  background: var(--skin-bg); color: var(--skin-ink);
+}
+.form-grid textarea { resize: vertical; min-height: 60px; }
+/* Locked fields: permission boundary, not system issue */
+.form-grid .locked-by-role {
+  opacity: 0.65; background: color-mix(in srgb, var(--skin-bg) 70%, #999 30%);
+  cursor: not-allowed;
+}
+.form-grid .locked-by-role::placeholder { opacity: 0.5; }
+.new-result { font-size: 13px; margin-top: 12px; min-height: 18px; }
+.new-result.ok { color: var(--skin-accent); }
+.new-result.bad { color: #b3261e; }
+.task-card { cursor: default; }
+.task-card.is-editable { cursor: pointer; }
+.task-card.is-editable:focus-visible { outline: 2px solid var(--skin-accent); outline-offset: 2px; }
+.task-card-actions { display: flex; gap: 8px; margin-top: 2px; }
+.task-card-actions .btn { padding: 4px 10px; font-size: 12px; }
+.locked-field {
+  width: 100%; padding: 9px 11px; border: 1px solid var(--skin-line); border-radius: 8px;
+  background: var(--skin-surface); color: var(--skin-ink-soft); font: inherit;
+}
+
+/* ===== DEV GUIDE OVERLAY (purge at go-live) =============================
+   A dev-only toggle that outlines every tagged component and names it, as a
+   transparent reference guide while prompting for changes. To remove for
+   production, delete: this CSS block, the .devguide toggle markup in the
+   header, the DEV GUIDE <script> block, and every data-comp="…" attribute.
+   Search the file for "DEV GUIDE" / "data-comp". */
+.devguide { display: flex; align-items: center; gap: 7px; margin-right: 4px; cursor: pointer; user-select: none; }
+.devguide input { position: absolute; opacity: 0; pointer-events: none; }
+.devguide .track { width: 34px; height: 18px; border-radius: 999px; background: var(--skin-line); position: relative; transition: background .15s; }
+.devguide .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left .15s; }
+.devguide input:checked + .track { background: #e91e63; }
+.devguide input:checked + .track::after { left: 18px; }
+.devguide .lbl { font-size: 12px; color: var(--skin-ink-soft); }
+
+body.guide-on [data-comp] { outline: 1px solid rgba(233,30,99,.7); outline-offset: -1px; }
+body.guide-on [data-comp]:not(dialog) { position: relative; }
+body.guide-on [data-comp]::after {
+  content: attr(data-comp);
+  position: absolute; top: 0; left: 0; z-index: 9999; pointer-events: none;
+  background: #e91e63; color: #fff; font: 600 10px/1.5 var(--skin-font);
+  padding: 0 5px; border-bottom-right-radius: 5px; letter-spacing: .3px; white-space: nowrap;
+}
+/* ===== end dev guide ==================================================== */

@@ -14,6 +14,7 @@ const {
   kindIcon,
 } = require('./kinds');
 const { normalizeReviewState } = require('./review');
+const { normalizeStatus } = require('./status');
 const { parse, validate } = require('./taskid');
 const { refFor } = require('./ref');
 
@@ -46,8 +47,11 @@ function toPublicTask(row, displayNames, opts = {}) {
     name: row.name || '',
     description: row.description || '',
     notes: row.notes || '',
-    status: row.status || 'Active',
+    status: normalizeStatus(row.status || 'Active'),
     priority: row.priority || 'normal',
+    overdue: !!row.overdue,
+    prioritySource: row.prioritySource || undefined,
+    prioritySetBy: row.prioritySetBy || undefined,
     startDate: row.startDate || '',
     endDate: row.endDate || '',
     assigneeUsername: row.assigneeUsername || '',
@@ -69,6 +73,10 @@ function toPublicTask(row, displayNames, opts = {}) {
   if (profile >= PROFILE.SUPER_ADMIN) {
     dto.kind = kind;
     dto.kindIcon = kindIcon(kind);
+  } else if (profile >= PROFILE.USER) {
+    // P2/P3 need kind for Done routing (routine/pseudo skip Approve step).
+    // kindIcon stays admin-only so R/P/N chips stay out of user UI.
+    dto.kind = kind;
   } else if (isRestrictedKind(kind)) {
     dto.kind = undefined;
   } else {

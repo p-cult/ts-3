@@ -1,0 +1,34 @@
+/* Shared "chrome" typography — ONE file, loaded by both the board
+   (frontend/index.html) and the admin page (middleware/admin/admin.html).
+   This is what keeps the two headers the SAME HEIGHT at every viewport
+   width: both use the exact same .brand-copy/h1/.subtitle font-size,
+   line-height and gap, so their content boxes compute identically even
+   though the text differs (brand name vs "Admin · Reports"). Board and
+   admin headers also share identical padding/border in their own
+   page-specific header.app rules — keep those two padding values matching
+   this file's assumptions (16px vertical) if either page changes them.
+   Edit here only — do not fork a copy into either page. */
+.brand-copy { display: grid; gap: 3px; min-width: 0; flex: 1 1 auto; }
+.brand-copy h1 {
+  margin: 0; font-weight: 900; font-size: clamp(1.35rem, 2.8vw, 1.9rem);
+  line-height: 1; letter-spacing: -0.02em;
+}
+.brand-copy .subtitle {
+  margin: 0; color: var(--skin-ink-soft); font-size: 0.72rem;
+  font-weight: 400; line-height: 1.2;
+}
+
+/* The round accent nav button — board→admin ("Admin reports") and admin→board
+   ("Back to board") are the SAME control. ONE definition here so they can't
+   drift apart. Both pages just drop in <a class="admin-button"> with a
+   sheet-driven icon inside. */
+.admin-button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--skin-pill-h); height: var(--skin-pill-h);
+  background: var(--skin-accent);
+  border: 1px solid color-mix(in srgb, var(--skin-accent) 75%, #000 25%);
+  border-radius: 50%; color: #fff; cursor: pointer; text-decoration: none;
+  padding: 0; margin-left: 4px; flex: 0 0 auto;
+}
+.admin-button:hover { filter: brightness(1.05); }
+.admin-button svg { height: 16px; width: 16px; fill: none; }

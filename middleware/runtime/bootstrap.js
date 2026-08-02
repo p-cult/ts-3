@@ -159,13 +159,31 @@ function bootstrap(deps) {
     }
   }
 
-  // --- production session secret (prep for auth; not required until Slice 01) ---
-  if (cfg.isProd && !cfg.sessionSecret) {
+  // --- production session secret (hard require for public URL / sole-writer) ---
+  const prodMode =
+    cfg.isProd || String(cfg.appMode || '').toLowerCase() === 'production';
+  if (prodMode) {
+    if (!cfg.sessionSecret) {
+      issue(
+        'error',
+        'session_secret',
+        'SESSION_SECRET required in production',
+        'Set a strong unique SESSION_SECRET (Render generateValue or local env)'
+      );
+    } else if (cfg.sessionSecret === 'dev-ref-secret') {
+      issue(
+        'error',
+        'session_secret',
+        'dev-ref-secret is forbidden in production',
+        'Replace SESSION_SECRET with a unique strong value'
+      );
+    }
+  } else if (!cfg.sessionSecret) {
     issue(
       'warn',
       'session_secret',
-      'SESSION_SECRET empty in production',
-      'Set SESSION_SECRET before enabling login (Slice 01)'
+      'SESSION_SECRET empty (ok in staging/dev)',
+      'Set SESSION_SECRET before production cutover'
     );
   }
 

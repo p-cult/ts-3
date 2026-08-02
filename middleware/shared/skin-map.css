@@ -1,0 +1,327 @@
+/* =============================================================================
+   skin-map.css — smart remap of ts-2 skin/board chrome onto ts-3 selectors.
+   Load after skin.css (+ chrome/header). Does not import ts-2 board layout
+   wholesale (different DOM); maps look → role:
+
+     ts-2 .btn / .btn.ghost     →  ts-3 .btn / .btn.primary / .btn.danger
+     ts-2 .tab / .tab.active    →  ts-3 .tab / .tab.on  (+ .tab.active alias)
+     ts-2 .pill                 →  ts-3 .pill (My Task / Add task)
+     ts-2 .task-card            →  ts-3 .task / .log-row
+     ts-2 .chip / status tags   →  ts-3 .chip (+ waiting / approved / rework)
+     ts-2 .filters              →  ts-3 .filters / .smart-filter / .inject-panel
+     ts-2 form controls         →  ts-3 input/select/textarea / dialog.dlg
+   ============================================================================= */
+
+/* ----- Buttons (ts-2 accent pill + ghost) --------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; font: inherit; font-weight: 600; font-size: 0.88rem;
+  padding: 0 14px; height: var(--skin-pill-h);
+  border-radius: 999px;
+  border: 1px solid var(--skin-line);
+  background: var(--skin-surface);
+  color: var(--skin-ink);
+  box-shadow: none;
+}
+.btn:hover { filter: brightness(0.985); }
+.btn.primary,
+.btn.primary:hover {
+  background: var(--skin-accent);
+  border-color: color-mix(in srgb, var(--skin-accent) 75%, #000 25%);
+  color: var(--skin-accent-ink);
+  filter: none;
+}
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.danger {
+  color: var(--pri-high);
+  border-color: color-mix(in srgb, var(--pri-high) 35%, var(--skin-line));
+  background: color-mix(in srgb, var(--pri-high) 8%, var(--skin-surface));
+}
+.btn.danger:hover { filter: brightness(0.98); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
+/* Compact actions on task cards (≈ ts-2 .task-card-actions .btn) */
+.task .actions .btn,
+.log-row .btn {
+  height: auto; min-height: calc(var(--skin-pill-h) - 4px);
+  padding: 4px 10px; font-size: 0.78rem;
+}
+
+/* ----- Tabs (ts-2 toolbar tabs; active = skin accent, not legacy blue) ---- */
+.tabs {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: var(--skin-gap);
+}
+.tab {
+  display: inline-flex; align-items: center; gap: 0;
+  cursor: pointer; font: inherit; font-weight: 700; font-size: 0.85rem;
+  height: var(--skin-pill-h); padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--skin-surface) 75%, #000 25%);
+  background: var(--skin-surface);
+  color: var(--skin-ink);
+}
+.tab:hover { background: var(--skin-surface-strong); }
+.tab.on,
+.tab.active {
+  background: var(--skin-accent);
+  border-color: color-mix(in srgb, var(--skin-accent) 75%, #000 25%);
+  color: var(--skin-accent-ink);
+}
+.tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.15rem; margin-left: 0.35rem;
+  padding: 0 0.35rem; border-radius: 999px;
+  font-size: 0.7rem; font-weight: 800; line-height: 1.4;
+  background: var(--skin-surface-strong);
+  color: var(--pri-medium);
+  vertical-align: middle;
+}
+.tab.on .tab-count,
+.tab.active .tab-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--skin-accent-ink);
+}
+.tab-count[hidden] { display: none !important; }
+
+/* ----- Pills (My Task / Add task — same family as tabs) ------------------- */
+.pill {
+  display: inline-flex; align-items: center; gap: 0;
+  cursor: pointer; font: inherit; font-weight: 700; font-size: 0.85rem;
+  height: var(--skin-pill-h); padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--skin-accent);
+  background: color-mix(in srgb, var(--skin-accent) 14%, var(--skin-surface));
+  color: var(--skin-accent);
+}
+.pill:hover,
+.pill.on {
+  background: var(--skin-accent);
+  color: var(--skin-accent-ink);
+  border-color: color-mix(in srgb, var(--skin-accent) 75%, #000 25%);
+}
+.pill .tab-count {
+  background: rgba(0, 0, 0, 0.12);
+  color: inherit;
+}
+.pill.on .tab-count,
+.pill:hover .tab-count {
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--skin-accent-ink);
+}
+
+/* ----- Toolbar ------------------------------------------------------------ */
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+}
+
+/* ----- Task / log cards (≈ ts-2 .task-card) ------------------------------- */
+.task,
+.log-row {
+  background: color-mix(in srgb, var(--skin-surface) 86%, transparent);
+  border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  box-shadow: none;
+}
+.task:hover,
+.log-row:hover {
+  background: var(--skin-surface);
+}
+.task.sub {
+  margin-left: 1.1rem;
+  border-left: 3px solid color-mix(in srgb, var(--skin-accent) 45%, var(--skin-line));
+}
+.task h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--skin-ink);
+}
+.meta,
+.subs-line {
+  font-size: 0.82rem;
+  color: var(--skin-ink-soft);
+}
+.task.editing,
+.task.reviewing {
+  border-color: var(--skin-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--skin-accent) 35%, transparent);
+}
+
+/* ----- Chips / status tags ------------------------------------------------ */
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
+.chip {
+  align-items: center; display: inline-flex; justify-content: center;
+  border-radius: 999px; font-size: 0.75rem; font-weight: 800;
+  line-height: 1; min-height: 24px; padding: 0 10px;
+  background: var(--skin-surface-strong);
+  color: var(--skin-ink-soft);
+}
+.chip.kind {
+  background: color-mix(in srgb, var(--pri-low) 16%, var(--skin-surface));
+  color: var(--pri-low);
+}
+.chip.chip-status {
+  background: color-mix(in srgb, var(--stat-assigned) 18%, var(--skin-surface));
+  color: var(--stat-assigned);
+}
+.chip.chip-waiting,
+.chip.rev-needs {
+  background: color-mix(in srgb, var(--stat-revision) 18%, var(--skin-surface));
+  color: #9a5b00;
+}
+.chip.chip-task-approved {
+  background: color-mix(in srgb, var(--stat-approved) 20%, var(--skin-surface));
+  color: var(--stat-approved);
+}
+.chip.rev-rework {
+  background: color-mix(in srgb, var(--stat-rejected) 18%, var(--skin-surface));
+  color: var(--stat-rejected);
+}
+
+/* ----- Filters / smart filter / inject panels (≈ ts-2 .filters) ----------- */
+.filters,
+.smart-filter,
+.inject-panel,
+.inject-bulk,
+.needs-bulk {
+  background: var(--skin-surface);
+  border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius);
+  box-shadow: var(--skin-shadow);
+}
+.filters {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: var(--skin-gap); padding: 12px 14px;
+}
+.smart-filter {
+  margin-bottom: 0.85rem; padding: 0.55rem 0.65rem;
+  display: flex; flex-direction: column; gap: 0.35rem;
+}
+.inject-bulk,
+.needs-bulk {
+  display: flex; flex-direction: column; gap: 0.55rem;
+  padding: 0.65rem 0.75rem; margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+}
+.inject-panel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.55rem;
+  padding: 0.5rem 0.55rem;
+  background: var(--skin-surface-strong);
+  box-shadow: none;
+}
+.inject-panel-apply {
+  background: color-mix(in srgb, var(--skin-accent) 10%, var(--skin-surface));
+  border-color: color-mix(in srgb, var(--skin-accent) 35%, var(--skin-line));
+}
+.inject-panel-label {
+  flex: 0 0 100%; margin: 0; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--skin-ink-soft);
+}
+
+.filters select,
+.filters input,
+.smart-filter input,
+.inject-panel select,
+.inject-panel input[type="search"] {
+  padding: 8px 11px; border: 1px solid var(--skin-line); border-radius: 999px;
+  font: inherit; font-size: 0.85rem;
+  background: linear-gradient(180deg, var(--skin-surface), #fbf7ef);
+  color: var(--skin-ink);
+  width: auto; margin: 0;
+}
+
+/* ----- Forms / dialogs ---------------------------------------------------- */
+input,
+select,
+textarea {
+  width: 100%; font: inherit;
+  padding: 9px 11px;
+  border: 1px solid var(--skin-line);
+  border-radius: 8px;
+  background: var(--skin-bg);
+  color: var(--skin-ink);
+}
+dialog,
+dialog.dlg,
+.dlg {
+  border: 0;
+  border-radius: var(--skin-radius);
+  padding: 0;
+  box-shadow: var(--skin-shadow);
+  background: var(--skin-surface);
+  color: var(--skin-ink);
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
+.err { color: var(--pri-high); font-size: 0.85rem; min-height: 1.1em; }
+.empty {
+  padding: 28px 0; text-align: center;
+  color: var(--skin-ink-soft);
+}
+.muted,
+#hint {
+  color: var(--skin-ink-soft);
+}
+.ok-msg { color: var(--skin-accent); }
+
+/* ----- Staging banner (skin warn / danger) -------------------------------- */
+.staging-banner {
+  margin: 0 0 0.75rem; padding: 0.55rem 0.75rem;
+  border-radius: var(--skin-radius);
+  font-size: 0.82rem; font-weight: 650;
+  border: 1px solid color-mix(in srgb, var(--pri-medium) 45%, var(--skin-line));
+  background: color-mix(in srgb, var(--pri-medium) 12%, var(--skin-surface));
+  color: #6b4e00;
+}
+.staging-banner.is-writes {
+  border-color: color-mix(in srgb, var(--pri-high) 45%, var(--skin-line));
+  background: color-mix(in srgb, var(--pri-high) 10%, var(--skin-surface));
+  color: var(--pri-high);
+}
+
+/* ----- Progress / accents ------------------------------------------------- */
+.bar {
+  height: 6px; background: var(--skin-surface-strong);
+  border-radius: 99px; margin-top: 0.4rem; overflow: hidden; max-width: 12rem;
+}
+.bar > i { display: block; height: 100%; background: var(--skin-accent); }
+.badge {
+  font-size: 0.72rem; padding: 0.12rem 0.45rem; border-radius: 999px;
+  background: var(--skin-surface-strong); color: var(--pri-medium); font-weight: 600;
+}
+.seg-btn {
+  background: var(--skin-surface); color: var(--skin-ink);
+  border-color: var(--skin-line);
+}
+.seg-btn.on {
+  background: var(--skin-accent); color: var(--skin-accent-ink);
+  border-color: var(--skin-accent);
+}
+.kind-radios input[type="radio"] { accent-color: var(--skin-accent); }
+
+/* ----- SF chips ----------------------------------------------------------- */
+.sf-chip {
+  background: color-mix(in srgb, var(--skin-accent) 14%, var(--skin-surface));
+  color: var(--skin-accent);
+  border-radius: 999px;
+}
+.sf-suggest {
+  background: var(--skin-surface);
+  border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius);
+  box-shadow: var(--skin-shadow);
+}
+.sf-suggest button:hover,
+.sf-suggest button.on {
+  background: color-mix(in srgb, var(--skin-accent) 14%, var(--skin-surface));
+}
+
+/* ----- Rework callout ----------------------------------------------------- */
+.rework-notes {
+  background: color-mix(in srgb, var(--stat-rejected) 10%, var(--skin-surface));
+  border: 1px solid color-mix(in srgb, var(--stat-rejected) 35%, var(--skin-line));
+  border-radius: var(--skin-radius);
+  color: var(--skin-ink);
+}
+.rework-notes .rework-notes-label { color: var(--stat-rejected); }

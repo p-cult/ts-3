@@ -1,0 +1,101 @@
+/* task-sheet countdown / duration timer pill (~80% chrome, text sizes held) */
+:root {
+  --task-pill-height: 27px; /* was 34px → ~80% */
+  --task-pill-radius: 8px;
+}
+
+.time-unit {
+  align-items: center;
+  display: inline-flex;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.time-icon-wrap {
+  align-items: center;
+  /* 10% grey */
+  background: color-mix(in srgb, #000 10%, #fff 90%);
+  border: none;
+  border-radius: var(--task-pill-radius) 0 0 var(--task-pill-radius);
+  display: inline-flex;
+  height: var(--task-pill-height);
+  justify-content: center;
+  width: 24px; /* was 30px → ~80% */
+}
+
+/* Priority glyph in timer icon slot (replaces hourglass) */
+.time-icon-wrap .priority-dot {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.time-icon-wrap .priority-dot.dot-admin { font-size: 1.15rem; }
+.time-icon-wrap .priority-dot.dot-mod { font-size: 0.78rem; }
+.time-icon-wrap.pri-High .priority-dot { color: var(--pri-high, #a63d4f); }
+.time-icon-wrap.pri-Medium .priority-dot { color: var(--pri-medium, #c99b25); }
+.time-icon-wrap.pri-Low .priority-dot { color: var(--pri-low, #2f6f9f); }
+.time-icon-wrap.is-overdue .priority-dot {
+  animation: pulsate-priority 2s ease-in-out infinite;
+}
+
+.time-inline {
+  background: var(--timer-bg, #171615);
+  border-radius: 0 var(--task-pill-radius) var(--task-pill-radius) 0;
+  color: #fff;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0;
+  height: var(--task-pill-height);
+  justify-content: center;
+  line-height: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 9px;
+  text-align: center;
+}
+
+.time-inline .time-context {
+  /* D:HH:MM / HH:MM label — keep current size */
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.45rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  margin-top: 2px;
+  text-align: center;
+}
+
+.time-inline .meta-value {
+  /* countdown digits — keep current size */
+  color: #fff;
+  font-size: 0.96rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.time-unit--fallback { --timer-bg: #4a5a6b; }
+.time-unit--high { --timer-bg: var(--pri-high, #a63d4f); } /* brick red */
+.time-unit--medium { --timer-bg: #d87524; }
+.time-unit--low { --timer-bg: #2689d2; }
+
+.time-unit--urgent .time-inline {
+  background: var(--timer-bg);
+}
+.time-unit--normal .time-inline {
+  background: var(--timer-bg);
+}
+.time-unit--relaxed .time-inline {
+  background: color-mix(in srgb, var(--timer-bg) 78%, #fff 22%);
+}
+/* Overdue: always solid brick — never lightened */
+.time-unit--high.time-unit--urgent .time-inline {
+  background: var(--pri-high, #a63d4f);
+}
+
+.task-topline .time-unit {
+  margin-right: 0.15rem;
+}

@@ -67,7 +67,10 @@ const config = Object.freeze({
   isDev: NODE_ENV !== 'production',
   isProd: NODE_ENV === 'production',
 
-  host: envString('HOST', '127.0.0.1'),
+  host: envString(
+    'HOST',
+    NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1'
+  ),
   port: envInt('PORT', 4303),
 
   /** error | warn | info | debug */

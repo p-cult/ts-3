@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Slice 12 — go-live.sh exists + health slice 12.
+ * Slice 12 — go-live.sh exists + health slice 13.
  */
 
 const assert = require('assert');
@@ -59,10 +59,10 @@ async function main() {
         })
         .on('error', reject);
     });
-    assert.strictEqual(json.slice, '12');
-    ok('health reports slice 12');
+    assert.strictEqual(json.slice, '13');
+    ok('health reports slice 13');
   } catch (e) {
-    fail('health slice 12', e);
+    fail('health slice 13', e);
   } finally {
     await new Promise((r) => server.close(r));
   }

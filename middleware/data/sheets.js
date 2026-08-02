@@ -14,6 +14,11 @@ const { validate, usedSubtasksFor } = require('../domain/taskid');
 const { refFor } = require('../domain/ref');
 const { createMemoryData } = require('./memory');
 const { AppError, CODE } = require('../errors');
+const {
+  normalizeSheetTaskRow,
+  normalizeSheetProjectRow,
+  normalizeSheetUserRow,
+} = require('./sheet-row');
 
 function loadFixture(fixturePath) {
   const p =
@@ -80,37 +85,132 @@ function createSheetsData(opts = {}) {
     }
   }
 
+  function resolveAssigneeUsername(row, users) {
+    if (row.assigneeUsername) return row.assigneeUsername;
+    const label = String(row.assigneeDisplayName || row.assignedTo || '')
+      .toLowerCase()
+      .trim();
+    if (!label) return '';
+    for (const u of users || []) {
+      if (String(u.username || '').toLowerCase() === label) return u.username;
+      if (String(u.displayName || '').toLowerCase() === label) return u.username;
+      if (String(u.userSheet || '').toLowerCase() === label) return u.username;
+    }
+    return '';
+  }
+
+  function applyDepotRows(rows, users) {
+    const state = inner._state;
+    state.depot.length = 0;
+    Object.keys(state.vehicle).forEach((k) => delete state.vehicle[k]);
+    Object.keys(state.mapping).forEach((k) => delete state.mapping[k]);
+    let accepted = 0;
+    let skipped = 0;
+    for (const raw of rows || []) {
+      const base = normalizeSheetTaskRow(raw);
+      if (!base) {
+        skipped += 1;
+        continue;
+      }
+      const assigneeUsername =
+        resolveAssigneeUsername(base, users) || base.assigneeUsername;
+      const r = { ...base, assigneeUsername };
+      if (!r.taskId || !validate(r.taskId)) {
+        skipped += 1;
+        continue;
+      }
+      state.depot.push(JSON.parse(JSON.stringify(r)));
+      const sheet = r.userSheet || 'unknown';
+      if (!state.vehicle[sheet]) state.vehicle[sheet] = [];
+      state.vehicle[sheet].push(JSON.parse(JSON.stringify(r)));
+      state.mapping[r.taskId] = {
+        taskId: r.taskId,
+        ref: refFor(r.taskId, refSecret),
+        userSheet: sheet,
+        assigneeUsername: r.assigneeUsername,
+      };
+      accepted += 1;
+    }
+    return { accepted, skipped };
+  }
+
+  function applyUsers(rawUsers) {
+    const state = inner._state;
+    const next = [];
+    for (const raw of rawUsers || []) {
+      const u = normalizeSheetUserRow(raw);
+      if (u) next.push(u);
+    }
+    if (!next.length) return { replaced: false, count: state.users.length };
+    state.users.length = 0;
+    next.forEach((u) => state.users.push(u));
+    return { replaced: true, count: state.users.length };
+  }
+
+  function applyProjects(rawProjects) {
+    const state = inner._state;
+    const next = [];
+    for (const raw of rawProjects || []) {
+      const p = normalizeSheetProjectRow(raw);
+      if (p) next.push(p);
+    }
+    if (!next.length) return { replaced: false, count: state.projects.length };
+    state.projects.length = 0;
+    next.forEach((p) => state.projects.push(p));
+    return { replaced: true, count: state.projects.length };
+  }
+
+  /**
+   * Hydrate mirror from live bridge.
+   * Successful empty depot clears fixture tasks (honest live truth).
+   * Bridge failure keeps prior mirror and reports ok:false.
+   */
   async function refreshFromBridge() {
     if (!useLiveBridge) return { ok: false, reason: 'bridge off' };
     try {
-      const depotRes = await bridge.getDepot();
+      const [depotRes, usersRes, projectsRes] = await Promise.all([
+        bridge.getDepot(),
+        bridge.getUsers().catch((err) => {
+          log.warn('bridge getUsers failed', { err: String(err && err.message) });
+          return null;
+        }),
+        bridge.getProjects().catch((err) => {
+          log.warn('bridge getProjects failed', { err: String(err && err.message) });
+          return null;
+        }),
+      ]);
       const rows = (depotRes && (depotRes.rows || depotRes.tasks)) || [];
       if (!Array.isArray(rows)) return { ok: false, reason: 'bad depot payload' };
+
+      const usersApplied = usersRes
+        ? applyUsers(usersRes.users || usersRes.rows || [])
+        : { replaced: false, count: inner._state.users.length };
+      const projectsApplied = projectsRes
+        ? applyProjects(projectsRes.projects || projectsRes.rows || [])
+        : { replaced: false, count: inner._state.projects.length };
+
+      const depotApplied = applyDepotRows(rows, inner._state.users);
       if (!rows.length) {
-        log.warn('bridge getDepot returned 0 rows — keeping fixture mirror');
-        return { ok: true, rows: 0, keptFixture: true };
+        log.warn('bridge getDepot returned 0 rows — mirror depot cleared');
       }
-      const state = inner._state;
-      state.depot.length = 0;
-      Object.keys(state.vehicle).forEach((k) => delete state.vehicle[k]);
-      Object.keys(state.mapping).forEach((k) => delete state.mapping[k]);
-      for (const t of rows) {
-        const r = { ...t };
-        if (!r.taskId || !validate(r.taskId)) continue;
-        state.depot.push(JSON.parse(JSON.stringify(r)));
-        const sheet = r.userSheet || 'unknown';
-        if (!state.vehicle[sheet]) state.vehicle[sheet] = [];
-        state.vehicle[sheet].push(JSON.parse(JSON.stringify(r)));
-        state.mapping[r.taskId] = {
-          taskId: r.taskId,
-          ref: refFor(r.taskId, refSecret),
-          userSheet: sheet,
-          assigneeUsername: r.assigneeUsername,
-        };
-      }
-      return { ok: true, rows: state.depot.length };
+      log.info('bridge refresh ok', {
+        depot: depotApplied.accepted,
+        skipped: depotApplied.skipped,
+        users: usersApplied.count,
+        projects: projectsApplied.count,
+      });
+      return {
+        ok: true,
+        rows: depotApplied.accepted,
+        skipped: depotApplied.skipped,
+        users: usersApplied.count,
+        projects: projectsApplied.count,
+        keptFixture: false,
+      };
     } catch (err) {
-      log.warn('bridge refresh failed', { err: String(err && err.message) });
+      log.warn('bridge refresh failed — keeping prior mirror', {
+        err: String(err && err.message),
+      });
       return { ok: false, reason: String(err && err.message ? err.message : err) };
     }
   }

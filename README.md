@@ -12,7 +12,7 @@ This folder stays **lean**. Cutover law: [ARCHITECTURE.md](ARCHITECTURE.md) §14
 | 1 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Core model + laws (Task ID, vehicle, depot, control room) |
 | 2 | **[PLAN-CLEAN.md](PLAN-CLEAN.md)** | Rebuild plan: preserve / drop / one birth path / waves |
 | 3 | **[FOUNDATION.md](FOUNDATION.md)** | Technical spine (server, config, log, errors, layout) |
-| 4 | **[SLICE-01.md](SLICE-01.md)** … **[SLICE-12.md](SLICE-12.md)** | Control room → go-live track |
+| 4 | **[SLICE-01.md](SLICE-01.md)** … **[SLICE-13.md](SLICE-13.md)** | Control room → live Sheets read |
 | 5 | **[CAPABILITIES-FROM-TS2.md](CAPABILITIES-FROM-TS2.md)** | What live ts-2 actually does |
 
 That’s the whole working brain. Everything else is reference or archive.
@@ -59,7 +59,7 @@ One-time: this folder must be a Git repo with `origin` pointing at GitHub.
 ```text
 frontend/          one HTML UI (placeholder today)
 middleware/        Node control room
-apps-script/       empty until Google wave
+apps-script/       thin bridge (deploy for live Sheets)
 docs/reference/    requirements specs (from ts-2)
 docs/archive/      secondary guides (not day-to-day reading)
 data/              local runtime
@@ -77,7 +77,7 @@ data/              local runtime
 
 - Planning + foundation: **yes**
 - Staging / cutover strategy: **documented** ([docs/HOSTING.md](docs/HOSTING.md), [docs/GO-LIVE.md](docs/GO-LIVE.md))
-- **Slice 01–12:** built + automated tests green (`npm test`) — **production-ready Staging track**
+- **Slice 01–13:** built + automated tests green (`npm test`) — Staging track + live Sheets read path
 - Classifier: Logged tab (`board=logged`), Make Task (P3+), completed counting helpers
 - Reports journey (P3+), dropdown vocabulary, CORS for Pages+Render split
 - Go-live preflight: **`./go-live.sh`** (does not touch ts-2)

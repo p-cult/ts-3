@@ -21,6 +21,7 @@ function createDataAccess(deps) {
   const bridge = createBridgeClient({
     bridgeUrl: config.bridgeUrl,
     bridgeSecret: config.bridgeSecret,
+    fetchImpl: config.fetchImpl,
     log,
   });
 
@@ -33,7 +34,7 @@ function createDataAccess(deps) {
       writerOfRecord: config.writerOfRecord || 'ts2',
       useLiveBridge: !!config.useLiveBridge,
       bridge,
-      fixturePath: config.sheetsFixturePath,
+      fixturePath: config.sheetsFixturePath || undefined,
       log,
     });
   } else {

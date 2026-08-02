@@ -171,7 +171,7 @@ function printStartupBanner(app, addr) {
   const b = app.bootstrap || {};
   const heals = (b.heals || []).length;
   console.log('');
-  console.log('  ts-3 slice 12 (staging — production-ready track)');
+  console.log('  ts-3 slice 13 (staging — production-ready track)');
   console.log(`  url     http://${addr.address}:${addr.port}/`);
   console.log(`  health  http://${addr.address}:${addr.port}/api/health`);
   console.log(`  mode    ${app.config.appMode || 'staging'}`);
@@ -198,33 +198,54 @@ function startServer(overrides = {}) {
   const config = app.config;
   const host = overrides.host || config.host;
   const port = overrides.port !== undefined ? overrides.port : config.port;
-  const server = http.createServer(createRequestListener({ app, config }));
 
-  return new Promise((resolve, reject) => {
-    server.once('error', (err) => {
-      if (err && err.code === 'EADDRINUSE') {
-        console.error(
-          `\nPort ${port} is already in use.\n  Fix: PORT=4304 ./run.sh\n`
-        );
+  async function hydrateIfNeeded() {
+    if (!config.useLiveBridge) return;
+    if (!app.data || typeof app.data.refreshFromBridge !== 'function') return;
+    try {
+      const r = await app.data.refreshFromBridge();
+      log.info('live bridge hydrate', r || {});
+      if (r && r.ok === false) {
+        log.warn('live bridge hydrate incomplete — serving prior mirror', {
+          reason: r.reason,
+        });
       }
-      reject(err);
-    });
-    server.listen(port, host, () => {
-      const addr = server.address();
-      log.info('server listening', {
-        app: config.appName,
-        host: addr.address,
-        port: addr.port,
-        mode: config.appMode,
-        store: app.data.kind,
+    } catch (err) {
+      log.warn('live bridge hydrate threw — serving prior mirror', {
+        err: String(err && err.message ? err.message : err),
       });
-      if (require.main === module || overrides.banner) {
-        printStartupBanner(app, addr);
-      }
-      server.app = app;
-      resolve(server);
-    });
-  });
+    }
+  }
+
+  return hydrateIfNeeded().then(
+    () =>
+      new Promise((resolve, reject) => {
+        const server = http.createServer(createRequestListener({ app, config }));
+        server.once('error', (err) => {
+          if (err && err.code === 'EADDRINUSE') {
+            console.error(
+              `\nPort ${port} is already in use.\n  Fix: PORT=4304 ./run.sh\n`
+            );
+          }
+          reject(err);
+        });
+        server.listen(port, host, () => {
+          const addr = server.address();
+          log.info('server listening', {
+            app: config.appName,
+            host: addr.address,
+            port: addr.port,
+            mode: config.appMode,
+            store: app.data.kind,
+          });
+          if (require.main === module || overrides.banner) {
+            printStartupBanner(app, addr);
+          }
+          server.app = app;
+          resolve(server);
+        });
+      })
+  );
 }
 
 function createServer(opts) {

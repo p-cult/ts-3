@@ -8,7 +8,7 @@
 
 | Piece | Role |
 |-------|------|
-| `apps-script/bridge.gs` | Thin bridge stub (ping / getDepot / getVehicle / getProjects / getUsers; writes stubbed) |
+| `apps-script/bridge.gs` | Thin bridge (Slice 05 stub → **Slice 13** live readers; writes still stubbed) |
 | `middleware/bridge/client.js` | HTTP client to bridge (token in body + Bearer) |
 | `middleware/data/sheets.js` | Sheets adapter — same interface as memory |
 | `middleware/data/fixtures/sheets-depot.json` | Fixture-shaped depot for CI / local reads |
@@ -27,8 +27,8 @@ STORE_ADAPTER=sheets STAGING_WRITES=false ./run.sh
 # GET /api/tasks — includes “Sheets Fixture Read Task”
 ```
 
-Live bridge (optional): set `USE_LIVE_BRIDGE=true`, `BRIDGE_URL`, `BRIDGE_SECRET` after deploying `bridge.gs` (not the ts-2 project).
+Live Master read: see **[SLICE-13.md](SLICE-13.md)** (`USE_LIVE_BRIDGE=true` + deployed `bridge.gs`).
 
-## Out of scope (Slice 06+)
+## Out of scope (Slice 06 / 13+)
 
 Controlled live writes, writer-of-record guard, queue.

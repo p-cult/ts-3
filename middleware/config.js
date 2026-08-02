@@ -92,6 +92,9 @@ const config = Object.freeze({
   /** Safety: never enable live bridge by accident in foundation */
   useLiveBridge: envBool('USE_LIVE_BRIDGE', false),
 
+  /** Optional override for sheets adapter fixture (CI / offline). Live bridge ignores after hydrate. */
+  sheetsFixturePath: envString('SHEETS_FIXTURE_PATH', ''),
+
   /** staging until go-live; production only after cutover */
   appMode: envString('APP_MODE', 'staging'),
 

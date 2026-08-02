@@ -25,5 +25,7 @@ Board tab **Inject** (hidden unless admin).
 
 After **Process** (all before final Inject):
 1. Each task row — **Project** + **Kind** (+ Purge/Split radios on dups)
-2. Toolbar panels — **Filter** → **Select** (one checkbox model: hand-tick or Select all in filter) → **Apply to selected** (project / kind / dup action in one button). Optional **Purge all duplicates** for the whole paste.
+2. Toolbar panels — **Filter** → **Select** → **Apply to selected**. **Refresh from master** pulls live Projects via bridge. Optional **Purge all duplicates**.
 3. **Inject into system** — birth hallway (unmapped stay out until mapped)
+
+Live project list: redeploy `bridge.gs`, set `BRIDGE_*`, `./run-live-read.sh`, then **Refresh from master**.

@@ -69,6 +69,12 @@ function createDataAccess(deps) {
   return {
     kind: inner.kind,
     refSecret,
+    get projectsSource() {
+      return inner.projectsSource != null ? inner.projectsSource : 'fixture';
+    },
+    get useLiveBridge() {
+      return !!inner.useLiveBridge;
+    },
     withRetry: (fn, opts) => withRetry(fn, { log, ...opts }),
     isRetryable,
 

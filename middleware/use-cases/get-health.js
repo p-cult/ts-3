@@ -114,6 +114,7 @@ function createGetHealth(deps) {
           appMode: config.appMode || 'staging',
           storeAdapter: config.storeAdapter || data.kind,
           liveBridge: !!config.useLiveBridge,
+          projectsSource: data.projectsSource || 'fixture',
           stagingWrites: !!config.stagingWrites,
           writerOfRecord: config.writerOfRecord || 'ts2',
           queueMode: config.queueMode || 'off',

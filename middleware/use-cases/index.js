@@ -22,6 +22,7 @@ const { createGetDropdownData } = require('./get-dropdown-data');
 const { createGetJourneyReport } = require('./get-journey-report');
 const { createPreviewInject } = require('./preview-inject');
 const { createCommitInject } = require('./commit-inject');
+const { createRefreshBridge } = require('./refresh-bridge');
 
 function createUseCases(deps) {
   const { config, data, runtime, sessions, log } = deps;
@@ -65,6 +66,7 @@ function createUseCases(deps) {
     getJourneyReport: createGetJourneyReport({ data }),
     previewInject: createPreviewInject({ data }),
     commitInject,
+    refreshBridge: createRefreshBridge({ data }),
   };
 }
 

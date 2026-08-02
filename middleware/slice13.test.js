@@ -240,6 +240,7 @@ async function main() {
     assert.strictEqual(depot[0].assigneeUsername, 'anya');
     assert.ok(sheets.findUser('anya'));
     assert.ok(sheets.findProject('PRJ001'));
+    assert.strictEqual(sheets.projectsSource, 'bridge');
     assert.throws(
       () =>
         sheets.commitBirth({

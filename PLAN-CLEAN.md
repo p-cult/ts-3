@@ -415,12 +415,13 @@ Users should only notice the system got better — **no data reload story**.
 
 ## 12. Immediate next step
 
-**Slices 01–14 done** (through supervised live **write** unlock). Next cutover priorities:
+**Slices 01–15 done** (through admin **Inject** + master project vocabulary). Next cutover priorities:
 
-1. Deploy bridge + one supervised birth against real Master (then turn writes off again)  
-2. Board freshness (poll/listen) + sync indicator  
-3. Priority clock / queue UI / intake doors as needed  
-4. Pages + Render + `./go-live.sh`  
+1. Redeploy `bridge.gs` + `.env` with `BRIDGE_*` → `./run-live-read.sh` → Inject **Refresh from master**
+2. One supervised birth against real Master (then turn writes off again)
+3. Board freshness (poll/listen) + sync indicator
+4. Priority clock / queue UI / intake doors as needed
+5. Pages + Render + `./go-live.sh`
 
 Keep **one** mint + **one** birth; client key remains `ref`. Never edit ts-2.
 

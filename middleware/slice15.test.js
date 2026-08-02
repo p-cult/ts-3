@@ -257,6 +257,20 @@ Ashwin | 15th July
     const alphaCount = names.filter((n) => n === 'Inject slice15 demo alpha').length;
     assert.strictEqual(alphaCount, 1, 'purge keeps one alpha');
     ok('admin preview + inject via birth hallway');
+
+    const bridgeOff = await request(port, 'POST', '/api/bridge/refresh', {
+      token: admin.token,
+      body: {},
+    });
+    assert.strictEqual(bridgeOff.status, 503);
+    assert.strictEqual(bridgeOff.json.ok, false);
+    assert.ok(bridgeOff.json.reason);
+    const p2Bridge = await request(port, 'POST', '/api/bridge/refresh', {
+      token: p2.token,
+      body: {},
+    });
+    assert.strictEqual(p2Bridge.status, 403);
+    ok('bridge refresh gated (P4; off without live bridge)');
   } catch (e) {
     fail('http', e);
   } finally {

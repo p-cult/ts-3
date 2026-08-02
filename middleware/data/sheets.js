@@ -61,6 +61,7 @@ function createSheetsData(opts = {}) {
   const fixture = opts.fixture || loadFixture(opts.fixturePath);
   const inner = createMemoryData({ seed: fixture, refSecret });
   const source = useLiveBridge ? 'bridge+fixture' : 'fixture';
+  let projectsSource = 'fixture';
 
   function assertMayWrite(op) {
     if (!stagingWrites) {
@@ -157,6 +158,7 @@ function createSheetsData(opts = {}) {
     if (!next.length) return { replaced: false, count: state.projects.length };
     state.projects.length = 0;
     next.forEach((p) => state.projects.push(p));
+    projectsSource = 'bridge';
     return { replaced: true, count: state.projects.length };
   }
 
@@ -271,6 +273,9 @@ function createSheetsData(opts = {}) {
     kind: 'sheets',
     refSecret,
     source,
+    get projectsSource() {
+      return projectsSource;
+    },
     stagingWrites,
     useLiveBridge,
     writerOfRecord,
@@ -282,6 +287,7 @@ function createSheetsData(opts = {}) {
         ok: true,
         kind: 'sheets',
         source,
+        projectsSource,
         stagingWrites,
         useLiveBridge,
         writerOfRecord,

@@ -15,6 +15,7 @@ function createListProjects({ data }) {
           label: p.label || p.name,
           pseudoName: p.pseudoName || '',
         })),
+        source: data.projectsSource || (data.useLiveBridge ? 'bridge' : 'fixture'),
       };
     },
   };

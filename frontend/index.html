@@ -627,7 +627,9 @@
             </select>
           </label>
           <button class="btn primary" type="button" id="injectBulkApply" title="Apply project / kind / dup action to selected rows">Apply to selected</button>
+          <button class="btn" type="button" id="injectRefreshMaster" title="Pull projects/users/depot from live Master via bridge">Refresh from master</button>
           <button class="btn" type="button" id="injectBulkPurgeAll" title="Purge every duplicate group in this paste (ignores selection)">Purge all duplicates</button>
+          <span class="inject-meta" id="injectProjectsSource"></span>
         </div>
       </div>
       <div id="injectGroups"></div>
@@ -661,6 +663,7 @@
       view: 'board', logs: [], allForParent: [], attentionCount: 0, filterTags: [],
       injectPlan: null, injectResolutions: {}, injectSelected: {},
       injectProjectOverrides: {}, injectItemProjects: {}, injectItemKinds: {},
+      projectsSource: '',
     };
     const SF_MAX = 4;
     const $ = (id) => document.getElementById(id);
@@ -2917,9 +2920,64 @@
     }
 
     async function refreshProjects() {
-      if (!state.me) { state.projects = []; return; }
-      try { state.projects = (await api('GET', '/api/projects')).projects || []; }
-      catch (e) { state.projects = []; }
+      if (!state.me) { state.projects = []; state.projectsSource = ''; return; }
+      try {
+        const r = await api('GET', '/api/projects');
+        state.projects = r.projects || [];
+        state.projectsSource = r.source || '';
+        syncInjectProjectsSourceMeta();
+      } catch (e) {
+        state.projects = [];
+        state.projectsSource = '';
+      }
+    }
+
+    function syncInjectProjectsSourceMeta() {
+      const el = $('injectProjectsSource');
+      if (!el) return;
+      const src = state.projectsSource || '';
+      el.textContent = src
+        ? ('projects: ' + src + ' · ' + (state.projects || []).length)
+        : '';
+    }
+
+    async function refreshFromMaster() {
+      if (state.view !== 'inject') switchView('inject');
+      flashInject('Refreshing from master…');
+      try {
+        const r = await api('POST', '/api/bridge/refresh', {});
+        if (!r.ok) {
+          flashInject('');
+          alert(
+            (r.reason || 'Bridge refresh failed')
+            + '\n\nNeed USE_LIVE_BRIDGE=true + BRIDGE_URL + BRIDGE_SECRET, and redeployed bridge.gs (Projects tab).'
+          );
+          return;
+        }
+        if (r.projectList && r.projectList.length) {
+          state.projects = r.projectList;
+          state.projectsSource = 'bridge';
+        } else {
+          await refreshProjects();
+        }
+        fillInjectBulkProjectSelect();
+        syncInjectProjectsSourceMeta();
+        flashInject(
+          'Master refresh ok — '
+          + (r.projects != null ? r.projects : (state.projects || []).length)
+          + ' projects · '
+          + (r.users != null ? r.users : '?')
+          + ' users · '
+          + (r.rows != null ? r.rows : '?')
+          + ' depot rows'
+        );
+        if (String(($('injectText') && $('injectText').value) || '').trim()) {
+          await runInjectPreview().catch(() => {});
+        }
+      } catch (e) {
+        flashInject('');
+        alert(e.message || String(e));
+      }
     }
 
     async function refreshUsers() {
@@ -5418,6 +5476,7 @@
           if (btn.id === 'injectBulkApply') applyInjectToSelected();
           else if (btn.id === 'injectBulkPurgeAll') applyInjectBulkResolution('purge', { all: true });
           else if (btn.id === 'injectClearSelection') clearInjectSelection();
+          else if (btn.id === 'injectRefreshMaster') refreshFromMaster();
         });
       }
     }

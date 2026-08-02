@@ -798,19 +798,56 @@
       }).format(new Date()));
     }
 
+    /**
+     * Parse sheet / API deadline stamps. Master rows are not one format:
+     *   09-Jul | 00:00   27 Jul | 14:35   25-07-26   2026-07-21T18:30:00.000Z
+     */
     function parseIstStamp(str) {
-      const m = String(str || '').trim().match(/^(\d{1,2})-([A-Za-z]{3})(?:\s*\|\s*(\d{1,2}):(\d{2}))?$/);
+      const raw = String(str || '').trim();
+      if (!raw) return null;
+
+      // ISO / Date.parse-able (Z or offset)
+      if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+        const iso = new Date(raw);
+        return isNaN(iso.getTime()) ? null : iso;
+      }
+
+      // DD-MM-YY or DD-MM-YYYY (no month name)
+      const dmy = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+      if (dmy) {
+        let y = Number(dmy[3]);
+        if (y < 100) y += 2000;
+        const mon = Number(dmy[2]) - 1;
+        const day = Number(dmy[1]);
+        if (mon < 0 || mon > 11 || day < 1 || day > 31) return null;
+        const hh = dmy[4] != null ? Number(dmy[4]) : 0;
+        const mi = dmy[5] != null ? Number(dmy[5]) : 0;
+        const d = new Date(y, mon, day, hh, mi, 0);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      // DD-MMM | HH:MM  or  DD MMM | HH:MM  (pipe time optional)
+      const m = raw.match(/^(\d{1,2})[-\s]+([A-Za-z]{3})(?:\s*\|\s*(\d{1,2}):(\d{2}))?$/);
       if (!m) return null;
       const mon = IST_MONTH_IX[m[2]];
       if (mon == null) return null;
       const y = istYearNow();
-      const day = String(m[1]).padStart(2, '0');
-      const mm = String(mon + 1).padStart(2, '0');
-      const hh = String(m[3] != null ? m[3] : '0').padStart(2, '0');
-      const mi = String(m[4] != null ? m[4] : '0').padStart(2, '0');
-      const iso = y + '-' + mm + '-' + day + 'T' + hh + ':' + mi + ':00+05:30';
-      const d = new Date(iso);
+      const day = Number(m[1]);
+      const hh = m[3] != null ? Number(m[3]) : 0;
+      const mi = m[4] != null ? Number(m[4]) : 0;
+      const d = new Date(y, mon, day, hh, mi, 0);
       return isNaN(d.getTime()) ? null : d;
+    }
+
+    /** Meta line display — never dump raw ISO / odd sheet forms. */
+    function displaySheetStamp(str) {
+      const raw = String(str || '').trim();
+      if (!raw) return '';
+      const d = parseIstStamp(raw);
+      if (d) return formatIstStamp(d);
+      // Already looks like a stamp — keep as-is
+      if (/\d{1,2}[-\s][A-Za-z]{3}/.test(raw)) return raw;
+      return raw;
     }
 
     function addHoursToIstStamp(stamp, hours) {
@@ -2734,11 +2771,13 @@
       }
 
       el.querySelector('h3').textContent = t.name || '';
+      const startDisp = displaySheetStamp(t.startDate);
+      const endDisp = displaySheetStamp(t.endDate);
       el.querySelector('.meta').textContent =
         (t.assigneeDisplayName || t.assigneeUsername || '')
         + ' · ' + (t.projectName || t.projectCode)
-        + (t.startDate ? ' · start ' + t.startDate : '')
-        + (t.endDate ? ' · end ' + t.endDate : '')
+        + (startDisp ? ' · start ' + startDisp : '')
+        + (endDisp ? ' · end ' + endDisp : '')
         + (iter && role() !== 'P1' && isNeeds ? ' · iter ' + iter : '');
       if (isMainCard(t, isSub)) {
         const stats = subDoneStats(t);
@@ -2860,6 +2899,14 @@
     function overviewAssigneeKey(t) {
       return String((t && (t.assigneeUsername || t.assigneeDisplayName)) || '').trim();
     }
+    /** Admin is a control account — never a person strip on Overview. */
+    function isOverviewPerson(t) {
+      const u = String((t && t.assigneeUsername) || '').trim().toLowerCase();
+      const d = String((t && t.assigneeDisplayName) || '').trim().toLowerCase();
+      if (!u && !d) return false;
+      if (u === 'admin' || d === 'admin') return false;
+      return true;
+    }
     function overviewAssigneeLabel(who) {
       const key = String(who || '').trim();
       if (!key) return '—';
@@ -2896,8 +2943,9 @@
     function renderOverviewStrips() {
       const byUser = new Map();
       overviewTaskList().forEach((t) => {
+        if (isLoggedEntry(t) || !isOverviewPerson(t)) return;
         const who = overviewAssigneeKey(t);
-        if (!who || isLoggedEntry(t)) return;
+        if (!who) return;
         if (!byUser.has(who)) byUser.set(who, { total: 0, scheduled: 0, completed: 0 });
         const s = byUser.get(who);
         s.total += 1;

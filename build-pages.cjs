@@ -5,8 +5,9 @@
  *   Frontend  → https://p-cult.github.io/task/
  *   Middleware → https://param-task-middleware.onrender.com
  *
- * Source HTML is written for same-origin `/api/...` (local `./run.sh`).
+ * Source HTML is written for same-origin `/api/...` + `/shared/...` (local `./run.sh`).
  * This script produces a standalone Pages file that:
+ *   - inlines `/shared/param.css` (Pages has no `/shared` static tree)
  *   - points every `/api/...` fetch at the live Render API
  *   - keeps Bearer `ts3_token` for cross-origin auth
  *   - strips fixture login password hints
@@ -26,6 +27,10 @@ const API_ORIGIN = String(
 ).replace(/\/$/, '');
 const root = __dirname;
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
+
+const CSS_FILES = {
+  '/shared/param.css': 'middleware/shared/param.css',
+};
 
 const SHIM = `<script>
 (function () {
@@ -70,10 +75,23 @@ function stripForProd(html) {
     .replace(
       /<p class="muted"[^>]*>Primary:[\s\S]*?<\/p>/,
       '<p class="muted" id="loginHint">Sign in with your Master sheet username.</p>'
+    )
+    .replace(
+      /<title>Task Board — ts-3 Staging<\/title>/,
+      '<title>Task Board — Param</title>'
     );
 }
 
 function bake(html) {
+  // Inline shared CSS — GitHub Pages has no /shared/* tree; absolute /shared
+  // links 404 at p-cult.github.io/shared/... and smash timer/status chrome.
+  for (const [href, file] of Object.entries(CSS_FILES)) {
+    const tag = new RegExp('<link[^>]*href="' + href.replace(/\./g, '\\.') + '"[^>]*>');
+    if (!tag.test(html)) {
+      throw new Error('bake: missing stylesheet link for ' + href);
+    }
+    html = html.replace(tag, '<style>\n' + read(file) + '\n</style>');
+  }
   html = html.replace(/<head>/i, '<head>\n' + SHIM);
   html = stripForProd(html);
   return html;

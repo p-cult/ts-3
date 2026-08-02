@@ -31,16 +31,36 @@ function normalizePriority(raw) {
   return s ? s : 'normal';
 }
 
-/** "02-Jul | 18:30" → Date in the given year; null if unparseable. */
+/** Sheet/API deadline → Date in the given year; null if unparseable.
+ * Accepts: "02-Jul | 18:30", "02 Jul | 18:30", "25-07-26", ISO. */
 function parseSheetDate(s, year) {
   if (!s) return null;
-  const [datePart, timePart] = String(s).split('|').map((x) => (x || '').trim());
-  const bits = datePart.split('-');
-  const d = parseInt(bits[0], 10);
-  const m = MONTHS.indexOf(String(bits[1] || '').slice(0, 3).toLowerCase());
+  const raw = String(s).trim();
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+    const iso = new Date(raw);
+    return isNaN(iso.getTime()) ? null : iso;
+  }
+  const dmy = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})(?:\s+(\d{1,2}):(\d{2}))?$/);
+  if (dmy) {
+    let y = Number(dmy[3]);
+    if (y < 100) y += 2000;
+    const mon = Number(dmy[2]) - 1;
+    const day = Number(dmy[1]);
+    if (mon < 0 || mon > 11 || day < 1 || day > 31) return null;
+    const hh = dmy[4] != null ? Number(dmy[4]) : 0;
+    const mi = dmy[5] != null ? Number(dmy[5]) : 0;
+    const d = new Date(y, mon, day, hh, mi, 0);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const [datePart, timePart] = raw.split('|').map((x) => (x || '').trim());
+  const named = datePart.match(/^(\d{1,2})[-\s]+([A-Za-z]{3})$/);
+  if (!named) return null;
+  const d = parseInt(named[1], 10);
+  const m = MONTHS.indexOf(String(named[2] || '').slice(0, 3).toLowerCase());
   if (!d || m < 0) return null;
   const t = /^(\d{1,2}):(\d{2})$/.exec(timePart || '');
-  return new Date(year, m, d, t ? +t[1] : 0, t ? +t[2] : 0);
+  const y = year != null ? year : new Date().getFullYear();
+  return new Date(y, m, d, t ? +t[1] : 0, t ? +t[2] : 0);
 }
 
 function isCompleted(task) {

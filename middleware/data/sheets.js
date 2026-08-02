@@ -105,17 +105,27 @@ function createSheetsData(opts = {}) {
   }
 
   function resolveAssigneeUsername(row, users) {
-    if (row.assigneeUsername) return row.assigneeUsername;
-    const label = String(row.assigneeDisplayName || row.assignedTo || '')
-      .toLowerCase()
-      .trim();
-    if (!label) return '';
-    for (const u of users || []) {
-      if (String(u.username || '').toLowerCase() === label) return u.username;
-      if (String(u.displayName || '').toLowerCase() === label) return u.username;
-      if (String(u.userSheet || '').toLowerCase() === label) return u.username;
+    const list = users || [];
+    function fromLabel(label) {
+      const key = String(label || '').toLowerCase().trim();
+      if (!key) return '';
+      for (const u of list) {
+        const nu = normalizeUserSheetOnUser(u);
+        if (String(nu.username || '').toLowerCase() === key) return nu.username;
+        if (String(nu.displayName || '').toLowerCase() === key) return nu.username;
+        if (String(nu.userSheet || '').toLowerCase() === key) return nu.username;
+      }
+      return '';
     }
-    return '';
+    // Vehicle / mapping userSheet is the person of record. Master column L
+    // (Assigned To) is often stuck on user-01 for old Completed rows while
+    // mapping still points at Jois/Ashwin/… sheets — prefer mapping.
+    const fromSheet = fromLabel(row && row.userSheet);
+    if (fromSheet) return fromSheet;
+    const fromAssigned = fromLabel(row && row.assignedTo);
+    if (fromAssigned) return fromAssigned;
+    if (row && row.assigneeUsername) return String(row.assigneeUsername).trim();
+    return fromLabel(row && row.assigneeDisplayName) || '';
   }
 
   /**
@@ -200,7 +210,9 @@ function createSheetsData(opts = {}) {
       );
       let assigneeDisplayName = base.assigneeDisplayName || '';
       if (isMasterUserSheetKey(assigneeDisplayName)) assigneeDisplayName = '';
-      if (assigneeUsername || userSheet) {
+      const assignedTo = String((raw && raw.assignedTo) || '').trim();
+      // Resolve display name from assignee username / mapping sheet / Column L.
+      if (assigneeUsername || userSheet || assignedTo) {
         const hit = (users || []).find((u) => {
           const nu = normalizeUserSheetOnUser(u);
           if (assigneeUsername
@@ -211,6 +223,11 @@ function createSheetsData(opts = {}) {
           if (userSheet
             && String(nu.userSheet || '').toLowerCase()
               === String(userSheet).toLowerCase()) {
+            return true;
+          }
+          if (assignedTo
+            && String(nu.userSheet || '').toLowerCase()
+              === assignedTo.toLowerCase()) {
             return true;
           }
           return false;

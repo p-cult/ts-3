@@ -67,15 +67,9 @@ const SHIM = `<script>
 
 function stripForProd(html) {
   return html
-    // Fixture passwords must never ship to the public URL
-    .replace(
-      /<p class="muted"[^>]*id="loginHint"[^>]*>[\s\S]*?<\/p>/,
-      '<p class="muted" id="loginHint">Sign in with your Master sheet username.</p>'
-    )
-    .replace(
-      /<p class="muted"[^>]*>Primary:[\s\S]*?<\/p>/,
-      '<p class="muted" id="loginHint">Sign in with your Master sheet username.</p>'
-    )
+    // Fixture passwords / storage hints must never ship to the public URL
+    .replace(/<p class="muted"[^>]*id="loginHint"[^>]*>[\s\S]*?<\/p>/, '')
+    .replace(/<p class="muted"[^>]*>Primary:[\s\S]*?<\/p>/, '')
     .replace(
       /<title>Task Board — ts-3 Staging<\/title>/,
       '<title>Task Board — Param</title>'

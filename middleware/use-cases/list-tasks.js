@@ -33,9 +33,7 @@ function createListTasks({ data }) {
         }
         reviewFilter = 'under_review';
       } else if (board === 'completed') {
-        if (profile < PROFILE.USER) {
-          throw forbidden('completed tab requires sign-in');
-        }
+        // Public (P1) may browse Done work; logged/needs stay signed-in only.
         scoped = scoped.filter((t) => countsAsCompleted(t));
       } else if (board === 'logged') {
         if (profile < PROFILE.USER) {

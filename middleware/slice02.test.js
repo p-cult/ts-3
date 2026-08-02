@@ -486,9 +486,11 @@ async function main() {
         assert.ok(pt.reviewIteration === undefined);
       }
 
-      // P1 cannot open completed tab
+      // P1 may browse completed (Done) work without sign-in
       const doneP1 = await request(port, 'GET', '/api/tasks?board=completed');
-      assert.strictEqual(doneP1.status, 403);
+      assert.strictEqual(doneP1.status, 200);
+      assert.ok(Array.isArray(doneP1.json.tasks));
+      assert.ok(doneP1.json.tasks.every((t) => t.status === 'Done'));
 
       const det = await request(port, 'GET', '/api/tasks/' + id, { token: usr.token });
       assert.ok(det.json.task.review);

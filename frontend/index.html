@@ -3077,11 +3077,13 @@
         $('reportsPanel').hidden = true;
         $('tabInject').hidden = true;
         $('tabNeeds').hidden = true;
-        $('tabDone').hidden = true;
+        // Public visitors can still browse Done work
+        $('tabDone').hidden = false;
         syncNeedsAttentionBadge(0);
         syncMyTasksBadge(0);
         if ($('btnMyTasks')) $('btnMyTasks').hidden = true;
-        if (state.view !== 'board') switchView('board');
+        const privateViews = { needs: 1, mine: 1, logged: 1, logs: 1, inject: 1 };
+        if (privateViews[state.view]) switchView('board');
       }
       syncDraftBar();
     }

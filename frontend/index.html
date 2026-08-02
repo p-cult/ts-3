@@ -301,6 +301,38 @@
     .err { color: var(--danger); font-size: .85rem; min-height: 1.1em; }
     .filters { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
     .filters input, .filters select { width: auto; min-width: 6rem; }
+    .smart-filter { margin: 0 0 .75rem; }
+    .sf-chips { display: flex; flex-wrap: wrap; gap: .35rem; min-height: 0; margin-bottom: .35rem; }
+    .sf-chips:empty { display: none; }
+    .sf-chip {
+      display: inline-flex; align-items: center; gap: .3rem;
+      font-size: .78rem; font-weight: 650; padding: .2rem .45rem .2rem .55rem;
+      border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+      border: 1px solid #c5ddd4;
+    }
+    .sf-chip button {
+      border: 0; background: transparent; color: inherit; cursor: pointer;
+      font: inherit; font-size: .9rem; line-height: 1; padding: 0 .1rem; opacity: .75;
+    }
+    .sf-chip button:hover { opacity: 1; }
+    .sf-input-wrap { position: relative; }
+    .sf-input-wrap input { width: 100%; }
+    .sf-suggest {
+      position: absolute; left: 0; right: 0; top: calc(100% + .2rem); z-index: 8;
+      background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(28, 27, 25, .08); max-height: 14rem; overflow: auto;
+    }
+    .sf-suggest button {
+      display: block; width: 100%; text-align: left; border: 0; background: transparent;
+      padding: .45rem .65rem; font: inherit; font-size: .88rem; cursor: pointer; color: var(--ink);
+    }
+    .sf-suggest button:hover, .sf-suggest button.on { background: var(--accent-soft); }
+    .sf-suggest .sf-type {
+      display: inline-block; min-width: 4.2rem; font-size: .72rem; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .02em;
+    }
+    .sf-suggest .sf-empty { padding: .55rem .65rem; font-size: .85rem; color: var(--muted); }
+    .sf-cap { font-size: .75rem; color: var(--muted); margin: .25rem 0 0; }
     .review-box { margin-top: .4rem; padding: .45rem .55rem; background: #faf7f2; border-radius: 8px; font-size: .85rem; }
     .banner {
       background: #fff6e5; border: 1px solid #f0d9a8; color: #6a5318;
@@ -372,7 +404,7 @@
       header { padding: .65rem .75rem; }
     }
     @media print {
-      header .toolbar, .tabs, .btn, dialog, .filters, .task.draft, #draftBar { display: none !important; }
+      header .toolbar, .tabs, .btn, dialog, .filters, .smart-filter, .task.draft, #draftBar { display: none !important; }
       body { background: #fff; }
       .task, .log-row { break-inside: avoid; box-shadow: none; }
       a[href]::after { content: " (" attr(href) ")"; font-size: .75rem; color: #444; }
@@ -402,6 +434,15 @@
     </div>
     <div id="boardView">
       <p class="muted" id="hint">Loading…</p>
+
+      <div id="smartFilter" class="smart-filter" hidden>
+        <div class="sf-chips" id="sfChips"></div>
+        <div class="sf-input-wrap">
+          <input id="sfInput" type="search" placeholder="Filter by status, priority, kind, review, project, person…" autocomplete="off" />
+          <div id="sfSuggest" class="sf-suggest" hidden></div>
+        </div>
+        <p class="sf-cap" id="sfCap" hidden>Max 4 filters (AND).</p>
+      </div>
 
       <div id="draftBar" hidden>
         <button type="button" class="pill" id="btnAddDraft">+ Add task</button>
@@ -447,9 +488,10 @@
   (function () {
     const TOKEN_KEY = 'ts3_token', CSRF_KEY = 'ts3_csrf';
     const state = {
-      me: null, permissions: null, tasks: [], hierarchy: null, projects: [], users: [],
-      view: 'board', logs: [], allForParent: [], attentionCount: 0,
+      me: null, permissions: null, tasks: [], viewTasks: [], hierarchy: null, projects: [], users: [],
+      view: 'board', logs: [], allForParent: [], attentionCount: 0, filterTags: [],
     };
+    const SF_MAX = 4;
     const $ = (id) => document.getElementById(id);
 
     function getToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
@@ -764,6 +806,232 @@
         else roots.push(t);
       });
       return roots;
+    }
+
+    function taskKindKey(t) {
+      if (!t) return 'main';
+      if (t.kind) return String(t.kind).toLowerCase();
+      if (t.kindIcon === 'P') return 'pseudo';
+      if (t.kindIcon === 'R') return 'routine';
+      if (t.kindIcon === 'N') return 'not_a_task';
+      return t.parentRef ? 'sub' : 'main';
+    }
+
+    function taskMatchesFilterTag(t, tag) {
+      if (!t || !tag) return false;
+      const type = tag.type;
+      const val = String(tag.value || '');
+      if (type === 'status') {
+        const st = String(t.status || '');
+        if (val === 'Active') return st === 'Active' || st === STATUS_API_RESUME;
+        return st === val;
+      }
+      if (type === 'priority') return String(t.priority || 'normal').toLowerCase() === val.toLowerCase();
+      if (type === 'kind') return taskKindKey(t) === val;
+      if (type === 'review') return normalizeUiReviewState(t) === val;
+      if (type === 'project') {
+        const code = String(t.projectCode || '').toUpperCase();
+        const name = String(t.projectName || '').toLowerCase();
+        return code === val.toUpperCase() || name === val.toLowerCase();
+      }
+      if (type === 'person') {
+        const u = String(t.assigneeUsername || '').toLowerCase();
+        const d = String(t.assigneeDisplayName || '').toLowerCase();
+        const v = val.toLowerCase();
+        return u === v || d === v;
+      }
+      if (type === 'text') {
+        const q = val.toLowerCase();
+        if (!q) return true;
+        const hay = [
+          t.name, t.description, t.notes, t.ref, t.projectCode, t.projectName,
+          t.assigneeUsername, t.assigneeDisplayName, t.status, statusDisplayLabel(t.status),
+        ].map((x) => String(x || '').toLowerCase()).join(' ');
+        return hay.indexOf(q) >= 0;
+      }
+      return false;
+    }
+
+    /** AND chips; keep ancestors of matched children so nest() can show hierarchy. */
+    function applySmartFilters(tasks) {
+      const list = Array.isArray(tasks) ? tasks : [];
+      const tags = state.filterTags || [];
+      if (!tags.length) return list;
+      const byRef = new Map(list.map((t) => [t.ref, t]));
+      const matched = list.filter((t) => tags.every((tag) => taskMatchesFilterTag(t, tag)));
+      const keep = new Set();
+      matched.forEach((t) => {
+        keep.add(t.ref);
+        let p = t.parentRef;
+        while (p && byRef.has(p)) {
+          keep.add(p);
+          p = byRef.get(p).parentRef;
+        }
+      });
+      return list.filter((t) => keep.has(t.ref));
+    }
+
+    function sfTagKey(tag) {
+      return String(tag.type) + ':' + String(tag.value).toLowerCase();
+    }
+
+    function syncSmartFilterUi() {
+      const bar = $('smartFilter');
+      if (!bar) return;
+      const boardish = state.view === 'board' || state.view === 'needs' || state.view === 'completed';
+      bar.hidden = !boardish;
+      const chips = $('sfChips');
+      const input = $('sfInput');
+      const cap = $('sfCap');
+      if (!chips || !input) return;
+      chips.innerHTML = '';
+      (state.filterTags || []).forEach((tag, idx) => {
+        const el = document.createElement('span');
+        el.className = 'sf-chip';
+        el.innerHTML = '<span></span><button type="button" aria-label="Remove filter">×</button>';
+        el.querySelector('span').textContent = tag.label;
+        el.querySelector('button').onclick = () => {
+          state.filterTags.splice(idx, 1);
+          syncSmartFilterUi();
+          applySmartFilterAndRender();
+        };
+        chips.appendChild(el);
+      });
+      const atMax = (state.filterTags || []).length >= SF_MAX;
+      input.disabled = atMax;
+      if (cap) cap.hidden = !atMax;
+      if (atMax) hideSfSuggest();
+    }
+
+    function hideSfSuggest() {
+      const box = $('sfSuggest');
+      if (box) { box.hidden = true; box.innerHTML = ''; }
+    }
+
+    function collectPersonSuggestions() {
+      const seen = new Map();
+      function add(username, display) {
+        const u = String(username || '').trim();
+        if (!u) return;
+        const key = u.toLowerCase();
+        if (seen.has(key)) return;
+        seen.set(key, {
+          type: 'person',
+          value: u,
+          label: 'person: ' + (display || u),
+        });
+      }
+      (state.users || []).forEach((u) => add(u.username, u.displayName));
+      (state.viewTasks || []).forEach((t) => add(t.assigneeUsername, t.assigneeDisplayName));
+      (state.allForParent || []).forEach((t) => add(t.assigneeUsername, t.assigneeDisplayName));
+      return Array.from(seen.values());
+    }
+
+    function collectProjectSuggestions() {
+      const seen = new Map();
+      function add(code, name) {
+        const c = String(code || '').trim();
+        if (!c) return;
+        const key = c.toUpperCase();
+        if (seen.has(key)) return;
+        seen.set(key, {
+          type: 'project',
+          value: c,
+          label: 'project: ' + (name ? (name + ' (' + c + ')') : c),
+        });
+      }
+      (state.projects || []).forEach((p) => add(p.code, p.name));
+      (state.viewTasks || []).forEach((t) => add(t.projectCode, t.projectName));
+      return Array.from(seen.values());
+    }
+
+    function buildSmartFilterSuggestions(rawQ) {
+      const q = String(rawQ || '').trim().toLowerCase();
+      const used = new Set((state.filterTags || []).map(sfTagKey));
+      const out = [];
+      function push(tag) {
+        if (!tag || used.has(sfTagKey(tag))) return;
+        if ((state.filterTags || []).length + out.length >= SF_MAX) return;
+        out.push(tag);
+      }
+      const statuses = [
+        { type: 'status', value: 'Draft', label: 'status: Draft' },
+        { type: 'status', value: 'Active', label: 'status: Active' },
+        { type: 'status', value: 'Blocked', label: 'status: Blocked' },
+        { type: 'status', value: 'Pause', label: 'status: Pause' },
+        { type: 'status', value: 'Done', label: 'status: Done' },
+      ];
+      const priorities = [
+        { type: 'priority', value: 'high', label: 'priority: high' },
+        { type: 'priority', value: 'normal', label: 'priority: normal' },
+        { type: 'priority', value: 'low', label: 'priority: low' },
+      ];
+      const kinds = [
+        { type: 'kind', value: 'main', label: 'kind: Main' },
+        { type: 'kind', value: 'sub', label: 'kind: Sub' },
+        { type: 'kind', value: 'pseudo', label: 'kind: Pseudo (P)' },
+        { type: 'kind', value: 'routine', label: 'kind: Routine (R)' },
+        { type: 'kind', value: 'not_a_task', label: 'kind: Not a task (N)' },
+      ];
+      const reviews = [
+        { type: 'review', value: 'under_review', label: 'review: Needs review' },
+        { type: 'review', value: 'rework', label: 'review: Rework' },
+        { type: 'review', value: 'approved', label: 'review: Approved' },
+        { type: 'review', value: 'none', label: 'review: None' },
+      ];
+      const pool = statuses.concat(priorities, kinds, reviews, collectProjectSuggestions(), collectPersonSuggestions());
+      pool.forEach((tag) => {
+        if (!q) { push(tag); return; }
+        const hay = (tag.label + ' ' + tag.type + ' ' + tag.value).toLowerCase();
+        if (hay.indexOf(q) >= 0) push(tag);
+      });
+      if (q) {
+        push({ type: 'text', value: String(rawQ || '').trim(), label: 'text: ' + String(rawQ || '').trim() });
+      }
+      return out.slice(0, 12);
+    }
+
+    function addSmartFilterTag(tag) {
+      if (!tag) return;
+      if ((state.filterTags || []).length >= SF_MAX) return;
+      if ((state.filterTags || []).some((t) => sfTagKey(t) === sfTagKey(tag))) return;
+      state.filterTags.push(tag);
+      const input = $('sfInput');
+      if (input) input.value = '';
+      hideSfSuggest();
+      syncSmartFilterUi();
+      applySmartFilterAndRender();
+    }
+
+    function showSfSuggest(items) {
+      const box = $('sfSuggest');
+      if (!box) return;
+      box.innerHTML = '';
+      if (!(items && items.length)) {
+        if (($('sfInput') && $('sfInput').value.trim()) || !(state.filterTags || []).length) {
+          box.innerHTML = '<div class="sf-empty">No matches</div>';
+          box.hidden = false;
+        } else {
+          box.hidden = true;
+        }
+        return;
+      }
+      items.forEach((tag, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        if (i === 0) btn.className = 'on';
+        btn.innerHTML = '<span class="sf-type"></span><span class="sf-label"></span>';
+        btn.querySelector('.sf-type').textContent = tag.type;
+        btn.querySelector('.sf-label').textContent = tag.label.replace(/^[^:]+:\s*/, '');
+        btn.onmousedown = (e) => { e.preventDefault(); addSmartFilterTag(tag); };
+        box.appendChild(btn);
+      });
+      box.hidden = false;
+    }
+
+    function applySmartFilterAndRender() {
+      state.tasks = applySmartFilters(state.viewTasks || []);
+      renderBoard();
     }
 
     function renderBar(st) {
@@ -1868,7 +2136,15 @@
       const box = $('taskList'); box.innerHTML = '';
       const roots = nest(state.tasks);
       const canDraft = !!(state.me && perms().canCreate && state.view === 'board');
-      $('empty').hidden = !!roots.length || canDraft || ($('draftList') && $('draftList').children.length > 0);
+      const filteredOut = (state.filterTags || []).length && !(state.tasks || []).length
+        && (state.viewTasks || []).length;
+      $('empty').hidden = !!roots.length || (!filteredOut && (canDraft || ($('draftList') && $('draftList').children.length > 0)));
+      if (filteredOut) {
+        $('empty').textContent = 'No tasks match the current filters.';
+        $('empty').hidden = false;
+      } else {
+        $('empty').textContent = 'No tasks.';
+      }
       if (state.view === 'needs') {
         $('hint').textContent = 'Needs attention: rework, pending ratings, 1★/2★ files, and Done waiting for Approve task. Sorted newest first, then soonest deadline.';
       } else if (state.view === 'completed') {
@@ -1882,6 +2158,7 @@
       } else {
         $('hint').textContent = 'Admin board (not Done). Needs attention covers under review, rework, 1★/2★, and Done waiting approval.';
       }
+      syncSmartFilterUi();
       function walk(list, sub) {
         list.forEach((t) => {
           box.appendChild(renderTask(t, sub));
@@ -1975,7 +2252,8 @@
       await enrichDoneCompletionApprovals(all);
       const attention = all.filter(taskNeedsAttention);
       syncNeedsAttentionBadge(attention.length);
-      state.tasks = filterTasksForView(all);
+      state.viewTasks = filterTasksForView(all);
+      state.tasks = applySmartFilters(state.viewTasks);
       state.hierarchy = null;
       state.allForParent = all.filter((t) => String(t.status || '') !== 'Done');
       renderBoard();
@@ -2501,8 +2779,13 @@
       const boardish = v === 'board' || v === 'needs' || v === 'completed';
       $('boardView').hidden = !boardish;
       $('logsView').hidden = v !== 'logs';
-      if (v === 'logs') refreshLogs().catch((e) => alert(e.message));
-      else refreshTasks().catch((e) => { $('hint').textContent = e.message; });
+      syncSmartFilterUi();
+      if (v === 'logs') {
+        hideSfSuggest();
+        refreshLogs().catch((e) => alert(e.message));
+      } else {
+        refreshTasks().catch((e) => { $('hint').textContent = e.message; });
+      }
     }
 
     /**
@@ -4147,6 +4430,47 @@
     document.getElementById('tabs').onclick = (e) => {
       const t = e.target.closest('.tab'); if (t) switchView(t.dataset.view);
     };
+
+    (function wireSmartFilter() {
+      const input = $('sfInput');
+      const box = $('sfSuggest');
+      if (!input || !box) return;
+      input.addEventListener('input', () => {
+        if ((state.filterTags || []).length >= SF_MAX) { hideSfSuggest(); return; }
+        showSfSuggest(buildSmartFilterSuggestions(input.value));
+      });
+      input.addEventListener('focus', () => {
+        if ((state.filterTags || []).length >= SF_MAX) return;
+        showSfSuggest(buildSmartFilterSuggestions(input.value));
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { hideSfSuggest(); input.blur(); return; }
+        if (e.key === 'Backspace' && !input.value && (state.filterTags || []).length) {
+          state.filterTags.pop();
+          syncSmartFilterUi();
+          applySmartFilterAndRender();
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const first = box.querySelector('button');
+          if (first) {
+            const items = buildSmartFilterSuggestions(input.value);
+            if (items[0]) addSmartFilterTag(items[0]);
+          } else if (input.value.trim()) {
+            addSmartFilterTag({
+              type: 'text',
+              value: input.value.trim(),
+              label: 'text: ' + input.value.trim(),
+            });
+          }
+        }
+      });
+      document.addEventListener('mousedown', (e) => {
+        const bar = $('smartFilter');
+        if (bar && !bar.contains(e.target)) hideSfSuggest();
+      });
+    })();
     $('logRefresh').onclick = () => refreshLogs().catch((e) => alert(e.message));
     $('journeyFetch').onclick = async () => {
       const ref = ($('journeyRef').value || '').trim();

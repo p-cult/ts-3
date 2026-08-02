@@ -14,11 +14,15 @@ const {
   conflict,
   AppError,
 } = require('../errors');
-const {
-  canonicalUserSheet,
-  isVinodIdentity,
-} = require('../domain/user-sheet');
 const { recordOverride, applyAll, normalizePriority } = require('../priority');
+
+function changedFieldSummary(before, patch) {
+  const keys = Object.keys(patch || {}).filter((k) => {
+    if (k === 'updatedAt' || k === 'assigneeUsername' || k === 'userSheet') return false;
+    return patch[k] !== undefined && String(patch[k]) !== String(before[k]);
+  });
+  return keys.length ? keys.join(', ') : 'fields';
+}
 
 function createUpdateTask({ data }) {
   const refSecret = data.refSecret;
@@ -50,6 +54,11 @@ function createUpdateTask({ data }) {
       }
 
       const patch = { ...authz.body };
+
+      // Ownership is frozen on every generic edit. Reassign is /reassign only.
+      delete patch.assigneeUsername;
+      delete patch.userSheet;
+      delete patch.assignedTo;
 
       if (Array.isArray(patch.links) && patch.links.length > 4) {
         throw badRequest('maximum 4 links allowed');
@@ -91,13 +100,6 @@ function createUpdateTask({ data }) {
         patch.projectName = p.name;
       }
 
-      if (patch.assigneeUsername) {
-        const u = data.findUser(patch.assigneeUsername);
-        if (!u) throw badRequest('assignee user not found');
-        patch.assigneeUsername = u.username;
-        patch.userSheet = u.userSheet;
-      }
-
       // parent via parentRef (client opaque ref only)
       const parentKey =
         patch.parentRef !== undefined
@@ -131,11 +133,11 @@ function createUpdateTask({ data }) {
         patch.linkVersion = nextLinkVersion(row.linkVersion, row.link, newLink);
       }
 
-      if (patch.name || patch.assigneeUsername) {
+      if (patch.name) {
         const candidate = {
           projectCode: row.projectCode,
           name: patch.name != null ? patch.name : row.name,
-          assigneeUsername: patch.assigneeUsername || row.assigneeUsername,
+          assigneeUsername: row.assigneeUsername,
         };
         void normName(candidate.name);
         const dup = guardDuplicate(data.listDepot(), candidate, {
@@ -155,23 +157,10 @@ function createUpdateTask({ data }) {
         patch.priority = normalizePriority(patch.priority);
       }
 
-      // Vinod edits stay on his users-tab sheet key (live: user-02, not assumed user-01).
-      if (isVinodIdentity(actor)) {
-        patch.assigneeUsername = actor.username;
-        const me = data.findUser(actor.username);
-        const sheet =
-          (me && (canonicalUserSheet(me) || String(me.userSheet || '').trim()))
-          || '';
-        if (sheet) patch.userSheet = sheet;
-      } else {
-        const who = patch.assigneeUsername || row.assigneeUsername;
-        const sheet = canonicalUserSheet({
-          assigneeUsername: who,
-          assigneeDisplayName: row.assigneeDisplayName,
-          userSheet: patch.userSheet || row.userSheet,
-        });
-        if (sheet) patch.userSheet = sheet;
-      }
+      // Re-assert frozen ownership after all patch shaping (admin edits must
+      // not steal Column L / mapping / assignee onto the editor).
+      patch.assigneeUsername = row.assigneeUsername;
+      patch.userSheet = row.userSheet;
 
       patch.updatedAt = new Date().toISOString();
 
@@ -183,6 +172,29 @@ function createUpdateTask({ data }) {
         const key = pub && pub.ref;
         if (key) {
           recordOverride(key, updated.endDate || '', 'admin');
+        }
+      }
+
+      // Non-owner edits (admin/moderator touching someone else's task): record
+      // in side-store history only — never as a change of assignee.
+      const prof = normalizeProfile(actor.profile);
+      if (
+        !ownsTask
+        && prof >= PROFILE.MODERATOR
+        && typeof data.appendReview === 'function'
+      ) {
+        try {
+          data.appendReview(row.taskId, {
+            action: 'edit',
+            at: patch.updatedAt,
+            byUsername: actor.username || '',
+            notes: 'Edited ' + changedFieldSummary(row, patch),
+            ratings: [],
+            version: Number(row.linkVersion) || 0,
+            iteration: Number(row.reviewIteration) || 0,
+          });
+        } catch (_) {
+          /* history is best-effort; sheet write already succeeded */
         }
       }
 

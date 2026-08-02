@@ -622,6 +622,54 @@ async function main() {
       ok('reassign: P3/P4 only, ref+id frozen, user validation');
     }
 
+    // Admin edit must not steal assignee; ownership change is /reassign only
+    {
+      const usr = await login(port, 'ts3usr1', 'ts3-98860');
+      const admin = await login(port, 'ts3admin', 'ts3-98860');
+      const created = await request(port, 'POST', '/api/tasks', {
+        token: usr.token,
+        body: {
+          projectCode: 'PRJ001',
+          name: 'AdminEditKeepOwner ' + Date.now(),
+          description: 'orig',
+        },
+      });
+      assert.strictEqual(created.status, 201);
+      const ref = created.json.task.ref;
+      assert.strictEqual(created.json.task.assigneeUsername, 'ts3usr1');
+      const before = app.data.findByRef(ref);
+      const sheetBefore = before && before.userSheet;
+
+      const steal = await request(port, 'PATCH', '/api/tasks/' + ref, {
+        token: admin.token,
+        body: { assigneeUsername: 'ts3admin', name: 'AdminEditKeepOwner renamed' },
+      });
+      assert.strictEqual(steal.status, 403, 'generic PATCH must refuse assignee');
+
+      const edited = await request(port, 'PATCH', '/api/tasks/' + ref, {
+        token: admin.token,
+        body: { name: 'AdminEditKeepOwner renamed', description: 'by admin' },
+      });
+      assert.strictEqual(edited.status, 200);
+      assert.strictEqual(edited.json.task.assigneeUsername, 'ts3usr1');
+      assert.strictEqual(edited.json.task.name, 'AdminEditKeepOwner renamed');
+      const after = app.data.findByRef(ref);
+      assert.strictEqual(after.assigneeUsername, 'ts3usr1');
+      assert.strictEqual(after.userSheet, sheetBefore);
+
+      const detail = await request(port, 'GET', '/api/tasks/' + ref, {
+        token: admin.token,
+      });
+      assert.strictEqual(detail.status, 200);
+      const hist = (detail.json.task.review && detail.json.task.review.history) || [];
+      assert.ok(
+        hist.some((h) => h.action === 'edit' && h.byUsername === 'ts3admin'),
+        'admin edit recorded in history only'
+      );
+
+      ok('admin edit keeps assignee; history notes editor');
+    }
+
     // P2 status: create → Active; PATCH Pause/Resume/Done
     {
       const usr = await login(port, 'ts3usr1', 'ts3-98860');

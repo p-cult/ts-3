@@ -17,7 +17,8 @@ const PATCH_FIELDS = Object.freeze({
   [PROFILE.MODERATOR]: Object.freeze(['status']),
   [PROFILE.SUPER_ADMIN]: Object.freeze([
     'name', 'description', 'notes', 'startDate', 'endDate', 'status',
-    'priority', 'assigneeUsername',
+    'priority',
+    // assigneeUsername is /reassign only — never via generic PATCH
     'link', 'kind', 'parentRef',
   ]),
 });
@@ -178,8 +179,13 @@ function authorizeTaskPatch(args) {
     return deny(403, 'forbidden', 'only the admin can change priority');
   }
 
-  if (b.assigneeUsername !== undefined && profile < PROFILE.SUPER_ADMIN) {
-    return deny(403, 'forbidden', 'only the admin can reassign tasks');
+  // Assignee moves only via PATCH /reassign — never via generic edit.
+  if (b.assigneeUsername !== undefined) {
+    return deny(
+      403,
+      'forbidden',
+      'use /api/tasks/:ref/reassign to change assignee'
+    );
   }
 
   if (b.kind !== undefined && profile < PROFILE.SUPER_ADMIN) {

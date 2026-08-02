@@ -29,6 +29,11 @@ function createMemoryData(opts = {}) {
   const depot = [];
   const vehicle = Object.create(null);
   const mapping = Object.create(null); // taskId -> { taskId, ref, userSheet, assigneeUsername }
+  const byRef = Object.create(null); // ref -> taskId (O(1) reverse lookup)
+
+  function indexMapping(m) {
+    if (m && m.ref && m.taskId) byRef[m.ref] = m.taskId;
+  }
 
   function normalizeRow(t) {
     const row = clone(t);
@@ -64,12 +69,14 @@ function createMemoryData(opts = {}) {
       userSheet: sheet,
       assigneeUsername: row.assigneeUsername,
     };
+    indexMapping(mapping[row.taskId]);
   }
 
   for (const t of seed.tasks || []) ingestTask(t);
 
   function listDepot() {
-    return depot.map(clone);
+    // Shallow copy is enough for list → toPublicTask (never mutates depot rows).
+    return depot.map((t) => ({ ...t }));
   }
 
   function findByTaskId(taskId) {
@@ -81,13 +88,20 @@ function createMemoryData(opts = {}) {
   function findByRef(ref) {
     const r = String(ref || '');
     if (!r) return null;
-    // Prefer mapping reverse
+    const tid = byRef[r];
+    if (tid) return findByTaskId(tid);
     for (const m of Object.values(mapping)) {
-      if (m.ref === r) return findByTaskId(m.taskId);
+      if (m.ref === r) {
+        indexMapping(m);
+        return findByTaskId(m.taskId);
+      }
     }
-    // Fallback scan
+    // Fallback scan (rare — only if mapping missing)
     for (const t of depot) {
-      if (refFor(t.taskId, refSecret) === r) return clone(t);
+      if (refFor(t.taskId, refSecret) === r) {
+        byRef[r] = t.taskId;
+        return clone(t);
+      }
     }
     return null;
   }
@@ -137,6 +151,7 @@ function createMemoryData(opts = {}) {
       userSheet: sheet,
       assigneeUsername: r.assigneeUsername,
     };
+    indexMapping(mapping[r.taskId]);
     return clone(r);
   }
 
@@ -169,6 +184,7 @@ function createMemoryData(opts = {}) {
         assigneeUsername: next.assigneeUsername,
         ref: refFor(next.taskId, refSecret),
       };
+      indexMapping(mapping[next.taskId]);
     }
     return clone(next);
   }
@@ -218,6 +234,9 @@ function createMemoryData(opts = {}) {
       vehicle[row.userSheet] = vehicle[row.userSheet].filter((t) => t.taskId !== id);
     }
     delete mapping[id];
+    for (const r of Object.keys(byRef)) {
+      if (byRef[r] === id) delete byRef[r];
+    }
     return true;
   }
 
@@ -278,7 +297,7 @@ function createMemoryData(opts = {}) {
     partitionsFor,
     refFor: (tid) => refFor(tid, refSecret),
 
-    _state: { depot, vehicle, mapping, users, projects },
+    _state: { depot, vehicle, mapping, byRef, users, projects },
   };
 }
 

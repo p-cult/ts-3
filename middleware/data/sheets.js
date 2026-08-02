@@ -187,6 +187,7 @@ function createSheetsData(opts = {}) {
     state.depot.length = 0;
     Object.keys(state.vehicle).forEach((k) => delete state.vehicle[k]);
     Object.keys(state.mapping).forEach((k) => delete state.mapping[k]);
+    if (state.byRef) Object.keys(state.byRef).forEach((k) => delete state.byRef[k]);
     let accepted = 0;
     let skipped = 0;
     for (const raw of rows || []) {
@@ -243,12 +244,14 @@ function createSheetsData(opts = {}) {
       const sheet = r.userSheet || 'unknown';
       if (!state.vehicle[sheet]) state.vehicle[sheet] = [];
       state.vehicle[sheet].push(JSON.parse(JSON.stringify(r)));
+      const ref = refFor(r.taskId, refSecret);
       state.mapping[r.taskId] = {
         taskId: r.taskId,
-        ref: refFor(r.taskId, refSecret),
+        ref,
         userSheet: sheet,
         assigneeUsername: r.assigneeUsername,
       };
+      if (state.byRef) state.byRef[ref] = r.taskId;
       accepted += 1;
     }
     return { accepted, skipped };

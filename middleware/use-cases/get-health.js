@@ -35,6 +35,9 @@ function bannerMessage(config) {
  */
 function createGetHealth(deps) {
   const { config, data, runtime } = deps;
+  let bridgeCache = null;
+  let bridgeCacheAt = 0;
+  const BRIDGE_CACHE_MS = 45000;
 
   return {
     /**
@@ -65,19 +68,26 @@ function createGetHealth(deps) {
         message: 'live bridge off',
       };
       if (typeof data.bridgeStatus === 'function') {
-        try {
-          bridgeStatus = await Promise.race([
-            data.bridgeStatus(),
-            new Promise((_, rej) =>
-              setTimeout(() => rej(new Error('bridge ping timeout')), 2500)
-            ),
-          ]);
-        } catch (err) {
-          bridgeStatus = {
-            ok: false,
-            state: 'error',
-            error: String(err && err.message ? err.message : err),
-          };
+        const now = Date.now();
+        if (bridgeCache && now - bridgeCacheAt < BRIDGE_CACHE_MS) {
+          bridgeStatus = bridgeCache;
+        } else {
+          try {
+            bridgeStatus = await Promise.race([
+              data.bridgeStatus(),
+              new Promise((_, rej) =>
+                setTimeout(() => rej(new Error('bridge ping timeout')), 2500)
+              ),
+            ]);
+          } catch (err) {
+            bridgeStatus = {
+              ok: false,
+              state: 'error',
+              error: String(err && err.message ? err.message : err),
+            };
+          }
+          bridgeCache = bridgeStatus;
+          bridgeCacheAt = now;
         }
       }
 
@@ -117,8 +127,24 @@ function createGetHealth(deps) {
         });
       }
 
+      // Transient Apps Script flap must not 503 the whole app — warn → degraded.
+      if (
+        config.useLiveBridge
+        && bridgeStatus
+        && bridgeStatus.ok === false
+        && bridgeStatus.state !== 'disabled'
+      ) {
+        configIssues.push({
+          severity: 'warn',
+          code: 'bridge_ping',
+          message: bridgeStatus.error || bridgeStatus.message || 'bridge ping failed',
+          hint: 'Reads still serve from the in-memory mirror; bridge is checked again shortly',
+        });
+      }
+
       const configSummary = summarizeConfig(configIssues);
-      const dependencyOk = dataStatus.ok !== false && bridgeStatus.ok !== false;
+      // Liveness = in-memory data port. Bridge is reported separately (cached).
+      const dependencyOk = dataStatus.ok !== false;
 
       const outbox =
         typeof data.outboxStats === 'function' ? data.outboxStats() : null;

@@ -56,14 +56,22 @@ function createListTasks({ data }) {
         );
       }
 
+      const wantReview = profile >= PROFILE.USER;
+      const peekLast =
+        typeof data.peekLastReview === 'function'
+          ? (id) => data.peekLastReview(id)
+          : (id) => {
+              const hist = data.getReviews(id);
+              return hist.length ? hist[hist.length - 1] : null;
+            };
+
       const tasks = scoped.map((t) => {
         const stages = data.getStages(t.taskId);
-        const hist = data.getReviews(t.taskId);
         let reviewSummary = null;
-        if (profile >= PROFILE.USER) {
+        if (wantReview) {
           const state = normalizeReviewState(t.reviewState);
-          if (hist.length || (state && state !== 'none')) {
-            const last = hist.length ? hist[hist.length - 1] : null;
+          const last = peekLast(t.taskId);
+          if (last || (state && state !== 'none')) {
             reviewSummary = {
               state,
               version: t.linkVersion || 0,

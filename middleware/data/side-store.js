@@ -87,6 +87,14 @@ function createSideStores(opts) {
       return Array.isArray(a) ? a.map((x) => ({ ...x })) : [];
     },
 
+    /** Last review only — no full-history clone (list path). */
+    peekLastReview(taskId) {
+      const a = reviewsByTaskId[taskId];
+      if (!Array.isArray(a) || !a.length) return null;
+      const last = a[a.length - 1];
+      return last ? { ...last } : null;
+    },
+
     appendReview(taskId, entry) {
       if (!reviewsByTaskId[taskId]) reviewsByTaskId[taskId] = [];
       reviewsByTaskId[taskId].push({ ...entry });

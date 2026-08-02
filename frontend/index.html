@@ -1441,6 +1441,17 @@
       return s.split(/\r?\n+/).map(normalizeLinkEntry).filter(Boolean).slice(0, MAX_LINKS);
     }
 
+    /** Cache parseTaskLinks on the task object (invalidate when link string changes). */
+    function linksFromTask(t) {
+      if (!t) return [];
+      const raw = t.link;
+      if (t._linksCache && t._linksCacheKey === raw) return t._linksCache;
+      const parsed = parseTaskLinks(raw);
+      t._linksCache = parsed;
+      t._linksCacheKey = raw;
+      return parsed;
+    }
+
     function serializeTaskLinks(arr) {
       const links = (Array.isArray(arr) ? arr : [])
         .map(normalizeLinkEntry)
@@ -1733,10 +1744,6 @@
       const edited = getNotesValue(scope);
       if (t && isTaskCompletionApproved(t)) return notesWithTaskApprovalMark(edited);
       return edited;
-    }
-
-    function linksFromTask(t) {
-      return parseTaskLinks(t && t.link);
     }
 
     function linkUrlsFromTask(t) {
@@ -2274,11 +2281,7 @@
     }
 
     function applyNeedsFocusAndRender() {
-      const all = state.allTasks || [];
-      state.viewTasks = filterTasksForView(all);
-      state.tasks = applySmartFilters(state.viewTasks);
-      pruneNeedsSelection();
-      renderBoard();
+      paintTasksFromCache();
     }
 
     async function bulkApproveNeedsSelected() {
@@ -2682,19 +2685,21 @@
     /**
      * Pure view calc: direct Subs only (parentRef === this Main’s ref).
      * Y = total direct Subs; X = how many of those are done. Always X <= Y.
+     * Pass a shared byRef map from renderBoard to avoid O(mains × N).
      */
-    function subDoneStats(main) {
+    function subDoneStats(main, byRefMap) {
       if (!main || !main.ref) return { x: 0, y: 0 };
       const mainRef = String(main.ref);
-      const list = [];
-      tasksByRef().forEach((t) => {
+      const map = byRefMap || tasksByRef();
+      let y = 0;
+      let x = 0;
+      map.forEach((t) => {
         if (!t || !t.ref) return;
         if (String(t.ref) === mainRef) return;
         if (String(t.parentRef || '') !== mainRef) return;
-        list.push(t);
+        y += 1;
+        if (isSubDone(t)) x += 1;
       });
-      const y = list.length;
-      let x = list.filter(isSubDone).length;
       if (x > y) x = y;
       return { x, y };
     }
@@ -2727,7 +2732,7 @@
       return st ? statusDisplayLabel(st) : '—';
     }
 
-    function renderTask(t, isSub) {
+    function renderTask(t, isSub, byRefMap) {
       const el = document.createElement('article');
       el.className = 'task' + (isSub ? ' sub' : '');
       el.dataset.ref = t.ref || '';
@@ -2792,7 +2797,7 @@
         + (endDisp ? ' · end ' + endDisp : '')
         + (iter && role() !== 'P1' && isNeeds ? ' · iter ' + iter : '');
       if (isMainCard(t, isSub)) {
-        const stats = subDoneStats(t);
+        const stats = subDoneStats(t, byRefMap);
         const line = el.querySelector('.subs-line');
         if (stats.y > 0) {
           line.hidden = false;
@@ -2954,6 +2959,14 @@
     }
     function renderOverviewStrips() {
       const byUser = new Map();
+      const labelCache = new Map();
+      function labelFor(who) {
+        const key = String(who || '').trim();
+        if (labelCache.has(key)) return labelCache.get(key);
+        const lab = overviewAssigneeLabel(key);
+        labelCache.set(key, lab);
+        return lab;
+      }
       overviewTaskList().forEach((t) => {
         if (isLoggedEntry(t) || !isOverviewPerson(t)) return;
         const who = overviewAssigneeKey(t);
@@ -2971,9 +2984,9 @@
       const stat = (label, n) =>
         `<span class="ov-strip-stat"><small>${escapeHtml(label)}</small><b>${pad2(n)}</b></span>`;
       $('ovStrips').innerHTML = [...byUser.entries()]
-        .sort((a, b) => overviewAssigneeLabel(a[0]).localeCompare(overviewAssigneeLabel(b[0])))
+        .sort((a, b) => labelFor(a[0]).localeCompare(labelFor(b[0])))
         .map(([who, s]) => `<div class="ov-strip">
-        <span class="ov-strip-name">${escapeHtml(overviewAssigneeLabel(who))}</span><span class="ov-strip-dot">●</span>
+        <span class="ov-strip-name">${escapeHtml(labelFor(who))}</span><span class="ov-strip-dot">●</span>
         ${stat('Total', s.total)}<span class="ov-strip-sep">|</span>
         ${stat('Scheduled', s.scheduled)}<span class="ov-strip-sep">|</span>
         ${stat('Completed', s.completed)}
@@ -2995,6 +3008,7 @@
     function renderBoard() {
       const box = $('taskList'); box.innerHTML = '';
       const roots = nest(state.tasks);
+      const byRefMap = tasksByRef();
       const canDraft = !!(state.me && perms().canCreate && state.view === 'board');
       const filteredOut = (state.filterTags || []).length && !(state.tasks || []).length
         && (state.viewTasks || []).length;
@@ -3011,7 +3025,7 @@
       syncSmartFilterUi();
       function walk(list, sub) {
         list.forEach((t) => {
-          box.appendChild(renderTask(t, sub));
+          box.appendChild(renderTask(t, sub, byRefMap));
           if (t.children && t.children.length) walk(t.children, true);
         });
       }
@@ -3089,8 +3103,8 @@
     }
 
     function boardQuery() {
-      // Always full scoped list; filter Board / Needs attention / Completed client-side.
-      return 'nested=1';
+      // Flat list; client nests. Avoid server hierarchy clone on every refresh.
+      return '';
     }
 
     function filterTasksForView(tasks) {
@@ -3115,16 +3129,9 @@
       return list;
     }
 
-    async function refreshTasks() {
-      if (state.view === 'logs') return;
-      const r = await api('GET', '/api/tasks?' + boardQuery());
-      let all = r.tasks || [];
-      // Enrich Done rows so “waiting approval” vs Approved chip is accurate for Needs attention badge.
-      await enrichDoneCompletionApprovals(all);
-      const attention = all.filter(taskNeedsAttention);
-      syncNeedsAttentionBadge(attention.length);
-      syncMyTasksBadge(all.filter(taskIsMyActionable).length);
-      state.allTasks = all;
+    /** Re-filter + paint from cached allTasks (no network). */
+    function paintTasksFromCache() {
+      const all = state.allTasks || [];
       state.viewTasks = filterTasksForView(all);
       state.tasks = applySmartFilters(state.viewTasks);
       state.hierarchy = null;
@@ -3132,6 +3139,33 @@
       pruneNeedsSelection();
       updateOverview();
       renderBoard();
+    }
+
+    let refreshTasksSeq = 0;
+
+    async function refreshTasks() {
+      if (state.view === 'logs') return;
+      const seq = ++refreshTasksSeq;
+      const r = await api('GET', '/api/tasks' + (boardQuery() ? '?' + boardQuery() : ''));
+      if (seq !== refreshTasksSeq) return;
+      let all = r.tasks || [];
+      // Enrich Done rows so “waiting approval” vs Approved chip is accurate for Needs attention badge.
+      await enrichDoneCompletionApprovals(all);
+      if (seq !== refreshTasksSeq) return;
+      const loggedIn = !!state.me;
+      let attentionCount = 0;
+      let myCount = 0;
+      if (loggedIn) {
+        for (let i = 0; i < all.length; i++) {
+          const t = all[i];
+          if (taskNeedsAttention(t)) attentionCount += 1;
+          if (taskIsMyActionable(t)) myCount += 1;
+        }
+      }
+      syncNeedsAttentionBadge(attentionCount);
+      syncMyTasksBadge(myCount);
+      state.allTasks = all;
+      paintTasksFromCache();
     }
 
     // —— Multiple collapsible dummy drafts (frontend-only until SUBMIT) ——
@@ -3913,6 +3947,9 @@
       } else if (onInject) {
         hideSfSuggest();
         fillInjectAssignee().catch(() => {});
+      } else if ((state.allTasks || []).length) {
+        // Instant tab switch from cache — network only on boot / mutations.
+        paintTasksFromCache();
       } else {
         refreshTasks().catch((e) => { setBoardHint(e.message); });
       }

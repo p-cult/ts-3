@@ -27,6 +27,14 @@ function createHistoryWriter(side) {
       return side.getReviews(taskId);
     },
 
+    peekLastReview(taskId) {
+      if (typeof side.peekLastReview === 'function') {
+        return side.peekLastReview(taskId);
+      }
+      const hist = side.getReviews(taskId);
+      return hist.length ? hist[hist.length - 1] : null;
+    },
+
     appendReview(taskId, entry) {
       return side.appendReview(taskId, entry);
     },

@@ -162,6 +162,7 @@ function createDataAccess(deps) {
     getStages: (taskId) => history.getStages(taskId),
     setStages: (taskId, s) => history.setStages(taskId, s),
     getReviews: (taskId) => history.getReviews(taskId),
+    peekLastReview: (taskId) => history.peekLastReview(taskId),
     appendReview: (taskId, e) => history.appendReview(taskId, e),
 
     joinHistory(taskId) {

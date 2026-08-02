@@ -22,6 +22,23 @@ const MONTHS = [
   'jul', 'aug', 'sep', 'oct', 'nov', 'dec',
 ];
 
+let overridesCache = null;
+let overridesMtimeMs = -1;
+
+function loadOverrides() {
+  try {
+    const st = fs.statSync(FILE);
+    if (overridesCache && st.mtimeMs === overridesMtimeMs) return overridesCache;
+    overridesCache = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+    overridesMtimeMs = st.mtimeMs;
+    return overridesCache;
+  } catch (e) {
+    overridesCache = {};
+    overridesMtimeMs = -1;
+    return overridesCache;
+  }
+}
+
 /** Normalize sheet/API aliases → high | normal | low. */
 function normalizePriority(raw) {
   const s = String(raw == null ? '' : raw).trim().toLowerCase();
@@ -107,14 +124,6 @@ function compute(task, overrides, now) {
   return { priority, overdue: false, source: 'clock' };
 }
 
-function loadOverrides() {
-  try {
-    return JSON.parse(fs.readFileSync(FILE, 'utf8'));
-  } catch (e) {
-    return {};
-  }
-}
-
 /** Stamp effective priority + overdue onto every task (mutates in place). */
 function applyAll(tasks, now) {
   const overrides = loadOverrides();
@@ -147,10 +156,16 @@ function applyAll(tasks, now) {
 function recordOverride(taskId, deadline, by) {
   try {
     if (!taskId) return;
-    const o = loadOverrides();
+    const o = Object.assign({}, loadOverrides());
     o[taskId] = { deadline: deadline || '', by: by || 'admin' };
     fs.mkdirSync(path.dirname(FILE), { recursive: true });
     fs.writeFileSync(FILE, JSON.stringify(o, null, 2));
+    overridesCache = o;
+    try {
+      overridesMtimeMs = fs.statSync(FILE).mtimeMs;
+    } catch (e2) {
+      overridesMtimeMs = Date.now();
+    }
   } catch (e) {
     /* never break a save over bookkeeping */
   }

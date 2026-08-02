@@ -12,6 +12,8 @@ function createListProjects({ data }) {
         projects: data.listProjects().map((p) => ({
           code: p.code,
           name: p.name,
+          label: p.label || p.name,
+          pseudoName: p.pseudoName || '',
         })),
       };
     },

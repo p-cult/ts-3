@@ -20,6 +20,8 @@ const { createDecideQueue } = require('./decide-queue');
 const { createMakeTask } = require('./make-task');
 const { createGetDropdownData } = require('./get-dropdown-data');
 const { createGetJourneyReport } = require('./get-journey-report');
+const { createPreviewInject } = require('./preview-inject');
+const { createCommitInject } = require('./commit-inject');
 
 function createUseCases(deps) {
   const { config, data, runtime, sessions, log } = deps;
@@ -28,6 +30,11 @@ function createUseCases(deps) {
   const decideQueue = createDecideQueue({
     data,
     useCases: { createTask },
+  });
+  const updateTask = createUpdateTask({ data });
+  const commitInject = createCommitInject({
+    data,
+    useCases: { createTask, updateTask },
   });
 
   return {
@@ -38,7 +45,7 @@ function createUseCases(deps) {
     listTasks: createListTasks({ data }),
     getTask: createGetTask({ data }),
     createTask,
-    updateTask: createUpdateTask({ data }),
+    updateTask,
     deleteTask: createDeleteTask({ data }),
     listProjects: createListProjects({ data }),
     listUsers: createListUsers({ data }),
@@ -56,6 +63,8 @@ function createUseCases(deps) {
     makeTask: createMakeTask({ data }),
     getDropdownData: createGetDropdownData({ data }),
     getJourneyReport: createGetJourneyReport({ data }),
+    previewInject: createPreviewInject({ data }),
+    commitInject,
   };
 }
 

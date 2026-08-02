@@ -70,7 +70,7 @@ async function main() {
 
   try {
     const h = await request(port, 'GET', '/api/health');
-    assert.strictEqual(h.json.slice, '14');
+    assert.strictEqual(h.json.slice, '15');
     ok('health slice 10');
 
     const list = await request(port, 'GET', '/api/tasks');

@@ -63,7 +63,7 @@ async function main() {
     const healthOnly = await startServer({ host: '127.0.0.1', port: 0 });
     const hp = healthOnly.address().port;
     const healthReq = await getHealth(hp);
-    assert.strictEqual(healthReq.slice, '14');
+    assert.strictEqual(healthReq.slice, '15');
     ok('health slice 11');
     await new Promise((r) => healthOnly.close(r));
   } catch (e) {

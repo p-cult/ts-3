@@ -291,10 +291,10 @@ async function main() {
   const port = server.address().port;
   try {
     const health = await request(port, 'GET', '/api/health');
-    assert.strictEqual(health.json.slice, '14');
+    assert.strictEqual(health.json.slice, '15');
     assert.strictEqual(health.json.mode.stagingWrites, true);
     assert.strictEqual(health.json.mode.writerOfRecord, 'ts3');
-    ok('health slice 14 reports supervised write mode');
+    ok('health slice 15 reports supervised write mode');
 
     const admin = await login(port, 'ts3admin', 'ts3-98860');
     const create = await request(port, 'POST', '/api/tasks', {

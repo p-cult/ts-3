@@ -213,15 +213,34 @@ function readVehicle_(userSheet) {
 
 function readProjects_() {
   var ss = master_();
-  var sh = sheet_(ss, 'admin');
+  var sh = ss.getSheetByName('Projects') || sheet_(ss, 'admin');
   var last = Math.max(sh.getLastRow(), DATA_ROW);
-  var values = readDisplay_(sh, 'A1:B' + last);
+  var values = readDisplay_(sh, 'A1:H' + last);
   var out = [];
   dataRows_(values).forEach(function (row) {
+    // Live master: Project | BaseCode | Edition | ProjectCode | Dropdown Label |
+    //               Pseudo Name | Task Prefix | Active
+    var code = cell_(row, 3);
+    var label = cell_(row, 4);
+    var project = cell_(row, 0);
+    var base = cell_(row, 1);
+    var pseudo = cell_(row, 5);
+    var active = cell_(row, 7);
+    if (/^[A-Za-z0-9]{6}$/.test(code) && (label || project)) {
+      if (active && String(active).toLowerCase() !== 'yes') return;
+      out.push({
+        code: code.toUpperCase(),
+        name: label || project,
+        base: base,
+        label: label || project,
+        pseudoName: pseudo,
+      });
+      return;
+    }
+    // Legacy: A=ProjectCode B=ProjectName · or A=Name B=BaseCode
     var a = cell_(row, 0);
     var b = cell_(row, 1);
     if (!a) return;
-    // Schema: A=ProjectCode B=ProjectName · ts-2 live: A=Name B=BaseCode
     if (/^[A-Za-z0-9]{6}$/.test(a) && b) {
       out.push({ code: a.toUpperCase(), name: b, base: a.toUpperCase() });
     } else if (/^[A-Za-z0-9]{6}$/.test(b)) {

@@ -16,6 +16,8 @@ function createGetDropdownData({ data }) {
       const projects = data.listProjects().map((p) => ({
         code: p.code,
         name: p.name || p.code,
+        label: p.label || p.name || p.code,
+        pseudoName: p.pseudoName || '',
       }));
       return {
         people,

@@ -12,6 +12,8 @@
       --font: "Segoe UI", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
+    /* Author display:* must not defeat the hidden attribute (Inject was leaking onto Board). */
+    [hidden] { display: none !important; }
     body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--bg); line-height: 1.45; }
     header {
       display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between;
@@ -333,6 +335,90 @@
     }
     .sf-suggest .sf-empty { padding: .55rem .65rem; font-size: .85rem; color: var(--muted); }
     .sf-cap { font-size: .75rem; color: var(--muted); margin: .25rem 0 0; }
+    #injectView.inject-box { display: flex; flex-direction: column; gap: .65rem; }
+    #injectView.inject-box[hidden] { display: none !important; }
+    .inject-box textarea {
+      min-height: 12rem; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: .82rem; line-height: 1.4;
+    }
+    .inject-meta { font-size: .82rem; color: var(--muted); }
+    .inject-group {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: .65rem .75rem; margin-bottom: .45rem;
+    }
+    .inject-group.is-dup { border-color: #e0c48a; background: #fffbf2; }
+    .inject-group.is-depot { border-color: #e8a0a0; background: #fdf3f2; }
+    .inject-group.is-bad { border-color: #ccc; background: #f6f6f6; }
+    .inject-group.is-purge { box-shadow: inset 3px 0 0 var(--accent); }
+    .inject-group.is-split { box-shadow: inset 3px 0 0 #9a5b00; }
+    .badge-purge { background: var(--accent-soft); color: var(--accent); }
+    .badge-split { background: #fff3e0; color: #9a5b00; }
+    .inject-group h4 { margin: 0 0 .35rem; font-size: .92rem; }
+    .inject-group .raw-line { font-size: .78rem; color: var(--muted); margin: .15rem 0; }
+    .inject-group .raw-line.is-kept { color: var(--ink); font-weight: 600; }
+    .inject-group .raw-line.is-purged {
+      text-decoration: line-through; opacity: .55; color: var(--muted);
+    }
+    .inject-flash {
+      margin: .35rem 0; padding: .55rem .7rem; border-radius: var(--radius);
+      border: 1px solid var(--accent); background: var(--accent-soft);
+      color: var(--accent); font-size: .88rem; font-weight: 600;
+    }
+    .inject-flash[hidden] { display: none !important; }
+    .inject-res { display: flex; flex-wrap: wrap; gap: .55rem 1rem; margin-top: .45rem; font-size: .85rem; }
+    .inject-res label { display: inline-flex; align-items: center; gap: .3rem; margin: 0; cursor: pointer; }
+    .inject-res input { width: auto; margin: 0; }
+    .inject-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; }
+    .inject-summary { font-size: .85rem; margin: .25rem 0; }
+    .inject-bulk {
+      display: flex; flex-direction: column; gap: .55rem;
+      padding: .65rem .75rem; background: var(--card); border: 1px solid var(--line);
+      border-radius: var(--radius); font-size: .85rem;
+    }
+    .inject-bulk[hidden] { display: none !important; }
+    .inject-panel {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .55rem;
+      padding: .5rem .55rem; border-radius: 8px; background: #faf8f6;
+      border: 1px solid var(--line);
+    }
+    .inject-panel-label {
+      flex: 0 0 100%; margin: 0; font-size: .72rem; font-weight: 700;
+      letter-spacing: .04em; text-transform: uppercase; color: var(--muted);
+    }
+    .inject-panel label { margin: 0; display: inline-flex; align-items: center; gap: .3rem; }
+    .inject-panel select, .inject-panel input[type="search"] {
+      width: auto; min-width: 8rem; margin: 0; font: inherit; font-size: .85rem;
+    }
+    .inject-panel input[type="search"] { min-width: 11rem; }
+    .inject-panel .inject-meta { margin-left: .15rem; }
+    .inject-panel-apply { background: #f4faf6; border-color: #c5ddd0; }
+    .inject-panel-apply .btn.primary { min-width: 9rem; }
+    .inject-group-head {
+      display: flex; align-items: flex-start; gap: .5rem; margin-bottom: .25rem;
+    }
+    .inject-group-head input[type="checkbox"] { width: auto; margin: .2rem 0 0; flex: 0 0 auto; }
+    .inject-group-head h4 { margin: 0; flex: 1; font-size: .92rem; }
+    .inject-group.is-hidden { display: none; }
+    .inject-map {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: .7rem .8rem; display: flex; flex-direction: column; gap: .5rem;
+    }
+    .inject-map h3 { margin: 0; font-size: .95rem; }
+    .inject-map .inject-map-lead { margin: 0; font-size: .82rem; color: var(--muted); }
+    .inject-map-row {
+      display: grid; grid-template-columns: minmax(7rem, 1fr) auto minmax(10rem, 1.4fr) auto;
+      gap: .4rem .65rem; align-items: center; font-size: .85rem;
+      padding: .35rem 0; border-top: 1px solid var(--line);
+    }
+    .inject-map-row:first-of-type { border-top: 0; }
+    .inject-map-row.is-stray { background: #fdf3f2; margin: 0 -.35rem; padding: .4rem .35rem; border-radius: 6px; border-top: 0; }
+    .inject-map-row select { width: 100%; min-width: 0; margin: 0; font: inherit; font-size: .85rem; }
+    .inject-map-smart { display: flex; flex-wrap: wrap; gap: .35rem; }
+    .inject-map details { font-size: .85rem; }
+    .inject-map summary { cursor: pointer; color: var(--muted); }
+    .badge-dup { background: #fff3e0; color: #9a5b00; }
+    .badge-depot { background: #fde8e8; color: #a32020; }
+    .badge-ok { background: var(--accent-soft); color: var(--accent); }
     .review-box { margin-top: .4rem; padding: .45rem .55rem; background: #faf7f2; border-radius: 8px; font-size: .85rem; }
     .banner {
       background: #fff6e5; border: 1px solid #f0d9a8; color: #6a5318;
@@ -404,7 +490,7 @@
       header { padding: .65rem .75rem; }
     }
     @media print {
-      header .toolbar, .tabs, .btn, dialog, .filters, .smart-filter, .task.draft, #draftBar { display: none !important; }
+      header .toolbar, .tabs, .btn, dialog, .filters, .smart-filter, .inject-box, .task.draft, #draftBar { display: none !important; }
       body { background: #fff; }
       .task, .log-row { break-inside: avoid; box-shadow: none; }
       a[href]::after { content: " (" attr(href) ")"; font-size: .75rem; color: #444; }
@@ -431,6 +517,7 @@
       </button>
       <button type="button" class="tab" data-view="completed" id="tabDone">Completed</button>
       <button type="button" class="tab" data-view="logs" id="tabLogs" hidden>Logs</button>
+      <button type="button" class="tab" data-view="inject" id="tabInject" hidden>Inject</button>
     </div>
     <div id="boardView">
       <p class="muted" id="hint">Loading…</p>
@@ -468,6 +555,88 @@
       </div>
       <div id="logList"></div>
     </div>
+    <div id="injectView" class="inject-box" hidden aria-hidden="true">
+      <p class="muted" id="injectHint">
+        1) Process paste · 2) Filter · 3) Select rows (or Select all in filter) ·
+        4) Set project / kind / dup action → <strong>Apply to selected</strong> · 5) Inject into system
+      </p>
+      <label for="injectText">Bulk text</label>
+      <textarea id="injectText" placeholder="Ashwin | 31st July&#10;&#10;[Cult edits +]&#10;* Rasam promo done (on review)&#10;* Life art archival — ongoing&#10;&#10;…or JSON / CSV / TSV"></textarea>
+      <div class="row" style="margin-top:0">
+        <label style="margin:0">Default assignee
+          <select id="injectAssignee" style="width:auto;min-width:10rem;display:inline-block;margin-left:.35rem"></select>
+        </label>
+        <button class="btn primary" type="button" id="injectPreview">Process</button>
+        <button class="btn" type="button" id="injectClear">Clear</button>
+      </div>
+      <p class="inject-summary" id="injectSummary" hidden></p>
+      <div class="inject-flash" id="injectFlash" hidden role="status"></div>
+      <div class="inject-bulk" id="injectBulkBar" hidden>
+        <div class="inject-panel" id="injectFilterPanel">
+          <p class="inject-panel-label">Filter</p>
+          <label>Show
+            <select id="injectFilter" aria-label="Filter inject groups">
+              <option value="all">All tasks</option>
+              <option value="decision">Needs decision (dups)</option>
+              <option value="batch">Batch / cross-day dups</option>
+              <option value="depot">Already in system</option>
+              <option value="ready">Ready to inject</option>
+              <option value="unmapped">Unmapped project</option>
+              <option value="smart">Smart-mapped</option>
+              <option value="remapped">Manually mapped</option>
+              <option value="cross">Cross-day only</option>
+              <option value="tk-main">Kind: Normal</option>
+              <option value="tk-pseudo">Kind: Pseudo</option>
+              <option value="tk-routine">Kind: Routine</option>
+            </select>
+          </label>
+          <label>Person
+            <select id="injectFilterPerson" aria-label="Filter by person">
+              <option value="">All people</option>
+            </select>
+          </label>
+          <input type="search" id="injectFilterQ" placeholder="Name / project…" aria-label="Filter inject by text" />
+          <span class="inject-meta" id="injectFilterMeta">0 in filter</span>
+        </div>
+        <div class="inject-panel" id="injectSelectPanel">
+          <p class="inject-panel-label">Select</p>
+          <label>
+            <input type="checkbox" id="injectSelectAll" />
+            Select all in filter
+          </label>
+          <button class="btn" type="button" id="injectClearSelection">Clear selection</button>
+          <span class="inject-meta" id="injectSelectedMeta">0 selected</span>
+        </div>
+        <div class="inject-panel inject-panel-apply" id="injectApplyPanel">
+          <p class="inject-panel-label">Apply to selected</p>
+          <label>Project
+            <select id="injectBulkProject" aria-label="Project for selected" style="min-width:12rem"></select>
+          </label>
+          <label>Kind
+            <select id="injectBulkKind" aria-label="Kind for selected" style="min-width:7rem">
+              <option value="main">Normal</option>
+              <option value="pseudo">Pseudo</option>
+              <option value="routine">Routine</option>
+            </select>
+          </label>
+          <label>Dup action
+            <select id="injectBulkDupAction" aria-label="Duplicate action for selected" style="min-width:8rem">
+              <option value="">— leave as is —</option>
+              <option value="purge">Purge (keep one)</option>
+              <option value="split">Split</option>
+            </select>
+          </label>
+          <button class="btn primary" type="button" id="injectBulkApply" title="Apply project / kind / dup action to selected rows">Apply to selected</button>
+          <button class="btn" type="button" id="injectBulkPurgeAll" title="Purge every duplicate group in this paste (ignores selection)">Purge all duplicates</button>
+        </div>
+      </div>
+      <div id="injectGroups"></div>
+      <div class="inject-actions" id="injectCommitRow" hidden>
+        <button class="btn primary" type="button" id="injectCommit">Inject into system</button>
+        <span class="inject-meta" id="injectCommitMeta"></span>
+      </div>
+      <pre id="injectResult" class="muted" style="max-height:10rem;overflow:auto;font-size:.75rem" hidden></pre>
+    </div>
   </main>
 
   <dialog id="loginDlg">
@@ -490,6 +659,8 @@
     const state = {
       me: null, permissions: null, tasks: [], viewTasks: [], hierarchy: null, projects: [], users: [],
       view: 'board', logs: [], allForParent: [], attentionCount: 0, filterTags: [],
+      injectPlan: null, injectResolutions: {}, injectSelected: {},
+      injectProjectOverrides: {}, injectItemProjects: {}, injectItemKinds: {},
     };
     const SF_MAX = 4;
     const $ = (id) => document.getElementById(id);
@@ -2208,6 +2379,7 @@
         $('btnLogin').hidden = true; $('btnLogout').hidden = false;
         $('tabLogs').hidden = !perms().canViewLogs;
         $('reportsPanel').hidden = !perms().canViewReports;
+        $('tabInject').hidden = !perms().canAdmin;
         // Needs attention: P2 + P3/P4 (any signed-in user)
         $('tabNeeds').hidden = false;
         $('tabDone').hidden = false;
@@ -2216,6 +2388,7 @@
         $('btnLogin').hidden = false; $('btnLogout').hidden = true;
         $('tabLogs').hidden = true;
         $('reportsPanel').hidden = true;
+        $('tabInject').hidden = true;
         $('tabNeeds').hidden = true;
         $('tabDone').hidden = true;
         syncNeedsAttentionBadge(0);
@@ -2777,15 +2950,741 @@
       state.view = v;
       document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.view === v));
       const boardish = v === 'board' || v === 'needs' || v === 'completed';
+      const onInject = v === 'inject';
       $('boardView').hidden = !boardish;
       $('logsView').hidden = v !== 'logs';
+      if ($('injectView')) {
+        $('injectView').hidden = !onInject;
+        $('injectView').setAttribute('aria-hidden', onInject ? 'false' : 'true');
+      }
+      // Board chrome never belongs on Inject
+      if ($('draftBar') && onInject) $('draftBar').hidden = true;
+      if ($('hint')) {
+        if (onInject) $('hint').textContent = 'Inject tab only — process purge/split here, then Inject into system.';
+      }
       syncSmartFilterUi();
       if (v === 'logs') {
         hideSfSuggest();
         refreshLogs().catch((e) => alert(e.message));
+      } else if (onInject) {
+        hideSfSuggest();
+        fillInjectAssignee().catch(() => {});
       } else {
         refreshTasks().catch((e) => { $('hint').textContent = e.message; });
       }
+    }
+
+    async function fillInjectAssignee() {
+      await refreshUsers().catch(() => {});
+      const sel = $('injectAssignee');
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">— from paste / none —</option>';
+      (state.users || []).forEach((u) => {
+        const o = document.createElement('option');
+        o.value = u.username;
+        o.textContent = (u.displayName || u.username) + ' (' + u.username + ')';
+        sel.appendChild(o);
+      });
+      if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      else if ((state.users || []).some((u) => u.username === 'ashwin')) sel.value = 'ashwin';
+    }
+
+    function injectGroupKind(g) {
+      if (!g.members || !g.members[0] || !g.members[0].projectOk) return 'unmapped';
+      if (g.depotDuplicate) return 'depot';
+      if (g.batchDuplicate) return 'batch';
+      return 'ready';
+    }
+
+    function injectGroupMapType(g) {
+      const vias = (g.members || []).map((m) => m.projectVia || 'none');
+      if (!g.members || !g.members[0] || !g.members[0].projectOk) return 'unmapped';
+      if (vias.some((v) => v === 'override')) return 'remapped';
+      return 'smart';
+    }
+
+    function injectGroupCanChoose(g) {
+      return !!(g && (g.batchDuplicate || g.depotDuplicate) && g.members && g.members[0] && g.members[0].projectOk);
+    }
+
+    /** Match server pickPrimary — Done / under_review win. */
+    function injectPickPrimary(members) {
+      const list = members || [];
+      if (list.length <= 1) return list[0] || null;
+      const rank = (m) => {
+        let s = 0;
+        if (String(m.status) === 'Done') s += 100;
+        if (m.reviewHint === 'under_review') s += 10;
+        s += (m.sourceIndex || 0) * 0.001;
+        return s;
+      };
+      return list.slice().sort((a, b) => rank(b) - rank(a))[0];
+    }
+
+    function flashInject(msg) {
+      const el = $('injectFlash');
+      if (!el) return;
+      el.hidden = !msg;
+      el.textContent = msg || '';
+    }
+
+    /** Every preview row is selectable for project remap / bulk apply */
+    function injectGroupSelectable(g) {
+      return !!(g && g.members && g.members.length);
+    }
+
+    function injectGroupMemberIds(g) {
+      return (g.members || []).map((m) => m.id).filter(Boolean);
+    }
+
+    function setInjectItemProjectForGroup(g, code) {
+      injectGroupMemberIds(g).forEach((id) => {
+        if (code) state.injectItemProjects[id] = code;
+        else delete state.injectItemProjects[id];
+      });
+    }
+
+    function injectKindLabel(k) {
+      if (k === 'pseudo') return 'Pseudo';
+      if (k === 'routine') return 'Routine';
+      if (k === 'not_a_task') return 'Not a task';
+      return 'Normal';
+    }
+
+    function injectKindOptionsHtml(selected) {
+      const cur = selected === 'pseudo' || selected === 'routine' || selected === 'not_a_task'
+        ? selected
+        : 'main';
+      return [
+        ['main', 'Normal'],
+        ['pseudo', 'Pseudo'],
+        ['routine', 'Routine'],
+      ].map(([val, lab]) =>
+        '<option value="' + val + '"' + (cur === val ? ' selected' : '') + '>' + lab + '</option>'
+      ).join('');
+    }
+
+    function injectGroupTaskKind(g) {
+      const memberIds = injectGroupMemberIds(g);
+      const overridden = memberIds.map((id) => state.injectItemKinds[id]).find(Boolean);
+      if (overridden) return overridden === 'normal' ? 'main' : overridden;
+      return (g && g.kind) || 'main';
+    }
+
+    function setInjectItemKindForGroup(g, kind) {
+      const k = (!kind || kind === 'normal') ? 'main' : kind;
+      injectGroupMemberIds(g).forEach((id) => {
+        if (k && k !== 'main') state.injectItemKinds[id] = k;
+        else delete state.injectItemKinds[id]; // default Normal — omit from payload
+      });
+    }
+
+    function fillInjectBulkProjectSelect() {
+      const sel = $('injectBulkProject');
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = injectMasterProjectOptions('');
+      if (cur) sel.value = cur;
+    }
+
+    function syncInjectSelectedMeta() {
+      collectInjectSelectedKeys();
+      const n = Object.keys(state.injectSelected || {}).filter((k) => state.injectSelected[k]).length;
+      const visible = visibleInjectGroups();
+      const filterMeta = $('injectFilterMeta');
+      if (filterMeta) filterMeta.textContent = visible.length + ' in filter';
+      const el = $('injectSelectedMeta');
+      if (el) el.textContent = n + ' selected';
+      const all = $('injectSelectAll');
+      if (!all) return;
+      const checked = visible.filter((row) => {
+        const cb = row.querySelector('input[data-inj-sel]');
+        return cb && cb.checked;
+      });
+      all.checked = visible.length > 0 && checked.length === visible.length;
+      all.indeterminate = checked.length > 0 && checked.length < visible.length;
+    }
+
+    function applyInjectFilter() {
+      const kind = ($('injectFilter') && $('injectFilter').value) || 'all';
+      const person = ($('injectFilterPerson') && $('injectFilterPerson').value) || '';
+      const q = (($('injectFilterQ') && $('injectFilterQ').value) || '').trim().toLowerCase();
+      [...document.querySelectorAll('#injectGroups .inject-group')].forEach((el) => {
+        const gKind = el.dataset.kind || '';
+        const mapType = el.dataset.mapType || '';
+        let show = true;
+        if (kind === 'decision') show = gKind === 'batch' || gKind === 'depot';
+        else if (kind === 'cross') show = el.dataset.cross === '1';
+        else if (kind === 'smart' || kind === 'remapped' || kind === 'unmapped') show = mapType === kind;
+        else if (kind === 'bad') show = mapType === 'unmapped' || gKind === 'unmapped';
+        else if (kind === 'tk-main' || kind === 'tk-pseudo' || kind === 'tk-routine') {
+          show = (el.dataset.taskKind || 'main') === kind.slice(3);
+        }
+        else if (kind !== 'all') show = gKind === kind;
+        if (show && person) show = (el.dataset.person || '') === person;
+        if (show && q) {
+          const hay = (el.dataset.search || '');
+          show = hay.indexOf(q) >= 0;
+        }
+        el.classList.toggle('is-hidden', !show);
+        // Hidden rows leave the selection — one selection model, scoped to what you see
+        if (!show) {
+          const key = injectGroupKey(el);
+          const cb = el.querySelector('input[data-inj-sel]');
+          if (cb) cb.checked = false;
+          if (key) delete state.injectSelected[key];
+        }
+      });
+      syncInjectSelectedMeta();
+    }
+
+    function fillInjectPersonFilter(plan) {
+      const sel = $('injectFilterPerson');
+      if (!sel) return;
+      const cur = sel.value;
+      const people = (plan && plan.people) || [];
+      sel.innerHTML = '<option value="">All people</option>';
+      people.forEach((p) => {
+        const o = document.createElement('option');
+        o.value = p;
+        o.textContent = p;
+        sel.appendChild(o);
+      });
+      if (cur && people.indexOf(cur) >= 0) sel.value = cur;
+    }
+
+    function injectMasterProjects() {
+      // Hide memory/fixture demo codes (PRJ001…) — Inject is master vocabulary only
+      return (state.projects || []).filter((p) => !/^PRJ\d+$/i.test(String(p.code || '')));
+    }
+
+    function injectMasterProjectOptions(selectedCode) {
+      const opts = ['<option value="">— choose from master list —</option>'];
+      injectMasterProjects().forEach((p) => {
+        const sel = selectedCode && String(p.code) === String(selectedCode) ? ' selected' : '';
+        const label = p.label || p.name || p.code;
+        const pseudo = p.pseudoName && String(p.pseudoName) !== String(label)
+          ? ' · ' + p.pseudoName
+          : '';
+        opts.push(
+          '<option value="' + escapeHtml(p.code) + '"' + sel + '>'
+          + escapeHtml(label) + escapeHtml(pseudo) + ' (' + escapeHtml(p.code) + ')</option>'
+        );
+      });
+      return opts.join('');
+    }
+
+    function visibleInjectGroups() {
+      return [...document.querySelectorAll('#injectGroups .inject-group[data-selectable="1"]:not(.is-hidden)')];
+    }
+
+    function injectGroupKey(el) {
+      return (el && (el.getAttribute('data-key') || el.dataset.key)) || '';
+    }
+
+    /** One selection model: checkboxes. This only toggles rows currently in the filter. */
+    function setInjectSelectionInFilter(on) {
+      const visible = visibleInjectGroups();
+      if (on && !visible.length) {
+        alert('No tasks in the current filter.');
+        return;
+      }
+      visible.forEach((el) => {
+        const key = injectGroupKey(el);
+        const cb = el.querySelector('input[data-inj-sel]');
+        if (!key || !cb) return;
+        cb.checked = !!on;
+        if (on) state.injectSelected[key] = true;
+        else delete state.injectSelected[key];
+      });
+      syncInjectSelectedMeta();
+    }
+
+    function clearInjectSelection() {
+      document.querySelectorAll('#injectGroups .inject-group input[data-inj-sel]').forEach((cb) => {
+        cb.checked = false;
+      });
+      state.injectSelected = {};
+      const all = $('injectSelectAll');
+      if (all) { all.checked = false; all.indeterminate = false; }
+      syncInjectSelectedMeta();
+    }
+
+    /**
+     * Single apply path for the current checkbox selection:
+     * optional project · kind · optional dup action (purge/split).
+     */
+    function applyInjectToSelected() {
+      if (state.view !== 'inject') {
+        alert('Use the Inject tab.');
+        return;
+      }
+      const keys = collectInjectSelectedKeys();
+      if (!keys.length) {
+        alert('Select tasks first — tick rows, or use Select all in filter.');
+        return;
+      }
+      const code = ($('injectBulkProject') && $('injectBulkProject').value) || '';
+      const kind = ($('injectBulkKind') && $('injectBulkKind').value) || 'main';
+      const dup = ($('injectBulkDupAction') && $('injectBulkDupAction').value) || '';
+      if (!code && !dup) {
+        // Kind-only apply is allowed; project/dup optional
+      }
+      const byKey = {};
+      (state.injectPlan && state.injectPlan.groups || []).forEach((g) => { byKey[g.key] = g; });
+      let nProject = 0;
+      let nKind = 0;
+      let nDup = 0;
+      let nDupSkipped = 0;
+      keys.forEach((key) => {
+        const g = byKey[key];
+        if (!g) return;
+        if (code) {
+          setInjectItemProjectForGroup(g, code);
+          nProject += 1;
+        }
+        setInjectItemKindForGroup(g, kind);
+        nKind += 1;
+        if (dup === 'purge' || dup === 'split') {
+          if (injectGroupCanChoose(g) && g.members && g.members[0] && g.members[0].projectOk) {
+            state.injectResolutions[key] = dup;
+            g.resolution = dup;
+            nDup += 1;
+          } else {
+            nDupSkipped += 1;
+          }
+        }
+      });
+      if (!nKind && !nProject && !nDup) {
+        alert('Nothing applied.');
+        return;
+      }
+      const bits = [];
+      if (nProject) bits.push('project on ' + nProject);
+      if (nKind) bits.push('kind on ' + nKind);
+      if (nDup) bits.push((dup === 'purge' ? 'purge' : 'split') + ' on ' + nDup);
+      let msg = 'Applied to selected: ' + bits.join(' · ');
+      if (dup && nDupSkipped) msg += ' (' + nDupSkipped + ' non-dup skipped for dup action)';
+      flashInject(msg + ' — updating…');
+      runInjectPreview()
+        .then(() => {
+          flashInject(msg);
+          const meta = $('injectCommitMeta');
+          if (meta) meta.textContent = msg;
+        })
+        .catch((e) => {
+          flashInject('');
+          alert(e.message || String(e));
+        });
+    }
+
+    /** Prefer live checkboxes inside Inject tab; keep state in sync. */
+    function collectInjectSelectedKeys() {
+      const keys = [];
+      document.querySelectorAll('#injectGroups .inject-group[data-selectable="1"]').forEach((el) => {
+        const key = injectGroupKey(el);
+        const cb = el.querySelector('input[data-inj-sel]');
+        if (!key || !cb) return;
+        if (cb.checked) {
+          keys.push(key);
+          state.injectSelected[key] = true;
+        } else {
+          delete state.injectSelected[key];
+        }
+      });
+      return keys;
+    }
+
+    function applyInjectBulkResolution(action, { all } = {}) {
+      try {
+        if (state.view !== 'inject') {
+          alert('Open the Inject tab to purge / split before injecting.');
+          return;
+        }
+        const plan = state.injectPlan;
+        if (!plan || !(plan.groups || []).length) {
+          alert('Process bulk text first, then purge / split in this tab.');
+          return;
+        }
+        const byKey = {};
+        (plan.groups || []).forEach((g) => { byKey[g.key] = g; });
+        let keys;
+        if (all) {
+          keys = (plan.groups || [])
+            .filter((g) => injectGroupCanChoose(g))
+            .map((g) => g.key);
+          if (!keys.length) {
+            alert('No duplicates to purge. (Only batch / already-on-master dups with a mapped project can be purged.)');
+            return;
+          }
+        } else {
+          keys = collectInjectSelectedKeys();
+          if (!keys.length) {
+            alert('Select tasks first (or Select all in filter), set Dup action, then Apply to selected.\nOr use Purge all duplicates.');
+            return;
+          }
+        }
+        let applied = 0;
+        let dropLines = 0;
+        let keepLines = 0;
+        let skippedNotDup = 0;
+        let skippedUnmapped = 0;
+        keys.forEach((key) => {
+          const g = byKey[key];
+          if (!g) return;
+          if (!g.members || !g.members[0] || !g.members[0].projectOk) {
+            skippedUnmapped += 1;
+            return;
+          }
+          if (!injectGroupCanChoose(g)) {
+            skippedNotDup += 1;
+            return;
+          }
+          state.injectResolutions[key] = action;
+          g.resolution = action;
+          applied += 1;
+          if (action === 'purge') {
+            if (g.depotDuplicate) {
+              dropLines += g.members.length;
+            } else {
+              keepLines += 1;
+              dropLines += Math.max(0, g.members.length - 1);
+            }
+          } else {
+            keepLines += g.members.length;
+          }
+        });
+        if (!applied) {
+          if (skippedUnmapped && !skippedNotDup) {
+            alert('Selected rows are unmapped — set Project via Apply to selected first.');
+          } else if (skippedNotDup) {
+            alert(
+              'None of the selected rows are duplicates.\n\n'
+              + 'Tip: Filter → Needs decision (dups) → Select all in filter → Dup action: Purge → Apply to selected.\n'
+              + 'Or use Purge all duplicates.'
+            );
+          } else {
+            alert('Nothing to purge.');
+          }
+          return;
+        }
+        const verb = action === 'purge' ? 'Purged' : 'Split';
+        flashInject(verb + ' ' + applied + ' group(s) — updating preview…');
+        runInjectPreview()
+          .then(() => {
+            let msg = verb + ' ' + applied + ' duplicate group(s).';
+            if (action === 'purge') {
+              msg += ' Keep ' + keepLines + ' · drop ' + dropLines
+                + ' line(s). Struck-through lines will not be birthed.';
+            } else {
+              msg += ' Will inject ' + keepLines + ' separate task(s).';
+            }
+            if (skippedNotDup) msg += ' (' + skippedNotDup + ' non-dup ignored)';
+            flashInject(msg);
+            const meta = $('injectCommitMeta');
+            if (meta) meta.textContent = msg;
+          })
+          .catch((e) => {
+            flashInject('');
+            alert(e.message || String(e));
+          });
+      } catch (err) {
+        alert('Purge failed: ' + (err && err.message ? err.message : err));
+      }
+    }
+
+    function renderInjectPlan(plan) {
+      state.injectPlan = plan;
+      const box = $('injectGroups');
+      const sum = $('injectSummary');
+      const row = $('injectCommitRow');
+      const bulk = $('injectBulkBar');
+      const resOut = $('injectResult');
+      if (resOut) { resOut.hidden = true; resOut.textContent = ''; }
+      if (!plan) {
+        box.innerHTML = '';
+        sum.hidden = true;
+        row.hidden = true;
+        if (bulk) bulk.hidden = true;
+        flashInject('');
+        state.injectSelected = {};
+        return;
+      }
+      const s = plan.summary || {};
+      sum.hidden = false;
+      sum.textContent =
+        'Format: ' + (plan.format || '?')
+        + ' · ' + (plan.candidateCount || 0) + ' lines'
+        + ' · ' + (s.people || 0) + ' people'
+        + ' · inject ' + (s.inject || 0)
+        + ' · purged ' + (s.purged != null ? s.purged : s.skip || 0)
+        + ' · smart ' + (s.projectsSmart || 0)
+        + (s.projectsStray ? ' · unmapped ' + s.projectsStray : '')
+        + ' · dups ' + (s.batchDuplicates || 0)
+        + (s.crossDay ? ' (' + s.crossDay + ' cross-day)' : '')
+        + ' · on master ' + (s.depotDuplicates || 0);
+      fillInjectPersonFilter(plan);
+      fillInjectBulkProjectSelect();
+      if (bulk) bulk.hidden = !(plan.groups || []).length;
+      const liveKeys = new Set((plan.groups || []).map((g) => g.key));
+      Object.keys(state.injectSelected || {}).forEach((k) => {
+        if (!liveKeys.has(k)) delete state.injectSelected[k];
+      });
+      box.innerHTML = '';
+      // Always paint purged dups at the bottom of the Inject list (client-side, authoritative for UI)
+      const groupsOrdered = (plan.groups || []).slice().sort((a, b) => {
+        const score = (g) => {
+          let res = state.injectResolutions[g.key] || g.resolution || '';
+          if (res === 'merge' || res === 'skip') res = 'purge';
+          if (!g.members || !g.members[0] || !g.members[0].projectOk) return 0;
+          const isDup = !!(g.batchDuplicate || g.depotDuplicate);
+          if (isDup && res === 'purge') return 3; // purged → end
+          if (isDup) return 1;
+          return 2;
+        };
+        const d = score(a) - score(b);
+        if (d) return d;
+        const pa = String(a.reportPerson || a.assigneeUsername || '');
+        const pb = String(b.reportPerson || b.assigneeUsername || '');
+        if (pa !== pb) return pa.localeCompare(pb);
+        return String(a.name || '').localeCompare(String(b.name || ''));
+      });
+      groupsOrdered.forEach((g) => {
+        const el = document.createElement('div');
+        const kind = injectGroupKind(g);
+        const mapType = injectGroupMapType(g);
+        let cls = 'inject-group';
+        if (kind === 'unmapped') cls += ' is-bad';
+        else if (kind === 'depot') cls += ' is-depot';
+        else if (kind === 'batch') cls += ' is-dup';
+        let resCur = state.injectResolutions[g.key] || g.resolution || '';
+        if (resCur === 'merge' || resCur === 'skip') resCur = 'purge';
+        if (resCur === 'purge' && injectGroupCanChoose(g)) cls += ' is-purge';
+        if (resCur === 'split' && injectGroupCanChoose(g)) cls += ' is-split';
+        el.className = cls;
+        el.setAttribute('data-key', g.key);
+        const taskKind = injectGroupTaskKind(g);
+        el.dataset.kind = kind;
+        el.dataset.taskKind = taskKind;
+        el.dataset.mapType = mapType;
+        el.dataset.cross = g.crossDay ? '1' : '0';
+        el.dataset.person = g.reportPerson || g.assigneeDisplayName || g.assigneeUsername || '';
+        el.dataset.selectable = injectGroupSelectable(g) ? '1' : '0';
+        el.dataset.resolution = resCur || '';
+        el.dataset.search = [
+          g.name, g.projectName, g.projectCode, g.projectHint, g.assigneeUsername,
+          g.reportPerson, g.conflictTaskId, mapType, injectKindLabel(taskKind),
+          ...(g.reportDates || []),
+          ...(g.members || []).map((m) => m.raw || m.name),
+        ].filter(Boolean).join(' ').toLowerCase();
+        const badges = [];
+        if (mapType === 'unmapped') badges.push('<span class="chip badge-depot">unmapped</span>');
+        else if (mapType === 'remapped') badges.push('<span class="chip badge-dup">manual map</span>');
+        else badges.push('<span class="chip badge-ok">smart map</span>');
+        if (g.projectHint) {
+          badges.push('<span class="chip">paste: ' + escapeHtml(g.projectHint) + '</span>');
+        }
+        if (taskKind !== 'main') {
+          badges.push('<span class="chip kind">' + escapeHtml(injectKindLabel(taskKind)) + '</span>');
+        }
+        if (g.batchDuplicate) badges.push('<span class="chip badge-dup">duplicate ×' + g.members.length + '</span>');
+        if (g.crossDay) badges.push('<span class="chip badge-dup">cross-day</span>');
+        if (g.depotDuplicate) badges.push('<span class="chip badge-depot">already in system</span>');
+        if (resCur === 'purge' && injectGroupCanChoose(g)) {
+          badges.push(
+            '<span class="chip badge-purge">'
+            + (g.depotDuplicate ? 'PURGE · drop' : 'PURGE · keep one')
+            + '</span>'
+          );
+        } else if (resCur === 'split' && injectGroupCanChoose(g)) {
+          badges.push('<span class="chip badge-split">SPLIT</span>');
+        }
+        if (g.statusHint === 'Done') badges.push('<span class="chip">status:Done</span>');
+        else if (g.reviewHint === 'under_review') badges.push('<span class="chip">approval awaited</span>');
+        const who = g.reportPerson || g.assigneeDisplayName || g.assigneeUsername || '—';
+        el.innerHTML =
+          '<div class="inject-group-head"></div><div class="chips"></div><div class="raws"></div><div class="inject-res"></div>';
+        const head = el.querySelector('.inject-group-head');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.setAttribute('data-inj-sel', '1');
+        cb.setAttribute('aria-label', 'Select ' + (g.name || 'task'));
+        cb.checked = !!state.injectSelected[g.key];
+        cb.onchange = () => {
+          if (cb.checked) state.injectSelected[g.key] = true;
+          else delete state.injectSelected[g.key];
+          syncInjectSelectedMeta();
+        };
+        head.appendChild(cb);
+        const h4 = document.createElement('h4');
+        h4.textContent = (g.name || '(unnamed)') + ' · ' + who;
+        head.appendChild(h4);
+        el.querySelector('.chips').innerHTML = badges.join(' ');
+        const raws = el.querySelector('.raws');
+        const primary = (resCur === 'purge' && injectGroupCanChoose(g))
+          ? injectPickPrimary(g.members)
+          : null;
+        g.members.forEach((m) => {
+          const p = document.createElement('div');
+          const when = m.reportDate ? '[' + m.reportDate + '] ' : '';
+          const st = m.status && m.status !== 'Active' ? ' → ' + m.status : '';
+          const body = when + (m.raw || m.name) + st;
+          if (primary) {
+            const kept = primary && m.id === primary.id;
+            if (g.depotDuplicate) {
+              p.className = 'raw-line is-purged';
+              p.textContent = 'dropped (on master): ' + body;
+            } else if (kept) {
+              p.className = 'raw-line is-kept';
+              p.textContent = 'keep → ' + body;
+            } else {
+              p.className = 'raw-line is-purged';
+              p.textContent = 'dropped: ' + body;
+            }
+          } else {
+            p.className = 'raw-line';
+            p.textContent = body;
+          }
+          raws.appendChild(p);
+        });
+        const res = el.querySelector('.inject-res');
+        // Per-task project dropdown (master list)
+        const projLab = document.createElement('label');
+        projLab.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;width:100%;margin:0 0 .35rem';
+        projLab.appendChild(document.createTextNode('Project '));
+        const projSel = document.createElement('select');
+        projSel.setAttribute('aria-label', 'Map project for ' + (g.name || 'task'));
+        projSel.style.cssText = 'width:auto;min-width:12rem;margin:0';
+        const memberIds = injectGroupMemberIds(g);
+        const itemCode = memberIds.map((id) => state.injectItemProjects[id]).find(Boolean) || '';
+        projSel.innerHTML = injectMasterProjectOptions(itemCode || g.projectCode || '');
+        if (!itemCode && !g.projectCode) projSel.value = '';
+        else if (itemCode) projSel.value = itemCode;
+        else projSel.value = g.projectCode || '';
+        projSel.onchange = () => {
+          setInjectItemProjectForGroup(g, projSel.value);
+          runInjectPreview().catch((e) => alert(e.message));
+        };
+        projLab.appendChild(projSel);
+        const mapTip = document.createElement('span');
+        mapTip.className = 'muted';
+        mapTip.textContent =
+          mapType === 'unmapped' ? 'pick from master list'
+          : mapType === 'remapped' ? 'manual'
+          : 'smart → ' + (g.projectName || g.projectCode);
+        projLab.appendChild(mapTip);
+        res.appendChild(projLab);
+
+        // Per-task kind (default Normal)
+        const kindLab = document.createElement('label');
+        kindLab.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;width:100%;margin:0 0 .35rem';
+        kindLab.appendChild(document.createTextNode('Kind '));
+        const kindSel = document.createElement('select');
+        kindSel.setAttribute('aria-label', 'Kind for ' + (g.name || 'task'));
+        kindSel.style.cssText = 'width:auto;min-width:7rem;margin:0';
+        kindSel.innerHTML = injectKindOptionsHtml(taskKind);
+        kindSel.value = taskKind === 'pseudo' || taskKind === 'routine' ? taskKind : 'main';
+        kindSel.onchange = () => {
+          setInjectItemKindForGroup(g, kindSel.value);
+          runInjectPreview().catch((e) => alert(e.message));
+        };
+        kindLab.appendChild(kindSel);
+        res.appendChild(kindLab);
+
+        if (injectGroupCanChoose(g)) {
+          let cur = state.injectResolutions[g.key] || g.resolution || 'purge';
+          if (cur === 'merge' || cur === 'skip') cur = 'purge';
+          const purgeLabel = g.depotDuplicate
+            ? 'Purge (already on master)'
+            : 'Purge (keep one)';
+          const radioName = 'inj-' + encodeURIComponent(g.key);
+          [['purge', purgeLabel], ['split', 'Split']].forEach(([val, label]) => {
+            const lab = document.createElement('label');
+            const inp = document.createElement('input');
+            inp.type = 'radio';
+            inp.name = radioName;
+            inp.value = val;
+            inp.checked = cur === val;
+            inp.onchange = () => {
+              state.injectResolutions[g.key] = val;
+              runInjectPreview().catch((e) => alert(e.message));
+            };
+            lab.appendChild(inp);
+            lab.appendChild(document.createTextNode(' ' + label));
+            res.appendChild(lab);
+          });
+          if (g.conflictTaskId) {
+            const tip = document.createElement('div');
+            tip.className = 'raw-line';
+            tip.textContent = 'Already on master as Task ID ' + g.conflictTaskId;
+            res.appendChild(tip);
+          }
+        } else if (kind !== 'unmapped') {
+          const tip = document.createElement('span');
+          tip.className = 'muted';
+          tip.textContent = 'Ready to inject';
+          res.appendChild(tip);
+        }
+        box.appendChild(el);
+      });
+      applyInjectFilter();
+      row.hidden = !(s.inject > 0);
+      const strayN = (plan.projectMap && plan.projectMap.strayCount) || 0;
+      const flash = $('injectFlash');
+      if (!flash || flash.hidden) {
+        $('injectCommitMeta').textContent = s.inject + ' task(s) will be birthed via middleware'
+          + (strayN ? ' · ' + strayN + ' unmapped still held — map Project (row or Apply to selected)' : '');
+    }
+    }
+
+    async function runInjectPreview() {
+      if (state.view !== 'inject') {
+        switchView('inject');
+      }
+      if (!state.projects || !state.projects.length) {
+        try { state.projects = (await api('GET', '/api/projects')).projects || []; } catch (_) { /* */ }
+      }
+      const text = $('injectText').value || '';
+      if (!String(text).trim()) {
+        alert('Paste bulk text in the Inject tab first.');
+        return;
+      }
+      collectInjectSelectedKeys();
+      const plan = await api('POST', '/api/inject/preview', {
+        text,
+        defaultAssigneeUsername: $('injectAssignee').value || '',
+        resolutions: state.injectResolutions,
+        projectOverrides: state.injectProjectOverrides,
+        itemProjectOverrides: state.injectItemProjects,
+        itemKindOverrides: state.injectItemKinds,
+      });
+      renderInjectPlan(plan);
+    }
+
+    async function runInjectCommit() {
+      const s = (state.injectPlan && state.injectPlan.summary) || {};
+      const strayN = (state.injectPlan && state.injectPlan.projectMap && state.injectPlan.projectMap.strayCount) || 0;
+      let msg = 'Inject ' + (s.inject || 0) + ' task(s) through middleware birth?';
+      if (strayN) {
+        msg += '\n\n' + strayN + ' unmapped task(s) will stay out. Map Project on the row or via Apply to selected first.';
+      }
+      if (!confirm(msg)) return;
+      const result = await api('POST', '/api/inject', {
+        text: $('injectText').value || '',
+        defaultAssigneeUsername: $('injectAssignee').value || '',
+        resolutions: state.injectResolutions,
+        projectOverrides: state.injectProjectOverrides,
+        itemProjectOverrides: state.injectItemProjects,
+        itemKindOverrides: state.injectItemKinds,
+      });
+      const pre = $('injectResult');
+      pre.hidden = false;
+      pre.textContent = JSON.stringify(result, null, 2);
+      $('injectCommitMeta').textContent =
+        'Done: ' + result.injected + ' injected, ' + result.skipped + ' purged, ' + result.failed + ' failed';
+      state.injectSelected = {};
+      await runInjectPreview().catch(() => {});
     }
 
     /**
@@ -4472,6 +5371,56 @@
       });
     })();
     $('logRefresh').onclick = () => refreshLogs().catch((e) => alert(e.message));
+    if ($('injectPreview')) {
+      $('injectPreview').onclick = () => {
+        if (state.view !== 'inject') switchView('inject');
+        state.injectSelected = {};
+        state.injectResolutions = {};
+        flashInject('');
+        runInjectPreview().catch((e) => alert(e.message));
+      };
+      $('injectClear').onclick = () => {
+        $('injectText').value = '';
+        state.injectResolutions = {};
+        state.injectSelected = {};
+        state.injectProjectOverrides = {};
+        state.injectItemProjects = {};
+        state.injectItemKinds = {};
+        flashInject('');
+        if ($('injectFilter')) $('injectFilter').value = 'all';
+        if ($('injectFilterPerson')) $('injectFilterPerson').value = '';
+        if ($('injectFilterQ')) $('injectFilterQ').value = '';
+        if ($('injectBulkKind')) $('injectBulkKind').value = 'main';
+        if ($('injectBulkDupAction')) $('injectBulkDupAction').value = '';
+        if ($('injectBulkProject')) $('injectBulkProject').value = '';
+        if ($('injectSelectAll')) {
+          $('injectSelectAll').checked = false;
+          $('injectSelectAll').indeterminate = false;
+        }
+        renderInjectPlan(null);
+      };
+      $('injectCommit').onclick = () => runInjectCommit().catch((e) => alert(e.message));
+      if ($('injectFilter')) $('injectFilter').onchange = () => applyInjectFilter();
+      if ($('injectFilterPerson')) $('injectFilterPerson').onchange = () => applyInjectFilter();
+      if ($('injectFilterQ')) {
+        $('injectFilterQ').oninput = () => applyInjectFilter();
+      }
+      if ($('injectSelectAll')) {
+        $('injectSelectAll').onchange = () => setInjectSelectionInFilter($('injectSelectAll').checked);
+      }
+      const bulkBar = $('injectBulkBar');
+      if (bulkBar && !bulkBar.dataset.bound) {
+        bulkBar.dataset.bound = '1';
+        bulkBar.addEventListener('click', (e) => {
+          const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+          if (!btn || !bulkBar.contains(btn)) return;
+          e.preventDefault();
+          if (btn.id === 'injectBulkApply') applyInjectToSelected();
+          else if (btn.id === 'injectBulkPurgeAll') applyInjectBulkResolution('purge', { all: true });
+          else if (btn.id === 'injectClearSelection') clearInjectSelection();
+        });
+      }
+    }
     $('journeyFetch').onclick = async () => {
       const ref = ($('journeyRef').value || '').trim();
       if (!ref) { alert('Enter a task ref'); return; }

@@ -130,11 +130,30 @@ function normalizeSheetTaskRow(input, extras) {
 }
 
 /**
- * admin / projects tab → { code, name }
- * Supports schema A=code B=name and ts-2 A=name B=baseCode.
+ * admin / Projects tab → { code, name, … }
+ * Live master: Project · BaseCode · Edition · ProjectCode · Dropdown Label ·
+ * Pseudo Name · Task Prefix · Active (data from row 11).
+ * Also supports legacy A=code B=name and A=name B=baseCode.
  */
 function normalizeSheetProjectRow(input) {
   if (Array.isArray(input)) {
+    const projectCode = cell(input, 3);
+    const dropdown = cell(input, 4);
+    const project = cell(input, 0);
+    const base = cell(input, 1);
+    const pseudo = cell(input, 5);
+    const active = cell(input, 7);
+    if (/^[A-Za-z0-9]{6}$/.test(projectCode) && (dropdown || project)) {
+      if (active && !/^yes$/i.test(active)) return null;
+      const out = {
+        code: projectCode.toUpperCase(),
+        name: dropdown || project,
+      };
+      if (base) out.base = base;
+      if (dropdown) out.label = dropdown;
+      if (pseudo) out.pseudoName = pseudo;
+      return out;
+    }
     const a = cell(input, 0);
     const b = cell(input, 1);
     if (!a) return null;
@@ -146,10 +165,30 @@ function normalizeSheetProjectRow(input) {
     }
     return null;
   }
-  const code = String((input && (input.code || input.base)) || '').trim();
-  const name = String((input && (input.name || input.projectName)) || '').trim();
+  const active = input && input.active;
+  if (active === false) return null;
+  if (typeof active === 'string' && active.trim() && !/^yes$/i.test(active)) return null;
+  const code = String(
+    (input && (input.code || input.projectCode || input.base)) || ''
+  ).trim();
+  const name = String(
+    (input &&
+      (input.name ||
+        input.label ||
+        input.dropdownLabel ||
+        input.projectName)) ||
+      ''
+  ).trim();
   if (!code || !/^[A-Za-z0-9]{6}$/.test(code) || !name) return null;
-  return { code: code.toUpperCase(), name };
+  const out = { code: code.toUpperCase(), name };
+  if (input.base) out.base = String(input.base).trim();
+  if (input.label || input.dropdownLabel) {
+    out.label = String(input.label || input.dropdownLabel).trim();
+  }
+  if (input.pseudoName || input.pseudo) {
+    out.pseudoName = String(input.pseudoName || input.pseudo).trim();
+  }
+  return out;
 }
 
 /**

@@ -12,6 +12,7 @@ const logs = require('./logs');
 const queue = require('./queue');
 const dropdown = require('./dropdown');
 const reports = require('./reports');
+const inject = require('./inject');
 
 function buildRouter(_deps) {
   const router = createRouter();
@@ -21,6 +22,7 @@ function buildRouter(_deps) {
   auth.register(router, _deps);
   bulk.register(router, _deps); // before /api/tasks/:id
   queue.register(router, _deps);
+  inject.register(router, _deps);
   tasks.register(router, _deps);
   projects.register(router, _deps);
   users.register(router, _deps);

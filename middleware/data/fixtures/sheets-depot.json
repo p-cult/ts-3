@@ -47,6 +47,30 @@
       "profile": 4,
       "employeeId": "0001",
       "userSheet": "user-vinod"
+    },
+    {
+      "username": "ashwin",
+      "password": "ashwin",
+      "displayName": "Ashwin",
+      "profile": 2,
+      "employeeId": "3107",
+      "userSheet": "user-ashwin"
+    },
+    {
+      "username": "aishwarya",
+      "password": "aishwarya",
+      "displayName": "Aishwarya",
+      "profile": 2,
+      "employeeId": "3108",
+      "userSheet": "user-aishwarya"
+    },
+    {
+      "username": "jois",
+      "password": "jois",
+      "displayName": "Jois",
+      "profile": 2,
+      "employeeId": "3109",
+      "userSheet": "user-jois"
     }
   ],
   "projects": [
@@ -57,6 +81,124 @@
     {
       "code": "PRJ002",
       "name": "Other Project"
+    },
+    {
+      "code": "PRPA10",
+      "name": "Parampara 10",
+      "base": "prpa",
+      "label": "Parampara 10"
+    },
+    {
+      "code": "PRPA09",
+      "name": "Parampara 9",
+      "base": "prpa",
+      "label": "Parampara 9"
+    },
+    {
+      "code": "VHRA14",
+      "name": "Vihaara 14",
+      "base": "vhra",
+      "label": "Vihaara 14"
+    },
+    {
+      "code": "KLSM06",
+      "name": "Kala Samvaada",
+      "base": "klsm",
+      "label": "Kala Samvaada"
+    },
+    {
+      "code": "TNTR06",
+      "name": "Tantra 6",
+      "base": "tntr",
+      "label": "Tantra 6"
+    },
+    {
+      "code": "GRNT01",
+      "name": "Grant 1",
+      "base": "grnt",
+      "label": "Grant 1",
+      "pseudoName": "Production Grant 26"
+    },
+    {
+      "code": "COLB06",
+      "name": "Collaborations 6",
+      "base": "colb",
+      "label": "Collaborations 6",
+      "pseudoName": "RaSam'26"
+    },
+    {
+      "code": "BYTE00",
+      "name": "Bytes",
+      "base": "byte",
+      "label": "Bytes",
+      "pseudoName": "Bytes 2026"
+    },
+    {
+      "code": "LIRR03",
+      "name": "Life Art Archival",
+      "base": "lirr",
+      "label": "Life Art Archival"
+    },
+    {
+      "code": "EXBT01",
+      "name": "Exhibition 1",
+      "base": "exbt",
+      "label": "Exhibition 1"
+    },
+    {
+      "code": "ARPT26",
+      "name": "Annual Report 2",
+      "base": "arpt",
+      "label": "Annual Report 2"
+    },
+    {
+      "code": "OTHR01",
+      "name": "Other 1",
+      "base": "othr",
+      "label": "Other 1",
+      "pseudoName": "Regular"
+    },
+    {
+      "code": "COLB07",
+      "name": "Collaborations 7",
+      "base": "colb",
+      "label": "Collaborations 7",
+      "pseudoName": "Bali in Blr"
+    },
+    {
+      "code": "FMDZ07",
+      "name": "Workshop 7",
+      "base": "fmdz",
+      "label": "Workshop 7",
+      "pseudoName": "Foundation"
+    },
+    {
+      "code": "DTOD00",
+      "name": "No task",
+      "base": "dtod",
+      "label": "No task",
+      "pseudoName": "just log"
+    },
+    {
+      "code": "CEDT00",
+      "name": "Cult Edits+",
+      "base": "cedt",
+      "label": "Cult Edits+",
+      "pseudoName": "Cult Video & Design"
+    },
+    {
+      "code": "BJMN09",
+      "name": "Collaborations 9",
+      "base": "bjmn",
+      "label": "Collaborations 9",
+      "pseudoName": "Baja Mana"
+    },
+    {
+      "code": "PCSM00",
+      "name": "Social Media",
+      "base": "pcsm",
+      "label": "Social Media",
+      "pseudoName": "Social Media"
     }
   ],
   "tasks": [
@@ -139,6 +281,95 @@
       "kind": "main",
       "createdAt": "2026-08-01T00:00:00.000Z",
       "updatedAt": "2026-08-01T00:00:00.000Z"
+    },
+    {
+      "taskId": "CEDT003107A01",
+      "projectName": "Cult Edits+",
+      "name": "Rasam promo",
+      "description": "Promo edit — submitted for review",
+      "notes": "Ashwin | 31 Jul — done (on review)",
+      "status": "Active",
+      "priority": "normal",
+      "link": "https://drive.example/rasam-promo",
+      "linkVersion": 1,
+      "reviewState": "under_review",
+      "startDate": "31-Jul | 10:00",
+      "endDate": "31-Jul | 18:00",
+      "assigneeUsername": "ashwin",
+      "userSheet": "user-ashwin",
+      "kind": "main",
+      "createdAt": "2026-07-31T10:00:00.000Z",
+      "updatedAt": "2026-07-31T16:00:00.000Z"
+    },
+    {
+      "taskId": "CEDT003107A02",
+      "projectName": "Cult Edits+",
+      "name": "Bhajamana vidyabhushan invite reel",
+      "description": "Invite reel — submitted for review",
+      "notes": "Ashwin | 31 Jul — done (on review)",
+      "status": "Active",
+      "priority": "normal",
+      "link": "https://drive.example/bhajamana-invite",
+      "linkVersion": 1,
+      "reviewState": "under_review",
+      "startDate": "31-Jul | 10:00",
+      "endDate": "31-Jul | 18:00",
+      "assigneeUsername": "ashwin",
+      "userSheet": "user-ashwin",
+      "kind": "main",
+      "createdAt": "2026-07-31T10:05:00.000Z",
+      "updatedAt": "2026-07-31T16:05:00.000Z"
+    },
+    {
+      "taskId": "CEDT003107A03",
+      "projectName": "Cult Edits+",
+      "name": "Life art archival — Ganesh Bhat (finding resource)",
+      "description": "Archival Ganesh Bhat — finding resource to add",
+      "notes": "Ashwin | 31 Jul — on going",
+      "status": "Active",
+      "priority": "normal",
+      "reviewState": "none",
+      "startDate": "31-Jul | 10:00",
+      "endDate": "",
+      "assigneeUsername": "ashwin",
+      "userSheet": "user-ashwin",
+      "kind": "main",
+      "createdAt": "2026-07-31T10:10:00.000Z",
+      "updatedAt": "2026-07-31T17:00:00.000Z"
+    },
+    {
+      "taskId": "PCSM003107A01",
+      "projectName": "Social Media",
+      "name": "Recent edit project files backup",
+      "description": "Backup of recent edit project files",
+      "notes": "Ashwin | 31 Jul — done\n⟦TASK_APPROVED⟧",
+      "status": "Done",
+      "priority": "normal",
+      "reviewState": "none",
+      "startDate": "31-Jul | 11:00",
+      "endDate": "31-Jul | 15:00",
+      "assigneeUsername": "ashwin",
+      "userSheet": "user-ashwin",
+      "kind": "main",
+      "createdAt": "2026-07-31T11:00:00.000Z",
+      "updatedAt": "2026-07-31T15:00:00.000Z"
+    },
+    {
+      "taskId": "OTHR013107A01",
+      "projectName": "Other 1",
+      "name": "Photos of team members given to HR",
+      "description": "Handed team member photos to HR",
+      "notes": "Ashwin | 31 Jul — done\n⟦TASK_APPROVED⟧",
+      "status": "Done",
+      "priority": "low",
+      "reviewState": "none",
+      "startDate": "31-Jul | 12:00",
+      "endDate": "31-Jul | 14:00",
+      "assigneeUsername": "ashwin",
+      "userSheet": "user-ashwin",
+      "kind": "main",
+      "createdAt": "2026-07-31T12:00:00.000Z",
+      "updatedAt": "2026-07-31T14:00:00.000Z"
     }
   ]
 }

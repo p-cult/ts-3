@@ -18,6 +18,7 @@ const {
   sessionTokenFromRequest,
   csrfFromRequest,
   readBearer,
+  readCookie,
 } = require('./auth/sessions');
 const { permissionsFor, roleCode } = require('./domain/roles');
 const { PROFILE } = require('./domain/profiles');
@@ -39,8 +40,13 @@ function applyCors(req, res, config) {
 }
 
 function attachActor(ctx, app) {
-  const token = sessionTokenFromRequest(ctx.req);
-  const session = token && app.sessions ? app.sessions.get(token) : null;
+  const bearer = readBearer(ctx.req);
+  const cookieTok = readCookie(ctx.req, 'ts3_session');
+  // Prefer a *valid* Bearer; if localStorage is stale after a restart, fall back
+  // to the HttpOnly cookie instead of treating the request as anonymous.
+  let session = null;
+  if (bearer && app.sessions) session = app.sessions.get(bearer);
+  if (!session && cookieTok && app.sessions) session = app.sessions.get(cookieTok);
   if (session) {
     const profile = session.profile;
     ctx.setActor(
@@ -82,8 +88,9 @@ function assertCsrfIfNeeded(ctx) {
   // login is bootstrap
   if (ctx.pathname === '/api/login') return;
 
-  // Bearer-only clients are CSRF-safe
-  if (readBearer(ctx.req)) return;
+  // Valid Bearer (matches live session) → CSRF-safe. Stale Bearer alone does not skip CSRF.
+  const bearer = readBearer(ctx.req);
+  if (bearer && ctx.session && ctx.session.token === bearer) return;
 
   // Anonymous writes: no CSRF cookie yet
   if (!ctx.actor.authenticated) return;

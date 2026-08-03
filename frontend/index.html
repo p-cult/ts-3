@@ -753,6 +753,40 @@
       } catch (e) {}
     }
 
+    function promptSignIn(msg) {
+      try {
+        if ($('whoLine')) { $('whoLine').textContent = ''; $('whoLine').hidden = true; }
+        if ($('btnLogin')) $('btnLogin').hidden = false;
+        if ($('btnLogout')) $('btnLogout').hidden = true;
+        if ($('loginErr')) $('loginErr').textContent = msg || 'Please sign in again.';
+        if ($('loginDlg') && typeof $('loginDlg').showModal === 'function') {
+          $('loginDlg').showModal();
+        }
+      } catch (_) { /* */ }
+    }
+
+    /** Confirm server still knows us before create / stages / edit writes. */
+    async function ensureSignedIn() {
+      if (!state.me) {
+        promptSignIn('Please sign in to continue.');
+        throw new Error('Please sign in to continue.');
+      }
+      const m = await api('GET', '/api/me');
+      if (!m || !m.user) {
+        setAuth(null, null);
+        state.me = null;
+        state.permissions = null;
+        promptSignIn('Session expired — please sign in again.');
+        throw new Error('Session expired — please sign in again.');
+      }
+      state.me = m.user;
+      state.permissions = m.permissions;
+      if (m.token || m.csrfToken) {
+        setAuth(m.token || getToken(), m.csrfToken || getCsrf());
+      }
+      return m;
+    }
+
     async function api(method, path, body) {
       const headers = { Accept: 'application/json' };
       const tok = getToken();
@@ -761,29 +795,24 @@
       if (method !== 'GET' && method !== 'HEAD' && path !== '/api/login') {
         const c = getCsrf(); if (c) headers['X-CSRF-Token'] = c;
       }
-      const res = await fetch(path, { method, headers, credentials: 'same-origin', body: body !== undefined ? JSON.stringify(body) : undefined });
+      // Same-origin on Render sends HttpOnly session cookie as backup auth.
+      const res = await fetch(path, {
+        method,
+        headers,
+        credentials: 'same-origin',
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
       let data = null;
       try { data = await res.json(); } catch (e) {}
       if (!res.ok) {
         const msg = (data && data.error && data.error.message) || res.statusText;
-        // Stale Bearer after server restart — clear UI auth and ask to sign in again.
         if (res.status === 401 && path !== '/api/login' && path !== '/api/logout') {
           setAuth(null, null);
           state.me = null;
           state.permissions = null;
-          try {
-            if ($('whoLine')) { $('whoLine').textContent = ''; $('whoLine').hidden = true; }
-            if ($('btnLogin')) $('btnLogin').hidden = false;
-            if ($('btnLogout')) $('btnLogout').hidden = true;
-            if ($('loginErr')) {
-              $('loginErr').textContent = /sign in/i.test(msg)
-                ? 'Session expired — please sign in again.'
-                : msg;
-            }
-            if ($('loginDlg') && typeof $('loginDlg').showModal === 'function') {
-              $('loginDlg').showModal();
-            }
-          } catch (_) { /* */ }
+          promptSignIn(/sign in/i.test(msg)
+            ? 'Session expired — please sign in again.'
+            : msg);
         }
         const err = new Error(msg);
         err.status = res.status; throw err;
@@ -3082,9 +3111,13 @@
     async function refreshMe() {
       const m = await api('GET', '/api/me');
       state.me = m.user; state.permissions = m.permissions;
-      // Token in storage but server says anonymous → stale session (pre-signed era / expired)
+      // Token in storage but server says anonymous → stale session
       if (!m.user && getToken()) {
         setAuth(null, null);
+      }
+      // Cookie auth worked — restore Bearer/CSRF into localStorage for later writes
+      if (m.user && (m.token || m.csrfToken)) {
+        setAuth(m.token || getToken(), m.csrfToken || getCsrf());
       }
       if (m.user) {
         $('whoLine').textContent = m.user.displayName || m.user.username || '';
@@ -3603,6 +3636,7 @@
       }
 
       try {
+        await ensureSignedIn();
         if (dummyStagesAllowed(card)) {
           const stageCheck = parseStageTokensClient(dq(card, '[data-f="stages"]').value);
           if (!stageCheck.ok) {
@@ -5005,6 +5039,7 @@
             if (!id) return;
             if (errEl) errEl.textContent = '';
             try {
+              await ensureSignedIn();
               await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
                 text: toks.join(' '),
                 currentIndex: pos,
@@ -5027,6 +5062,7 @@
           if (!id) return;
           if (errEl) errEl.textContent = '';
           try {
+            await ensureSignedIn();
             await api('PATCH', '/api/tasks/' + encodeURIComponent(id) + '/stages', {
               text: toks.join(' '), currentIndex: 0,
             });
@@ -5944,6 +5980,7 @@
       const restrictedMode = isRestrictedKindVal(origKind) || isRestrictedKindVal(liveKind);
       setUpdating(true);
       try {
+        await ensureSignedIn();
         if (restrictedMode) {
           const st = statusPayloadFromSel(stSel, taskRow);
           if (role() === 'P2' && !st) {

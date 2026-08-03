@@ -25,6 +25,10 @@ function createGetMe() {
           profile: actor.profile,
           userSheet: actor.userSheet,
         },
+        // Heal browser localStorage when HttpOnly cookie authenticated the request
+        // but Bearer in localStorage was missing/stale after a server restart.
+        token: actor.token || undefined,
+        csrfToken: actor.csrfToken || undefined,
         role: actor.role || roleCode(actor.profile),
         profile: actor.profile,
         permissions: actor.permissions || permissionsFor(actor.profile),

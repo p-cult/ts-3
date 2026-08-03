@@ -5,7 +5,7 @@
  * Login issues a signed Bearer token (body + optional cookie + X-Session-Token).
  */
 
-const { SESSION_TTL_MS } = require('../auth/sessions');
+const { SESSION_TTL_MS } = require('../../auth/sessions');
 
 function sessionCookie(token, { clear, secure } = {}) {
   const maxAge = clear ? 0 : Math.floor(SESSION_TTL_MS / 1000);

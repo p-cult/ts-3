@@ -765,7 +765,27 @@
       let data = null;
       try { data = await res.json(); } catch (e) {}
       if (!res.ok) {
-        const err = new Error((data && data.error && data.error.message) || res.statusText);
+        const msg = (data && data.error && data.error.message) || res.statusText;
+        // Stale Bearer after server restart — clear UI auth and ask to sign in again.
+        if (res.status === 401 && path !== '/api/login' && path !== '/api/logout') {
+          setAuth(null, null);
+          state.me = null;
+          state.permissions = null;
+          try {
+            if ($('whoLine')) { $('whoLine').textContent = ''; $('whoLine').hidden = true; }
+            if ($('btnLogin')) $('btnLogin').hidden = false;
+            if ($('btnLogout')) $('btnLogout').hidden = true;
+            if ($('loginErr')) {
+              $('loginErr').textContent = /sign in/i.test(msg)
+                ? 'Session expired — please sign in again.'
+                : msg;
+            }
+            if ($('loginDlg') && typeof $('loginDlg').showModal === 'function') {
+              $('loginDlg').showModal();
+            }
+          } catch (_) { /* */ }
+        }
+        const err = new Error(msg);
         err.status = res.status; throw err;
       }
       return data;
@@ -3062,6 +3082,10 @@
     async function refreshMe() {
       const m = await api('GET', '/api/me');
       state.me = m.user; state.permissions = m.permissions;
+      // Token in storage but server says anonymous → stale session (pre-signed era / expired)
+      if (!m.user && getToken()) {
+        setAuth(null, null);
+      }
       if (m.user) {
         $('whoLine').textContent = m.user.displayName || m.user.username || '';
         $('whoLine').hidden = !$('whoLine').textContent;

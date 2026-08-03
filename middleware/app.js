@@ -36,7 +36,9 @@ function createApp(overrides = {}) {
   }
 
   const data = createDataAccess({ config, log: appLog });
-  const sessions = createSessionStore();
+  const sessions = createSessionStore({
+    secret: config.sessionSecret || process.env.SESSION_SECRET || '',
+  });
   const useCases = createUseCases({
     config,
     data,

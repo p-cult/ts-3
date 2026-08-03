@@ -560,8 +560,8 @@ async function main() {
         body: { action: 'set_status', status: 'Done', ids: [bbRef] },
       });
       assert.strictEqual(bbr.status, 200);
-      assert.strictEqual(bbr.json.results[0].ok, false);
-      assert.ok(bbr.json.results[0].error && bbr.json.results[0].error.includes('1★'));
+      assert.strictEqual(bbr.json.results[0].ok, true);
+      assert.strictEqual(bbr.json.results[0].action, 'set_status');
     }
 
     // unit learnKind

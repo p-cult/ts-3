@@ -191,17 +191,29 @@ function firstEmptyRow(values) {
  */
 function createThinMasterApi(deps) {
   const call = deps.call;
-  const masterId = String(deps.masterId || '');
+  const masterId = String(deps.masterId || '').trim();
   const log = deps.log || { debug() {}, warn() {} };
 
   if (!masterId) {
     throw new Error('thin bridge needs masterSheetId / MASTER_ID');
   }
 
+  /**
+   * Master reads/writes must omit spreadsheetId — the live thin Apps Script
+   * uses its hardcoded MASTER_ID (always allowlisted). Sending Render's
+   * MASTER_ID when it drifts (newline, typo, old id) yields:
+   * "sheet not in allowlist".
+   * User sheets still send spreadsheetId (must be on the script allowlist).
+   */
+  function withSheetId(payload, spreadsheetId) {
+    const sid = String(spreadsheetId || '').trim();
+    if (sid && sid !== masterId) {
+      return { ...payload, spreadsheetId: sid };
+    }
+    return { ...payload };
+  }
+
   async function readTab(tab, range) {
-    // Omit spreadsheetId for Master tabs. The live thin Apps Script defaults to
-    // its hardcoded MASTER_ID (always allowlisted). Sending a mismatched
-    // Render MASTER_ID env caused production: "sheet not in allowlist".
     const payload = { action: 'read', tab };
     if (range) payload.range = range;
     const r = await call(payload.action, payload);
@@ -236,12 +248,10 @@ function createThinMasterApi(deps) {
   }
 
   async function writeTab(spreadsheetId, tab, range, values) {
-    return call('write', {
-      spreadsheetId: spreadsheetId || masterId,
-      tab,
-      range,
-      values,
-    });
+    return call(
+      'write',
+      withSheetId({ tab, range, values }, spreadsheetId)
+    );
   }
 
   async function getDepot() {
@@ -313,11 +323,13 @@ function createThinMasterApi(deps) {
   }
 
   async function readColA(spreadsheetId, tab) {
-    const r = await call('read', {
-      spreadsheetId: spreadsheetId || masterId,
-      tab,
-      range: 'A' + DATA_ROW + ':A',
-    });
+    const r = await call(
+      'read',
+      withSheetId(
+        { tab, range: 'A' + DATA_ROW + ':A' },
+        spreadsheetId
+      )
+    );
     const data = (r && r.data) || r || {};
     return data.values || [];
   }
@@ -353,7 +365,21 @@ function createThinMasterApi(deps) {
     );
     // User sheets are A–K (no Assigned To / Journal / Classifier).
     const cells = taskRowToCells(row, { birth: !!(payload && payload.birth) }).slice(0, 11);
-    await writeTab(meta.sheetId, 'task', 'A' + n + ':K' + n, [cells]);
+    try {
+      await writeTab(meta.sheetId, 'task', 'A' + n + ':K' + n, [cells]);
+    } catch (err) {
+      const msg = String((err && err.message) || err);
+      if (/allowlist/i.test(msg)) {
+        throw new Error(
+          'Your sheet is not on the bridge allowlist ('
+            + meta.userSheet
+            + ' / '
+            + meta.sheetId
+            + '). Ask an admin to add this sheet ID to Apps Script ALLOWED_SHEETS.'
+        );
+      }
+      throw err;
+    }
     return { ok: true, data: { userSheet: meta.userSheet, userRow: n, sheetId: meta.sheetId } };
   }
 

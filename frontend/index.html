@@ -873,15 +873,14 @@
     }
 
     /**
-     * Done is allowed when every link is rated 2★ or 3★.
-     * Routine / pseudo / not_a_task: no link gate (logged kinds).
-     * Main/sub with no links → Done stays off.
+     * Formerly gated Done on 2★/3★ link ratings. Kept as a soft readiness
+     * signal for chips/hints only — status Done is always choosable for P2.
      */
     function taskAllLinksReadyForDone(t) {
       const k = taskKindKey(t);
       if (k === 'routine' || k === 'pseudo' || k === 'not_a_task') return true;
       const links = linksFromTask(t);
-      if (!links.length) return false;
+      if (!links.length) return true;
       return links.every((l) => {
         const r = latestRatingForUrl(t, l.url);
         const stars = r ? Number(r.stars) || 0 : 0;
@@ -914,7 +913,7 @@
     /**
      * Status choices by role (API values).
      * P2 locked when Done → [].
-     * P2 otherwise: Pause | Resume (when paused) | Done (when links ready).
+     * P2 otherwise: Pause | Resume (when paused) | Done (always available).
      * Admin: Draft | Active | Blocked | Pause | Done — never a second Active/Resume pair.
      */
     function statusChoicesForRole(t) {
@@ -922,7 +921,7 @@
         const cur = String((t && t.status) || '');
         if (cur === 'Done') return [];
         const out = cur === 'Pause' ? [STATUS_API_RESUME] : ['Pause'];
-        if (t && taskAllLinksReadyForDone(t)) out.push('Done');
+        out.push('Done');
         return out;
       }
       return ['Draft', 'Active', 'Blocked', 'Pause', 'Done'];
@@ -985,7 +984,7 @@
       if (cur === 'Done') return false; // cannot revoke Done
       if (uiStatus === 'Pause') return cur !== 'Pause';
       if (uiStatus === STATUS_API_RESUME) return cur === 'Pause';
-      if (uiStatus === 'Done') return !!(t && taskAllLinksReadyForDone(t));
+      if (uiStatus === 'Done') return true;
       return false;
     }
 
@@ -1001,15 +1000,8 @@
     function p2StatusPickHint(t) {
       const cur = String((t && t.status) || '');
       if (cur === 'Done') return 'Status is Done and locked.';
-      const doneOk = !!(t && taskAllLinksReadyForDone(t));
-      if (cur === 'Pause') {
-        return doneOk
-          ? 'Choose Active or Done.'
-          : 'Choose Active (Done needs every link at 2★ or 3★).';
-      }
-      return doneOk
-        ? 'Choose Pause or Done.'
-        : 'Choose Pause (Done needs every link at 2★ or 3★).';
+      if (cur === 'Pause') return 'Choose Active or Done.';
+      return 'Choose Pause or Done.';
     }
 
     /**
@@ -5951,11 +5943,6 @@
         } else {
           const body = {};
           if (stSel && !stSel.disabled) {
-            if (role() === 'P2' && stSel.value === 'Done' && !taskAllLinksReadyForDone(taskRow)) {
-              errEl.textContent = 'Done needs every link rated 2★ or 3★.';
-              setUpdating(false);
-              return;
-            }
             const st = statusPayloadFromSel(stSel, taskRow);
             if (st) body.status = st;
           }

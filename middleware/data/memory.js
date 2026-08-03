@@ -119,7 +119,11 @@ function createMemoryData(opts = {}) {
   }
 
   function findUser(username) {
-    const u = users.find((x) => x.username === username);
+    const want = String(username || '').trim().toLowerCase();
+    if (!want) return null;
+    const u = users.find(
+      (x) => String(x.username || '').trim().toLowerCase() === want
+    );
     return u ? clone(u) : null;
   }
 

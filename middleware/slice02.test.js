@@ -436,7 +436,7 @@ async function main() {
       assert.strictEqual(ndGet.json.task.reviewState, 'approved');
       assert.notStrictEqual(ndGet.json.task.status, 'Done');
 
-      // Test 2: P2 cannot set Done with 1★ (403)
+      // Test 2: P2 may set Done even with a 1★ rating (Done is always available)
       const badDoneTask = await request(port, 'POST', '/api/tasks', {
         token: usr.token,
         body: { projectCode: 'PRJ001', name: 'BadDone ' + Date.now(), link: 'https://ex.com/bad' }
@@ -454,7 +454,14 @@ async function main() {
         token: usr.token,
         body: { status: 'Done' }
       });
-      assert.strictEqual(badDonePatch.status, 403);
+      assert.strictEqual(badDonePatch.status, 200);
+      assert.strictEqual(badDonePatch.json.task.status, 'Done');
+
+      // Reset to Active via admin so Test 3 can re-approve files then Done again
+      await request(port, 'PATCH', '/api/tasks/' + bdRef, {
+        token: admin.token,
+        body: { status: 'Active' }
+      });
 
       // Test 3: after good ratings (no 1★), P2 can set Done and it appears in completed
       await request(port, 'POST', '/api/tasks/' + bdRef + '/review/submit', {

@@ -5,7 +5,7 @@ const { PROFILE } = require('../domain/profiles');
 const { canViewTask, toPublicTask } = require('../domain/tasks');
 const { guardDuplicate, normName } = require('../domain/identity');
 const { normalizeKind } = require('../domain/kinds');
-const { nextLinkVersion, hasDisqualifyingDoneRating } = require('../domain/review');
+const { nextLinkVersion } = require('../domain/review');
 const {
   unauthorized,
   forbidden,
@@ -67,22 +67,8 @@ function createUpdateTask({ data }) {
         throw badRequest('maximum 4 links allowed');
       }
 
-      // DONE GATE (non-admin): 1★ / unrated links — skip for routine/pseudo/not_a_task
-      if (patch.status === 'Done') {
-        const prof = normalizeProfile(actor.profile);
-        const kind = normalizeKind(row.kind);
-        const logged =
-          kind === 'routine' || kind === 'pseudo' || kind === 'not_a_task';
-        if (prof < PROFILE.SUPER_ADMIN && !logged) {
-          const reviews = data.getReviews(row.taskId) || [];
-          const last = reviews.length ? reviews[reviews.length - 1] : null;
-          const ratings = (last && last.ratings) || [];
-          const hasLink = !!(row.link && String(row.link).trim());
-          if (hasDisqualifyingDoneRating(ratings, hasLink)) {
-            throw new AppError('forbidden', 'cannot set status to Done while a 1★ rating exists or links are unrated', { status: 403 });
-          }
-        }
-      }
+      // Done is always allowed for signed-in users (approval is a separate step).
+      // Legacy link-rating gate removed — users must be able to mark Done by default.
 
       // projectCode change: denormalized only — Task ID atom unchanged (forbid for non-admin already)
       if (patch.projectCode) {

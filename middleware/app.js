@@ -37,7 +37,11 @@ function createApp(overrides = {}) {
 
   const data = createDataAccess({ config, log: appLog });
   const sessions = createSessionStore({
-    secret: config.sessionSecret || process.env.SESSION_SECRET || '',
+    // Must be stable across Render restarts — never empty in prod (bootstrap enforces).
+    secret:
+      config.sessionSecret
+      || process.env.SESSION_SECRET
+      || 'dev-ref-secret',
   });
   const useCases = createUseCases({
     config,

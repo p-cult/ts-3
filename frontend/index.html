@@ -787,7 +787,7 @@
       return m;
     }
 
-    async function api(method, path, body) {
+    async function api(method, path, body, opts) {
       const headers = { Accept: 'application/json' };
       const tok = getToken();
       if (tok) headers.Authorization = 'Bearer ' + tok;
@@ -795,13 +795,30 @@
       if (method !== 'GET' && method !== 'HEAD' && path !== '/api/login') {
         const c = getCsrf(); if (c) headers['X-CSRF-Token'] = c;
       }
-      // Same-origin on Render sends HttpOnly session cookie as backup auth.
-      const res = await fetch(path, {
-        method,
-        headers,
-        credentials: 'same-origin',
-        body: body !== undefined ? JSON.stringify(body) : undefined,
-      });
+      // Free Render sleeps when idle — cap waits so the board is not stuck on Loading forever.
+      const timeoutMs = opts && opts.timeoutMs != null ? Number(opts.timeoutMs) : 25000;
+      const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = ac && timeoutMs > 0 ? setTimeout(() => ac.abort(), timeoutMs) : null;
+      let res;
+      try {
+        // Same-origin on Render sends HttpOnly session cookie as backup auth.
+        res = await fetch(path, {
+          method,
+          headers,
+          credentials: 'same-origin',
+          body: body !== undefined ? JSON.stringify(body) : undefined,
+          signal: ac ? ac.signal : undefined,
+        });
+      } catch (e) {
+        if (timer) clearTimeout(timer);
+        if (e && e.name === 'AbortError') {
+          throw new Error(
+            'Server took too long — refresh once (free host may be waking from sleep).'
+          );
+        }
+        throw e;
+      }
+      if (timer) clearTimeout(timer);
       let data = null;
       try { data = await res.json(); } catch (e) {}
       if (!res.ok) {
@@ -1133,17 +1150,11 @@
     async function approveTaskCompletion(t) {
       if (!canApproveTaskCompletion(t)) throw new Error('Cannot approve this task');
       const ref = t.ref;
-      // Feedback persists ⟦TASK_APPROVED⟧ for durability (P3 path).
+      // Single path: feedback persists ⟦TASK_APPROVED⟧ and flushes Master+user sheet K=Approved.
+      // Do not follow with a notes PATCH — that raced a second outbox write and could demote.
       await api('POST', '/api/tasks/' + encodeURIComponent(ref) + '/review/feedback', {
         notes: TASK_APPROVED_MARK + ' Task completion approved.',
       });
-      // Do NOT PATCH status to Approved — there is no Approved status.
-      // P4 also PATCHes notes for list durability.
-      if (perms().editScope === 'all') {
-        await api('PATCH', '/api/tasks/' + encodeURIComponent(ref), {
-          notes: notesWithTaskApprovalMark(t.notes),
-        });
-      }
     }
 
     /** Fetch history/notes for Done tasks so approval markers are visible. */
@@ -2552,6 +2563,8 @@
      */
     function taskIsMyActionable(t) {
       if (!isAssignedToMe(t)) return false;
+      // Completion-approved is always Completed — never My Tasks.
+      if (isTaskCompletionApproved(t)) return false;
       if (taskNeedsAttention(t)) return true;
       if (String(t.status || '') === 'Done') return false;
       return taskIsHighPriority(t) || taskIsOverdue(t);
@@ -2946,7 +2959,11 @@
     /* —— Overview (ts-2 SummaryPanel) — counts from live sheet tasks via state.allTasks —— */
     function isLoggedEntry(t) {
       const k = taskKindKey(t);
-      return k === 'routine' || k === 'not_a_task';
+      if (k !== 'routine' && k !== 'not_a_task') return false;
+      // Done / completion-approved belong on Completed — never Logged or My Tasks.
+      if (String(t.status || '') === 'Done') return false;
+      if (isTaskCompletionApproved(t)) return false;
+      return true;
     }
     function isOverviewCompleted(t) {
       return String(t && t.status || '') === 'Done';
@@ -3191,30 +3208,47 @@
     }
 
     let refreshTasksSeq = 0;
+    let fullTasksInflight = null;
 
-    async function refreshTasks() {
+    async function refreshTasks(opts) {
       if (state.view === 'logs') return;
+      const lean = !!(opts && opts.lean);
       const seq = ++refreshTasksSeq;
-      const r = await api('GET', '/api/tasks' + (boardQuery() ? '?' + boardQuery() : ''));
+      // First paint: open work only. Full list (Completed / overview) follows in background.
+      const q = lean
+        ? 'board=active'
+        : (boardQuery() ? boardQuery() : '');
+      const r = await api('GET', '/api/tasks' + (q ? '?' + q : ''));
       if (seq !== refreshTasksSeq) return;
       let all = r.tasks || [];
-      // Enrich Done rows so “waiting approval” vs Approved chip is accurate for Needs attention badge.
-      await enrichDoneCompletionApprovals(all);
-      if (seq !== refreshTasksSeq) return;
+      if (!lean) {
+        // Enrich Done rows so “waiting approval” vs Approved chip is accurate for Needs attention badge.
+        await enrichDoneCompletionApprovals(all);
+        if (seq !== refreshTasksSeq) return;
+      }
       const loggedIn = !!state.me;
       let attentionCount = 0;
       let myCount = 0;
-      if (loggedIn) {
+      if (loggedIn && !lean) {
         for (let i = 0; i < all.length; i++) {
           const t = all[i];
           if (taskNeedsAttention(t)) attentionCount += 1;
           if (taskIsMyActionable(t)) myCount += 1;
         }
+        syncNeedsAttentionBadge(attentionCount);
+        syncMyTasksBadge(myCount);
       }
-      syncNeedsAttentionBadge(attentionCount);
-      syncMyTasksBadge(myCount);
       state.allTasks = all;
       paintTasksFromCache();
+      if (lean) scheduleFullTasksRefresh();
+    }
+
+    function scheduleFullTasksRefresh() {
+      if (fullTasksInflight) return fullTasksInflight;
+      fullTasksInflight = refreshTasks({ lean: false })
+        .catch(() => { /* board already painted */ })
+        .finally(() => { fullTasksInflight = null; });
+      return fullTasksInflight;
     }
 
     // —— Multiple collapsible dummy drafts (frontend-only until SUBMIT) ——
@@ -3998,8 +4032,17 @@
         hideSfSuggest();
         fillInjectAssignee().catch(() => {});
       } else if ((state.allTasks || []).length) {
-        // Instant tab switch from cache — network only on boot / mutations.
-        paintTasksFromCache();
+        // Instant tab switch from cache — if only lean/active was loaded, finish full list first.
+        const needsFull = v === 'completed' || v === 'needs' || v === 'mine';
+        const hasDone = (state.allTasks || []).some((t) => String(t.status || '') === 'Done');
+        if (needsFull && !hasDone) {
+          setBoardHint('Loading…');
+          scheduleFullTasksRefresh()
+            .then(() => { setBoardHint(''); paintTasksFromCache(); })
+            .catch((e) => setBoardHint(e.message || 'Load failed'));
+        } else {
+          paintTasksFromCache();
+        }
       } else {
         refreshTasks().catch((e) => { setBoardHint(e.message); });
       }
@@ -6591,21 +6634,32 @@
     }
 
     async function boot() {
+      setBoardHint('Loading…');
+      syncOverviewVisibility();
+      updateOverview();
+      const wakeHint = setTimeout(() => {
+        setBoardHint('Waking server… first open after idle can take ~30–60s on free hosting.');
+      }, 1800);
       try {
-        setBoardHint('Loading…');
-        syncOverviewVisibility();
-        updateOverview();
+        // Session + open board in parallel so a slow /api/users never blocks first paint.
         await Promise.all([
-          refreshMe(),
-          refreshProjects().catch(() => {}),
-          refreshUsers(),
+          refreshMe().catch(() => {}),
+          refreshTasks({ lean: true }),
         ]);
-        if (!state.me) clearAllDummies();
-        await refreshTasks();
+        clearTimeout(wakeHint);
         setBoardHint('');
-        // After first paint — hung health must not compete with boot requests.
+        if (!state.me) clearAllDummies();
+        // Secondary data — do not block the board.
+        Promise.all([
+          refreshProjects().catch(() => {}),
+          refreshUsers().catch(() => {}),
+          scheduleFullTasksRefresh(),
+        ]).catch(() => {});
         setTimeout(() => { syncStagingBanner(); }, 0);
-      } catch (err) { setBoardHint('Could not load: ' + err.message); }
+      } catch (err) {
+        clearTimeout(wakeHint);
+        setBoardHint('Could not load: ' + err.message);
+      }
     }
     boot();
   })();

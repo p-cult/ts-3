@@ -23,7 +23,10 @@ const {
   normalizeSheetProjectRow,
   normalizeSheetUserRow,
   toSheetWriteRow,
+  hasTaskApprovedMark,
+  ensureTaskApprovedMark,
 } = require('./sheet-row');
+const { normalizeStatus } = require('../domain/status');
 const {
   isMasterUserSheetKey,
   canonicalUserSheet,
@@ -70,11 +73,76 @@ function createSheetsData(opts = {}) {
   const outbox = opts.outbox || null;
   const outboxAwaitBirth = !!opts.outboxAwaitBirth;
   const log = opts.log || { info() {}, warn() {}, debug() {} };
+  const dataDir = opts.dataDir || path.join(__dirname, '..', '..', 'data');
+  const mirrorFile = path.join(dataDir, 'mirror-cache.json');
 
   const fixture = opts.fixture || loadFixture(opts.fixturePath);
   const inner = createMemoryData({ seed: fixture, refSecret });
   const source = useLiveBridge ? 'bridge+fixture' : 'fixture';
   let projectsSource = 'fixture';
+
+  function ensureDataDir() {
+    try {
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  /** Persist last-good mirror so Render cold starts can boot if Apps Script flaps. */
+  function saveMirrorCache() {
+    try {
+      ensureDataDir();
+      const state = inner._state;
+      const payload = {
+        savedAt: new Date().toISOString(),
+        users: (state.users || []).map((u) => ({ ...u })),
+        projects: (state.projects || []).map((p) => ({ ...p })),
+        tasks: (state.depot || []).map((t) => ({ ...t })),
+      };
+      fs.writeFileSync(mirrorFile, JSON.stringify(payload) + '\n', 'utf8');
+      return true;
+    } catch (err) {
+      log.warn('mirror cache save failed', { err: String(err && err.message) });
+      return false;
+    }
+  }
+
+  function loadMirrorCache() {
+    try {
+      if (!fs.existsSync(mirrorFile)) return { ok: false, reason: 'no mirror cache' };
+      const raw = JSON.parse(fs.readFileSync(mirrorFile, 'utf8'));
+      const users = Array.isArray(raw.users) ? raw.users : [];
+      const projects = Array.isArray(raw.projects) ? raw.projects : [];
+      const tasks = Array.isArray(raw.tasks) ? raw.tasks : [];
+      if (!tasks.length && !users.length) {
+        return { ok: false, reason: 'mirror cache empty' };
+      }
+      const state = inner._state;
+      state.users.length = 0;
+      users.forEach((u) => state.users.push(u));
+      state.projects.length = 0;
+      projects.forEach((p) => state.projects.push(p));
+      applyDepotRows(tasks, state.users);
+      projectsSource = 'mirror-cache';
+      log.info('loaded mirror cache', {
+        tasks: tasks.length,
+        users: users.length,
+        projects: projects.length,
+        savedAt: raw.savedAt || null,
+      });
+      return {
+        ok: true,
+        fromCache: true,
+        rows: tasks.length,
+        users: users.length,
+        projects: projects.length,
+        savedAt: raw.savedAt || null,
+      };
+    } catch (err) {
+      return { ok: false, reason: String(err && err.message ? err.message : err) };
+    }
+  }
 
   function assertMayWrite(op) {
     if (writerOfRecord !== 'ts3') {
@@ -285,13 +353,71 @@ function createSheetsData(opts = {}) {
   }
 
   /**
+   * Snapshot taskIds that are completion-approved in the live mirror or pending outbox.
+   * Used so a flaky bridge hydrate cannot demote Approved → open work.
+   */
+  function collectApprovedSnapshot() {
+    const map = new Map();
+    for (const t of inner.listDepot()) {
+      if (hasTaskApprovedMark(t.notes)) {
+        map.set(t.taskId, {
+          notes: t.notes,
+          status: 'Done',
+          userSheet: t.userSheet,
+        });
+      }
+    }
+    if (outbox && typeof outbox._all === 'function') {
+      for (const item of outbox._all()) {
+        if (!item || !item.row) continue;
+        if (item.status === 'synced' || item.status === 'dead') continue;
+        if (!hasTaskApprovedMark(item.row.notes)) continue;
+        map.set(item.taskId || item.row.taskId, {
+          notes: ensureTaskApprovedMark(item.row.notes),
+          status: 'Done',
+          userSheet: item.row.userSheet || item.userSheet,
+        });
+      }
+    }
+    return map;
+  }
+
+  /** Re-apply completion approval after depot replace (Master+mirror must stay Completed/Approved). */
+  function restoreApprovedSnapshot(prior) {
+    if (!prior || !prior.size) return 0;
+    const state = inner._state;
+    let restored = 0;
+    for (const t of state.depot) {
+      const snap = prior.get(t.taskId);
+      if (!snap) continue;
+      const already =
+        normalizeStatus(t.status) === 'Done' && hasTaskApprovedMark(t.notes);
+      if (already) continue;
+      t.status = 'Done';
+      t.notes = ensureTaskApprovedMark(snap.notes || t.notes);
+      restored += 1;
+      const sheet = t.userSheet || 'unknown';
+      if (state.vehicle[sheet]) {
+        const vi = state.vehicle[sheet].findIndex((x) => x.taskId === t.taskId);
+        if (vi >= 0) state.vehicle[sheet][vi] = JSON.parse(JSON.stringify(t));
+      }
+    }
+    if (restored) {
+      log.warn('restored completion-approved marks after hydrate', { restored });
+    }
+    return restored;
+  }
+
+  /**
    * Hydrate mirror from live bridge.
    * Successful empty depot clears fixture tasks (honest live truth).
    * Bridge failure keeps prior mirror and reports ok:false.
+   * Completion-approved rows are sticky across hydrate flaps.
    */
   async function refreshFromBridge() {
     if (!useLiveBridge) return { ok: false, reason: 'bridge off' };
     try {
+      const priorApproved = collectApprovedSnapshot();
       // Serialize Master reads — Apps Script chokes on parallel full-tab pulls.
       const usersRes = await bridge.getUsers().catch((err) => {
         log.warn('bridge getUsers failed', { err: String(err && err.message) });
@@ -313,6 +439,7 @@ function createSheetsData(opts = {}) {
         : { replaced: false, count: inner._state.projects.length };
 
       const depotApplied = applyDepotRows(rows, inner._state.users);
+      const restored = restoreApprovedSnapshot(priorApproved);
       if (!rows.length) {
         log.warn('bridge getDepot returned 0 rows — mirror depot cleared');
       }
@@ -321,13 +448,16 @@ function createSheetsData(opts = {}) {
         skipped: depotApplied.skipped,
         users: usersApplied.count,
         projects: projectsApplied.count,
+        restoredApproved: restored,
       });
+      saveMirrorCache();
       return {
         ok: true,
         rows: depotApplied.accepted,
         skipped: depotApplied.skipped,
         users: usersApplied.count,
         projects: projectsApplied.count,
+        restoredApproved: restored,
         keptFixture: false,
       };
     } catch (err) {
@@ -430,6 +560,45 @@ function createSheetsData(opts = {}) {
         return saved;
       });
     }
+    // Completion Approved must land on Master + user sheet before the API
+    // returns — otherwise free-tier restarts demote Approved back to open work.
+    if (
+      op === 'patch'
+      && hasTaskApprovedMark(saved && saved.notes)
+      && normalizeStatus(saved && saved.status) === 'Done'
+    ) {
+      return pushLivePatch(saved)
+        .then(() => {
+          saved.syncStatus = 'synced';
+          return saved;
+        })
+        .catch((err) => {
+          log.warn('completion-approve sheet flush failed — queueing retry', {
+            taskId: saved && saved.taskId,
+            err: String(err && err.message),
+          });
+          if (outbox && typeof outbox.enqueue === 'function') {
+            try {
+              const users = inner.listUsers();
+              const userSheet = resolveUserSheet(saved, users) || saved.userSheet;
+              outbox.enqueue({
+                op: 'patch',
+                taskId: saved.taskId,
+                userSheet,
+                row: { ...saved, userSheet },
+              });
+              saved.syncStatus = 'pending';
+              // Mirror already has ⟦TASK_APPROVED⟧; hydrate restore + outbox keep it sticky.
+              return saved;
+            } catch (enqErr) {
+              log.warn('completion-approve outbox enqueue failed', {
+                err: String(enqErr && enqErr.message),
+              });
+            }
+          }
+          throw err;
+        });
+    }
     if (!outbox || typeof outbox.enqueue !== 'function') {
       if (op === 'birth') {
         return pushLiveBirth(saved).then(() => {
@@ -526,6 +695,8 @@ function createSheetsData(opts = {}) {
     },
 
     refreshFromBridge,
+    loadMirrorCache,
+    saveMirrorCache,
 
     listDepot: () => inner.listDepot(),
     findByTaskId: (id) => inner.findByTaskId(id),

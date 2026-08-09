@@ -66,6 +66,7 @@ function createDataAccess(deps) {
       bridge,
       outbox,
       fixturePath: config.sheetsFixturePath || undefined,
+      dataDir: config.dataDir || path.join(__dirname, '..', '..', 'data'),
       log,
     });
   } else {
@@ -180,6 +181,14 @@ function createDataAccess(deps) {
       typeof inner.refreshFromBridge === 'function'
         ? () => inner.refreshFromBridge()
         : async () => ({ ok: false, reason: 'not sheets' }),
+    loadMirrorCache:
+      typeof inner.loadMirrorCache === 'function'
+        ? () => inner.loadMirrorCache()
+        : () => ({ ok: false, reason: 'not sheets' }),
+    saveMirrorCache:
+      typeof inner.saveMirrorCache === 'function'
+        ? () => inner.saveMirrorCache()
+        : () => false,
 
     outboxStats: () => (outbox ? outbox.stats() : null),
     syncStatusForTask: (taskId) =>

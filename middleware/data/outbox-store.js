@@ -90,10 +90,27 @@ function createOutboxStore(opts = {}) {
 
     enqueue(entry) {
       const id = 'ob_' + crypto.randomBytes(8).toString('hex');
+      const taskId = String(entry.taskId || '');
+      const op = String(entry.op || 'patch');
+      // Patches: keep only the latest snapshot per task so a stale
+      // Done-without-mark cannot overwrite Approved after completion approve.
+      if (taskId && op === 'patch') {
+        const before = items.length;
+        items = items.filter((item) => {
+          if (item.taskId !== taskId) return true;
+          if (item.op !== 'patch') return true;
+          if (item.status === 'synced' || item.status === 'dead') return true;
+          // Drop pending / retry / in_flight — superseded by this enqueue.
+          return false;
+        });
+        if (items.length !== before) {
+          log.debug && log.debug('outbox coalesced patches', { taskId, dropped: before - items.length });
+        }
+      }
       const row = {
         id,
-        op: String(entry.op || 'patch'),
-        taskId: String(entry.taskId || ''),
+        op,
+        taskId,
         userSheet: String(entry.userSheet || ''),
         row: entry.row ? JSON.parse(JSON.stringify(entry.row)) : null,
         status: 'pending',

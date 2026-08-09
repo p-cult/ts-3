@@ -233,47 +233,108 @@ function startServer(overrides = {}) {
   const host = overrides.host || config.host;
   const port = overrides.port !== undefined ? overrides.port : config.port;
 
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  function markHydrate(r, extra) {
+    if (!app.data || typeof app.data !== 'object') return;
+    app.data.hydrateOk = !!(r && r.ok !== false);
+    app.data.hydrateAt = new Date().toISOString();
+    app.data.hydrateReason = (r && r.reason) || (extra && extra.reason) || null;
+    app.data.hydrateFromCache = !!(r && r.fromCache) || !!(extra && extra.fromCache);
+  }
+
+  async function tryHydrateOnce() {
+    const r = await app.data.refreshFromBridge();
+    log.info('live bridge hydrate', r || {});
+    markHydrate(r);
+    if (r && r.ok !== false) {
+      app.data.hydrateFromCache = false;
+    }
+    return r;
+  }
+
+  /**
+   * Cold-start / free-tier wake often races Apps Script → former exit(1) alerts.
+   * Never block listen on the bridge: seed from disk mirror if present, then
+   * refresh in the background until live hydrate succeeds.
+   */
   async function hydrateIfNeeded() {
     if (!config.useLiveBridge) return;
     if (!app.data || typeof app.data.refreshFromBridge !== 'function') return;
-    const prodSheets =
-      String(config.appMode || '').toLowerCase() === 'production'
-      && String(config.storeAdapter || '').toLowerCase() === 'sheets';
-    try {
-      const r = await app.data.refreshFromBridge();
-      log.info('live bridge hydrate', r || {});
-      if (app.data && typeof app.data === 'object') {
-        app.data.hydrateOk = !!(r && r.ok !== false);
-        app.data.hydrateAt = new Date().toISOString();
-        if (r && r.reason) app.data.hydrateReason = r.reason;
-      }
-      if (r && r.ok === false) {
-        if (prodSheets) {
-          throw new Error(
-            'live bridge hydrate incomplete — refusing to serve fixture as production ('
-            + String(r.reason || 'unknown')
-            + ')'
-          );
-        }
-        log.warn('live bridge hydrate incomplete — serving prior mirror', {
-          reason: r.reason,
-        });
-      }
-    } catch (err) {
-      if (app.data && typeof app.data === 'object') {
+
+    if (typeof app.data.loadMirrorCache === 'function') {
+      const cached = app.data.loadMirrorCache();
+      if (cached && cached.ok) {
         app.data.hydrateOk = false;
         app.data.hydrateAt = new Date().toISOString();
-        app.data.hydrateReason = String(err && err.message ? err.message : err);
+        app.data.hydrateReason = 'booted from mirror-cache; live refresh pending';
+        app.data.hydrateFromCache = true;
+        log.info('booted from mirror cache', {
+          savedAt: cached.savedAt || null,
+          rows: cached.rows,
+        });
       }
-      if (prodSheets) {
-        log.error('live bridge hydrate failed — refusing production start', {
+    }
+
+    // Fire-and-forget first live attempt; listen proceeds immediately.
+    const bootLive = tryHydrateOnce()
+      .then((r) => {
+        if (r && r.ok !== false) return r;
+        log.warn('boot live hydrate incomplete — keeping mirror/fixture', {
+          reason: (r && r.reason) || 'unknown',
+        });
+        scheduleBackgroundHydrate();
+        return r;
+      })
+      .catch((err) => {
+        const reason = String(err && err.message ? err.message : err);
+        if (!app.data.hydrateFromCache) {
+          markHydrate({ ok: false, reason });
+        } else {
+          app.data.hydrateReason = 'mirror-cache; live hydrate failed: ' + reason;
+        }
+        log.warn('boot live hydrate threw — keeping mirror/fixture', { err: reason });
+        scheduleBackgroundHydrate();
+        return { ok: false, reason };
+      });
+
+    // Optionally wait briefly so a healthy bridge wins before first requests.
+    const waitMs = Number(process.env.HYDRATE_BOOT_WAIT_MS);
+    const budget = Number.isFinite(waitMs) && waitMs >= 0 ? waitMs : 2500;
+    if (budget > 0) {
+      await Promise.race([bootLive, sleep(budget)]);
+    }
+  }
+
+  function scheduleBackgroundHydrate() {
+    if (app._hydrateRetryTimer) return;
+    let delay = 15000;
+    const tick = async () => {
+      app._hydrateRetryTimer = null;
+      if (!app.data || typeof app.data.refreshFromBridge !== 'function') return;
+      if (app.data.hydrateOk === true && !app.data.hydrateFromCache) return;
+      try {
+        const r = await tryHydrateOnce();
+        if (r && r.ok !== false) {
+          log.info('background hydrate recovered', r || {});
+          return;
+        }
+      } catch (err) {
+        log.warn('background hydrate failed', {
           err: String(err && err.message ? err.message : err),
         });
-        throw err;
       }
-      log.warn('live bridge hydrate threw — serving prior mirror', {
-        err: String(err && err.message ? err.message : err),
-      });
+      delay = Math.min(120000, Math.floor(delay * 1.5));
+      app._hydrateRetryTimer = setTimeout(tick, delay);
+      if (typeof app._hydrateRetryTimer.unref === 'function') {
+        app._hydrateRetryTimer.unref();
+      }
+    };
+    app._hydrateRetryTimer = setTimeout(tick, delay);
+    if (typeof app._hydrateRetryTimer.unref === 'function') {
+      app._hydrateRetryTimer.unref();
     }
   }
 
@@ -297,12 +358,18 @@ function startServer(overrides = {}) {
             port: addr.port,
             mode: config.appMode,
             store: app.data.kind,
+            hydrateOk: app.data.hydrateOk,
+            hydrateFromCache: !!app.data.hydrateFromCache,
           });
           if (require.main === module || overrides.banner) {
             printStartupBanner(app, addr);
           }
           server.app = app;
           server.on('close', () => {
+            if (app._hydrateRetryTimer) {
+              clearTimeout(app._hydrateRetryTimer);
+              app._hydrateRetryTimer = null;
+            }
             if (app.data && typeof app.data.stopSheetsWorker === 'function') {
               app.data.stopSheetsWorker();
             }

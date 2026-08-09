@@ -75,6 +75,10 @@ async function main() {
     assert.strictEqual(isLoggedKind('pseudo'), false);
     assert.strictEqual(countsAsLogged({ kind: 'routine' }), true);
     assert.strictEqual(
+      countsAsLogged({ kind: 'routine', status: 'Done' }),
+      false
+    );
+    assert.strictEqual(
       countsAsApproved({ kind: 'main', reviewState: 'approved' }),
       true
     );
@@ -180,31 +184,57 @@ async function main() {
     assert.ok(!active.json.tasks.some((t) => t.ref === rref));
     ok('active board hides logged kinds');
 
+    const loggedDone = await request(port, 'GET', '/api/tasks?board=logged', {
+      token: usr.token,
+    });
+    assert.strictEqual(loggedDone.status, 200);
+    assert.ok(
+      !loggedDone.json.tasks.some((t) => t.ref === rref),
+      'Done routine must leave Logged'
+    );
+    const completed = await request(port, 'GET', '/api/tasks?board=completed', {
+      token: usr.token,
+    });
+    assert.ok(completed.json.tasks.some((t) => t.ref === rref));
+    ok('Done routine leaves Logged → Completed');
+
+    const openRoutine = await request(port, 'POST', '/api/tasks', {
+      token: admin.token,
+      body: {
+        projectCode: 'PRJ001',
+        name: 'Open Logged ' + Date.now(),
+        kind: 'routine',
+        assigneeUsername: 'ts3usr1',
+      },
+    });
+    assert.strictEqual(openRoutine.status, 201);
+    const openRef = openRoutine.json.task.ref;
+
     const logged = await request(port, 'GET', '/api/tasks?board=logged', {
       token: usr.token,
     });
     assert.strictEqual(logged.status, 200);
-    assert.ok(logged.json.tasks.some((t) => t.ref === rref));
-    ok('board=logged for P2+');
+    assert.ok(logged.json.tasks.some((t) => t.ref === openRef));
+    ok('board=logged for open routine P2+');
 
     const pubLogged = await request(port, 'GET', '/api/tasks?board=logged');
     assert.strictEqual(pubLogged.status, 403);
     ok('logged tab requires sign-in');
 
-    const mkFail = await request(port, 'POST', '/api/tasks/' + rref + '/make-task', {
+    const mkFail = await request(port, 'POST', '/api/tasks/' + openRef + '/make-task', {
       token: usr.token,
     });
     assert.strictEqual(mkFail.status, 403);
     ok('P2 cannot make task');
 
-    const mk = await request(port, 'POST', '/api/tasks/' + rref + '/make-task', {
+    const mk = await request(port, 'POST', '/api/tasks/' + openRef + '/make-task', {
       token: mod.token,
     });
     assert.strictEqual(mk.status, 200, JSON.stringify(mk.json));
     assert.strictEqual(mk.json.task.kind, 'main');
     ok('P3 make-task promotes routine → main');
 
-    const patch = await request(port, 'PATCH', '/api/tasks/' + rref, {
+    const patch = await request(port, 'PATCH', '/api/tasks/' + openRef, {
       token: mod.token,
       body: { kind: 'main' },
     });

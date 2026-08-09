@@ -37,6 +37,32 @@ async function main() {
   box.purge();
   ok('outbox enqueue/claim/sync/row-cache');
 
+  // Coalesce: later patch for same task supersedes earlier pending patch
+  const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'ts3-outbox-coalesce-'));
+  const box2 = createOutboxStore({ dataDir: dir2 });
+  box2.enqueue({
+    op: 'patch',
+    taskId: 'PRJ0011001A02',
+    userSheet: 'user-01',
+    row: { taskId: 'PRJ0011001A02', status: 'Done', notes: '' },
+  });
+  box2.enqueue({
+    op: 'patch',
+    taskId: 'PRJ0011001A02',
+    userSheet: 'user-01',
+    row: {
+      taskId: 'PRJ0011001A02',
+      status: 'Done',
+      notes: '⟦TASK_APPROVED⟧',
+    },
+  });
+  assert.strictEqual(box2.stats().pending, 1);
+  const only = box2.claim(5);
+  assert.strictEqual(only.length, 1);
+  assert.ok(String(only[0].row.notes).indexOf('⟦TASK_APPROVED⟧') >= 0);
+  ok('outbox coalesces patches — latest Approved wins');
+  fs.rmSync(dir2, { recursive: true, force: true });
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

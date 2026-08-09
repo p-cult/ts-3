@@ -198,6 +198,7 @@ function createGetHealth(deps) {
             ok: config.useLiveBridge ? data.hydrateOk !== false : true,
             at: data.hydrateAt || null,
             reason: data.hydrateReason || null,
+            fromCache: !!data.hydrateFromCache,
             required: String(config.appMode || '') === 'production' && !!config.useLiveBridge,
           },
         },

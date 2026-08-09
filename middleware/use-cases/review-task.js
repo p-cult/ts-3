@@ -121,15 +121,22 @@ function createReviewTask({ data }) {
         iteration: Number(row.reviewIteration) || 0,
       });
       // Task-completion Approve: persist ⟦TASK_APPROVED⟧ on notes AND write
-      // sheet column K as Approved (status stays Done in the app).
+      // sheet column K as Approved on Master + user sheet (status stays Done).
       if (hasTaskApprovedMark(text)) {
-        await Promise.resolve(
+        const updated = await Promise.resolve(
           data.updateByRef(id, {
             notes: ensureTaskApprovedMark(row.notes),
             status: 'Done',
             updatedAt: at,
           })
         );
+        return {
+          ok: true,
+          reviewState: normalizeReviewState(updated.reviewState || row.reviewState),
+          reviewIteration: updated.reviewIteration || row.reviewIteration || 0,
+          completionApproved: true,
+          syncStatus: updated.syncStatus || 'synced',
+        };
       }
       return {
         ok: true,

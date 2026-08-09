@@ -9,6 +9,7 @@ bridge-credentials.txt
 data/local/
 data/side/
 data/outbox/
+data/mirror-cache.json
 dist/
 tmp/
 .idea/

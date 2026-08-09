@@ -6,15 +6,10 @@ const { canViewTask, toPublicTask } = require('../domain/tasks');
 const { guardDuplicate, normName } = require('../domain/identity');
 const { normalizeKind } = require('../domain/kinds');
 const { nextLinkVersion } = require('../domain/review');
-const {
-  unauthorized,
-  forbidden,
-  notFound,
-  badRequest,
-  conflict,
-  AppError,
-} = require('../errors');
+const { unauthorized, forbidden, notFound, badRequest, conflict, AppError } = require('../errors');
 const { recordOverride, applyAll, normalizePriority } = require('../priority');
+const { hasTaskApprovedMark, ensureTaskApprovedMark } = require('../data/sheet-row');
+const { normalizeStatus } = require('../domain/status');
 
 function changedFieldSummary(before, patch) {
   const keys = Object.keys(patch || {}).filter((k) => {
@@ -59,6 +54,22 @@ function createUpdateTask({ data }) {
       delete patch.assigneeUsername;
       delete patch.userSheet;
       delete patch.assignedTo;
+
+      // Once completion-approved: always Done + mark (Master/user sheet K = Approved).
+      if (hasTaskApprovedMark(row.notes)) {
+        if (
+          patch.status !== undefined
+          && normalizeStatus(patch.status) !== 'Done'
+        ) {
+          throw forbidden(
+            'task completion approved — status locked to Done (Completed/Approved on sheets)'
+          );
+        }
+        patch.status = 'Done';
+        if (patch.notes !== undefined) {
+          patch.notes = ensureTaskApprovedMark(patch.notes);
+        }
+      }
 
       if (Array.isArray(patch.links) && patch.links.length > 4) {
         throw badRequest('maximum 4 links allowed');

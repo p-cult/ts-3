@@ -39,7 +39,10 @@ function createListTasks({ data }) {
         if (profile < PROFILE.USER) {
           throw forbidden('logged tab requires sign-in');
         }
-        scoped = scoped.filter((t) => isLoggedKind(t.kind));
+        // Open diary rows only — Done/Approved live on Completed, never Logged.
+        scoped = scoped.filter(
+          (t) => isLoggedKind(t.kind) && !isFinishedStatus(t.status)
+        );
       } else if (board === 'active') {
         // Same silhouette as UI Board: open work only (not Done).
         scoped = scoped.filter((t) => !isFinishedStatus(t.status));

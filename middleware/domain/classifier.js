@@ -24,9 +24,11 @@ function isMakeTaskEligible(task) {
   return MAKE_TASK_KINDS.includes(normalizeKind(task.kind));
 }
 
-/** Action-taken / diary row — never counts as approved. */
+/** Action-taken / diary row — never counts as approved. Open Logged only. */
 function countsAsLogged(task) {
-  return isLoggedKind(task && task.kind);
+  if (!isLoggedKind(task && task.kind)) return false;
+  if (isFinishedStatus(task && task.status)) return false;
+  return true;
 }
 
 /** Pure task approved by review — eligible for approved metrics. */
@@ -37,13 +39,13 @@ function countsAsApproved(task) {
 
 /**
  * Completed tab / totals: Done status.
- * Pure tasks (main/sub) always; logged kinds only when routine/not_a_task.
+ * Pure tasks (main/sub) always; routine/not_a_task when Done (they leave Logged).
  */
 function countsAsCompleted(task) {
   if (!task) return false;
   if (!isFinishedStatus(task.status)) return false;
   if (!isRestrictedKind(task.kind)) return true;
-  return countsAsLogged(task);
+  return isLoggedKind(task.kind);
 }
 
 module.exports = {

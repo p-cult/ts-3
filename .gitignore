@@ -10,6 +10,8 @@ data/local/
 data/side/
 data/outbox/
 data/mirror-cache.json
+middleware/data/priority-overrides.json
+inject-ready-paste.txt
 dist/
 tmp/
 .idea/

@@ -86,14 +86,20 @@ function createMemoryData(opts = {}) {
   }
 
   function findByRef(ref) {
-    const r = String(ref || '');
+    const r = String(ref || '').trim();
     if (!r) return null;
     const tid = byRef[r];
-    if (tid) return findByTaskId(tid);
+    if (tid) {
+      const hit = findByTaskId(tid);
+      if (hit) return hit;
+      // Stale index (hydrate race) — drop and fall through.
+      delete byRef[r];
+    }
     for (const m of Object.values(mapping)) {
       if (m.ref === r) {
         indexMapping(m);
-        return findByTaskId(m.taskId);
+        const hit = findByTaskId(m.taskId);
+        if (hit) return hit;
       }
     }
     // Fallback scan (rare — only if mapping missing)

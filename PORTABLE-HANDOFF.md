@@ -26,6 +26,7 @@ GitHub is the durable remote copy:
 
    ```bash
    ./scripts/portable-check.sh
+   ./sync.sh
    npm install
    ./run.sh
    ```
@@ -36,7 +37,13 @@ online.
 
 ## Normal work
 
-Before editing:
+Before editing (when online):
+
+```bash
+./sync.sh
+```
+
+Or, equivalently:
 
 ```bash
 git pull --ff-only origin main
@@ -47,8 +54,11 @@ After testing:
 ```bash
 git add <changed-files>
 git commit -m "Describe the change"
-git push origin main
+./sync.sh
 ```
+
+`./sync.sh` is the preferred portable-drive sync (safe pull + optional push).
+Details: [docs/SYNC.md](docs/SYNC.md).
 
 Do not copy this folder manually between computers. Open this same folder from
 the portable drive. GitHub is the backup and collaboration source; the drive is

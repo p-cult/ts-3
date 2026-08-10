@@ -619,27 +619,35 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
 }
 .ov-card span { color: var(--skin-ink-soft); font-size: 0.78rem; font-weight: 400; }
 .ov-card strong { display: block; font-size: 1.8rem; font-weight: 600; line-height: 1; }
-/* Per-user strips: one row, horizontally scrollable, chevron nav each side. */
+/* Per-user strips: one row, horizontally scrollable, chevron nav each side.
+   JS sizes strips so the viewport always fits 1 or 2 full cards (never a half). */
 .ov-users { align-items: center; display: flex; gap: 8px; justify-content: center; }
 .ov-strips {
   display: flex; flex: 1 1 auto; gap: 14px; min-width: 0; overflow-x: auto;
-  scroll-behavior: smooth; scrollbar-width: none;
+  scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-width: none;
 }
 .ov-strips::-webkit-scrollbar { display: none; }
 .ov-strip {
   align-items: center; background: var(--skin-surface);
-  border: 1px solid var(--skin-line); border-radius: 10px;
-  display: flex; flex: 0 0 auto; gap: 10px; padding: 7px 14px;
+  border: 1px solid var(--skin-line); border-radius: 10px; box-sizing: border-box;
+  display: flex; flex: 0 0 auto; flex-wrap: nowrap; gap: 10px; min-width: 0; overflow: hidden;
+  padding: 7px 14px; scroll-snap-align: start; scroll-snap-stop: always;
 }
-.ov-strip-name { font-size: 0.95rem; font-weight: 500; white-space: nowrap; }
-.ov-strip-dot { color: var(--skin-ink-soft); font-size: 0.45rem; }
-.ov-strip-stat { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 46px; }
+.ov-strip-name {
+  flex: 0 1 auto; font-size: 0.95rem; font-weight: 500; min-width: 3.5rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ov-strip-dot { color: var(--skin-ink-soft); flex: 0 0 auto; font-size: 0.45rem; }
+.ov-strip-stat {
+  display: flex; flex: 0 0 auto; flex-direction: column; align-items: center;
+  gap: 0; min-width: 46px;
+}
 .ov-strip-stat small {
   color: var(--skin-ink-soft); font-size: 0.58rem; font-weight: 500;
   letter-spacing: 0.02em;
 }
 .ov-strip-stat b { font-size: 1.05rem; font-weight: 500; line-height: 1.15; }
-.ov-strip-sep { color: var(--skin-line); font-size: 1.15rem; font-weight: 300; }
+.ov-strip-sep { color: var(--skin-line); flex: 0 0 auto; font-size: 1.15rem; font-weight: 300; }
 .ov-nav {
   align-items: center; background: var(--skin-surface); border: 1px solid var(--skin-ink);
   border-radius: 50%; color: var(--skin-ink); cursor: pointer; display: inline-flex;
@@ -654,7 +662,15 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.35); }
 
 @media (max-width: 760px) {
   .ov-card strong { font-size: 1.4rem; }
-  .ov-strip-name { font-size: 0.88rem; }
+  /* Stack name above stats so the person label never collapses to a letter. */
+  .ov-strip {
+    align-items: flex-start; flex-wrap: wrap; gap: 4px 8px; padding: 8px 12px;
+  }
+  .ov-strip-name {
+    flex: 1 0 calc(100% - 1rem); font-size: 0.88rem; min-width: 0;
+  }
+  .ov-strip-dot { display: none; }
+  .ov-strip-stat { min-width: 40px; }
 }
 @media print {
   .summary-panel { display: none !important; }

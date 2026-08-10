@@ -801,11 +801,11 @@
       const timer = ac && timeoutMs > 0 ? setTimeout(() => ac.abort(), timeoutMs) : null;
       let res;
       try {
-        // Same-origin on Render sends HttpOnly session cookie as backup auth.
+        // include: Pages bake is cross-origin to Render — cookies + Bearer both needed.
         res = await fetch(path, {
           method,
           headers,
-          credentials: 'same-origin',
+          credentials: 'include',
           body: body !== undefined ? JSON.stringify(body) : undefined,
           signal: ac ? ac.signal : undefined,
         });
@@ -3007,6 +3007,7 @@
       panel.classList.toggle('is-open', state.summaryOpen);
       btn.setAttribute('aria-expanded', String(state.summaryOpen));
       btn.setAttribute('aria-label', state.summaryOpen ? 'Collapse overview' : 'Expand overview');
+      if (state.summaryOpen) requestAnimationFrame(() => layoutOvStrips());
     }
     function updateOvNav() {
       const el = $('ovStrips');
@@ -3014,6 +3015,57 @@
       const overflow = el.scrollWidth > el.clientWidth + 1;
       $('ovPrev').disabled = !overflow || el.scrollLeft <= 0;
       $('ovNext').disabled = !overflow || el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+    }
+    /** Size person strips so the viewport shows exactly 1 or 2 full cards — never a clipped half. */
+    function layoutOvStrips() {
+      const el = $('ovStrips');
+      if (!el) return;
+      const strips = [...el.querySelectorAll('.ov-strip')];
+      const gap = 14;
+      strips.forEach((s) => {
+        s.style.flex = '0 0 auto';
+        s.style.width = '';
+        s.style.maxWidth = '';
+      });
+      if (!strips.length) { updateOvNav(); return; }
+      const avail = el.clientWidth;
+      if (avail <= 0) { updateOvNav(); return; }
+      const natural = strips.map((s) => s.getBoundingClientRect().width);
+      const totalNatural = natural.reduce((a, b) => a + b, 0) + gap * Math.max(0, strips.length - 1);
+      // Everything fits — keep natural widths (no paging needed).
+      if (totalNatural <= avail + 1) {
+        delete el.dataset.ovPerPage;
+        updateOvNav();
+        return;
+      }
+      const maxNatural = Math.max(...natural);
+      const perPage = (maxNatural * 2 + gap <= avail + 0.5) ? 2 : 1;
+      // Floor + 1px shave so the next card never peeks through subpixel rounding.
+      const cardW = Math.max(1, Math.floor((avail - 1 - gap * (perPage - 1)) / perPage));
+      strips.forEach((s) => {
+        s.style.boxSizing = 'border-box';
+        s.style.flex = `0 0 ${cardW}px`;
+        s.style.width = `${cardW}px`;
+        s.style.maxWidth = `${cardW}px`;
+      });
+      el.dataset.ovPerPage = String(perPage);
+      updateOvNav();
+    }
+    function ovScrollPage(dir) {
+      const el = $('ovStrips');
+      if (!el) return;
+      const strips = [...el.querySelectorAll('.ov-strip')];
+      if (!strips.length) return;
+      const gap = 14;
+      const cardW = strips[0].getBoundingClientRect().width;
+      if (cardW <= 0) return;
+      const perPage = Math.max(1, Number(el.dataset.ovPerPage)
+        || Math.round((el.clientWidth + gap) / (cardW + gap)));
+      const step = perPage * cardW + (perPage - 1) * gap;
+      const max = Math.max(0, el.scrollWidth - el.clientWidth);
+      const page = Math.round(el.scrollLeft / Math.max(step, 1));
+      const next = Math.max(0, Math.min(max, (page + dir) * step));
+      el.scrollTo({ left: next, behavior: 'smooth' });
     }
     function renderOverviewStrips() {
       const byUser = new Map();
@@ -3049,7 +3101,7 @@
         ${stat('Scheduled', s.scheduled)}<span class="ov-strip-sep">|</span>
         ${stat('Completed', s.completed)}
       </div>`).join('');
-      updateOvNav();
+      requestAnimationFrame(() => layoutOvStrips());
     }
     function updateOverview() {
       if (!$('statTotal')) return;
@@ -5516,11 +5568,9 @@
 
       const rateableHtml = rateable.length
         ? rateable.map((l) => {
-          const safeUrl = String(l.url).replace(/"/g, '');
           const ver = linkFileVersionLabel(l);
           return ''
-            + '<div class="rev-link-row" data-rateable="1" data-url="' + safeUrl
-            + '" data-owner-tag="' + escapeHtml(l.tag || '') + '" data-stars="0">'
+            + '<div class="rev-link-row" data-rateable="1" data-stars="0">'
             + '<div class="rev-link-head">'
             + linkOpenHtml(l)
             + '<span class="task-link-iter">' + escapeHtml(ver) + '</span>'
@@ -5556,14 +5606,22 @@
         + '<button type="button" class="btn" data-act="revCancel">Cancel</button>'
         + '</div>';
 
-      body.querySelectorAll('.rev-link-row[data-rateable="1"]').forEach((row) => syncRevLinkRow(row));
+      // Set URL/tag via DOM APIs — avoids HTML attribute mangling of & in Drive links.
+      const rateableRows = body.querySelectorAll('.rev-link-row[data-rateable="1"]');
+      rateable.forEach((l, i) => {
+        const row = rateableRows[i];
+        if (!row) return;
+        row.dataset.url = String(l.url || '');
+        row.dataset.ownerTag = String(l.tag || '');
+      });
+      rateableRows.forEach((row) => syncRevLinkRow(row));
       syncReviewActionButtons(el);
     }
 
     async function submitInlineReview(card) {
       const errEl = rq(card, '[data-f="revErr"]');
       if (errEl) errEl.textContent = '';
-      const id = card.dataset.ref;
+      const id = String(card.dataset.ref || '').trim();
       if (!id) {
         if (errEl) errEl.textContent = 'Missing task ref.';
         return;
@@ -5593,7 +5651,9 @@
         return;
       }
 
-      const task = (state.tasks || []).find((x) => x.ref === id) || { ref: id, link: '' };
+      const task = (state.tasks || []).find((x) => x.ref === id)
+        || (state.allTasks || []).find((x) => x.ref === id)
+        || { ref: id, link: '' };
       const needsRework = rated.some((r) => r.stars === 1);
       const path = needsRework ? '/review/rework' : '/review/approve';
       const fromForm = rated.map((r) => {
@@ -5607,18 +5667,31 @@
       const frozenUrls = new Set(fromForm.map((r) => r.url));
       const apiRatings = fromForm.concat(frozen.filter((r) => !frozenUrls.has(r.url)));
 
-      const notes = needsRework ? 'Rework requested.' : 'Files approved.';
+      const commentNotes = rated
+        .map((r) => String(r.revComment || '').trim())
+        .filter(Boolean)
+        .join('\n\n');
+      const notes = needsRework
+        ? (commentNotes || 'Rework requested.')
+        : (commentNotes || 'Files approved.');
 
       const submitBtn = rq(card, '[data-act="revSubmit"]');
       if (submitBtn) submitBtn.disabled = true;
       try {
+        // Prove the ref still resolves before writing (clearer errors after sleep/hydrate).
+        await api('GET', '/api/tasks/' + encodeURIComponent(id));
         await api('POST', '/api/tasks/' + encodeURIComponent(id) + path, {
           notes,
           ratings: apiRatings,
         });
         await refreshTasks();
       } catch (err) {
-        if (errEl) errEl.textContent = err.message || 'Submit Feedback failed';
+        if (errEl) {
+          const msg = err && err.message ? String(err.message) : 'Submit Feedback failed';
+          errEl.textContent = /task not found/i.test(msg)
+            ? (msg + ' — refresh the board and open Review again.')
+            : msg;
+        }
         syncReviewActionButtons(card);
       }
     }
@@ -6404,15 +6477,14 @@
       $('summaryToggle').addEventListener('click', () => setSummaryOpen(!state.summaryOpen));
     }
     if ($('ovPrev') && $('ovNext') && $('ovStrips')) {
-      $('ovPrev').addEventListener('click', () => {
-        const el = $('ovStrips');
-        el.scrollBy({ left: -el.clientWidth, behavior: 'smooth' });
-      });
-      $('ovNext').addEventListener('click', () => {
-        const el = $('ovStrips');
-        el.scrollBy({ left: el.clientWidth, behavior: 'smooth' });
-      });
+      $('ovPrev').addEventListener('click', () => ovScrollPage(-1));
+      $('ovNext').addEventListener('click', () => ovScrollPage(1));
       $('ovStrips').addEventListener('scroll', updateOvNav);
+      if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(() => layoutOvStrips()).observe($('ovStrips'));
+      } else {
+        window.addEventListener('resize', () => layoutOvStrips());
+      }
     }
     $('loginCancel').onclick = () => $('loginDlg').close();
     $('loginForm').onsubmit = async (e) => {

@@ -20,8 +20,26 @@ const {
   badRequest,
 } = require('../errors');
 
+function resolveTaskRow(data, id) {
+  const raw = String(id == null ? '' : id).trim();
+  if (!raw) return null;
+  let row = data.findByRef(raw);
+  if (row) return row;
+  // Tolerate accidental double-encoding from proxies / older clients.
+  try {
+    const once = decodeURIComponent(raw);
+    if (once && once !== raw) {
+      row = data.findByRef(once);
+      if (row) return row;
+      const twice = decodeURIComponent(once);
+      if (twice && twice !== once) row = data.findByRef(twice);
+    }
+  } catch (_) { /* keep null */ }
+  return row || null;
+}
+
 function loadTask(data, id, actor) {
-  const row = data.findByRef(id);
+  const row = resolveTaskRow(data, id);
   if (!row) throw notFound('task not found');
   const view = canViewTask(row, actor);
   if (view === 'not_found') throw notFound('task not found');
@@ -85,13 +103,14 @@ function createReviewTask({ data }) {
       });
 
       const updated = await Promise.resolve(
-        data.updateByRef(id, {
+        data.updateByTaskId(row.taskId, {
           link: nextLink,
           linkVersion,
           reviewState: 'under_review',
           updatedAt: at,
         })
       );
+      if (!updated) throw notFound('task not found');
       return {
         ok: true,
         reviewState: updated.reviewState,
@@ -124,12 +143,13 @@ function createReviewTask({ data }) {
       // sheet column K as Approved on Master + user sheet (status stays Done).
       if (hasTaskApprovedMark(text)) {
         const updated = await Promise.resolve(
-          data.updateByRef(id, {
+          data.updateByTaskId(row.taskId, {
             notes: ensureTaskApprovedMark(row.notes),
             status: 'Done',
             updatedAt: at,
           })
         );
+        if (!updated) throw notFound('task not found');
         return {
           ok: true,
           reviewState: normalizeReviewState(updated.reviewState || row.reviewState),
@@ -168,12 +188,13 @@ function createReviewTask({ data }) {
         iteration,
       });
       const updated = await Promise.resolve(
-        data.updateByRef(id, {
+        data.updateByTaskId(row.taskId, {
           reviewState: 'rework',
           reviewIteration: iteration,
           updatedAt: at,
         })
       );
+      if (!updated) throw notFound('task not found');
       return {
         ok: true,
         reviewState: updated.reviewState,
@@ -201,11 +222,12 @@ function createReviewTask({ data }) {
         iteration: Number(row.reviewIteration) || 0,
       });
       const updated = await Promise.resolve(
-        data.updateByRef(id, {
+        data.updateByTaskId(row.taskId, {
           reviewState: 'approved',
           updatedAt: at,
         })
       );
+      if (!updated) throw notFound('task not found');
       return {
         ok: true,
         reviewState: updated.reviewState,

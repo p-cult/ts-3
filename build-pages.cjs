@@ -44,17 +44,17 @@ const SHIM = `<script>
     init = init || {};
     var url = typeof input === 'string' ? input : (input && input.url);
     if (url && url.charAt(0) === '/') { url = API_ORIGIN + url; }
-    init.credentials = init.credentials || 'include';
-    var tok = getToken();
-    if (tok) {
-      var headers = init.headers;
-      if (headers && typeof Headers !== 'undefined' && headers instanceof Headers) {
-        if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + tok);
-      } else {
-        init.headers = Object.assign({}, headers || {}, { Authorization: 'Bearer ' + tok });
-      }
+  init.credentials = 'include';
+  var tok = getToken();
+  if (tok) {
+    var headers = init.headers;
+    if (headers && typeof Headers !== 'undefined' && headers instanceof Headers) {
+      if (!headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + tok);
+    } else {
+      init.headers = Object.assign({}, headers || {}, { Authorization: 'Bearer ' + tok });
     }
-    var res = await _fetch(url, init);
+  }
+  var res = await _fetch(url, init);
     if (url && url.indexOf('/api/login') >= 0) {
       var t = res.headers.get('X-Session-Token');
       if (t) setToken(t);

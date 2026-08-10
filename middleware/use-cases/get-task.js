@@ -9,7 +9,14 @@ function createGetTask({ data }) {
   return {
     async execute({ actor, id }) {
       const profile = normalizeProfile(actor && actor.profile);
-      const row = data.findByRef(id);
+      const raw = String(id == null ? '' : id).trim();
+      let row = data.findByRef(raw);
+      if (!row) {
+        try {
+          const once = decodeURIComponent(raw);
+          if (once && once !== raw) row = data.findByRef(once);
+        } catch (_) { /* keep null */ }
+      }
       const view = canViewTask(row, actor || { profile: 1 });
       if (view === 'not_found') throw notFound('task not found');
       if (view === 'forbidden') throw forbidden('not allowed to view this task');

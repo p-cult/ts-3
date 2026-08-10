@@ -313,6 +313,7 @@ async function main() {
       bridgeUrl: 'https://example.test/bridge',
       bridgeSecret: 'secret',
       fetchImpl,
+      bridgeProtocol: 'semantic',
       appMode: 'staging',
       isDev: true,
       isProd: false,

@@ -44,6 +44,43 @@
       display: block; font-size: .75rem; font-weight: 700; margin-bottom: .2rem;
     }
     .rework-notes .rework-notes-body { white-space: pre-wrap; word-break: break-word; }
+    /* Task card description — always visible; clamp to 3 lines + …more / ^ less */
+    .task-desc {
+      margin: .4rem 0 .2rem;
+      font-size: .9rem;
+      line-height: 1.4;
+      color: var(--ink);
+    }
+    .task-desc.is-empty .task-desc-body {
+      color: var(--muted);
+      font-style: italic;
+    }
+    .task-desc-body {
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    .task-desc:not(.is-open):not(.is-empty) .task-desc-body {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+    }
+    .task-desc-toggle {
+      display: inline-block;
+      margin-top: .15rem;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--accent);
+      font: inherit;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      line-height: 1.3;
+    }
+    .task-desc-toggle:hover { text-decoration: underline; }
+    .task-desc.is-open .task-desc-toggle { margin-top: .25rem; }
     .link-ico { display: inline-flex; width: 1.4rem; height: 1.4rem; align-items: center; justify-content: center;
       border-radius: 6px; background: var(--accent-soft); color: var(--accent); text-decoration: none; font-size: .85rem; margin-left: .25rem; }
     .notes-smart {
@@ -1453,8 +1490,76 @@
     function normalizeUrlInput(raw) {
       let u = String(raw || '').trim().replace(/[.,);:\]]+$/g, '');
       if (!u) return '';
+      // Bare scheme / default field value is not a link.
+      if (/^https?:\/\/?$/i.test(u)) return '';
       if (/^www\./i.test(u)) u = 'https://' + u;
       return u;
+    }
+
+    /**
+     * Require a real http(s) review-file URL (reject empty, https:// default,
+     * and obvious placeholders like drive.example / example.com).
+     * Returns { ok, url?, message? }.
+     */
+    function checkWorkingReviewLink(raw) {
+      const trimmed = String(raw == null ? '' : raw).trim();
+      if (!trimmed || /^https?:\/\/?$/i.test(trimmed)) {
+        return {
+          ok: false,
+          message: 'Paste the working link of the review file.',
+        };
+      }
+      let u = normalizeUrlInput(trimmed);
+      if (!u) {
+        return {
+          ok: false,
+          message: 'Paste the working link of the review file.',
+        };
+      }
+      if (!/^https?:\/\//i.test(u)) {
+        if (/^[a-z0-9.-]+\.[a-z]{2,}([/:?#]|$)/i.test(u)) u = 'https://' + u;
+        else {
+          return {
+            ok: false,
+            message: 'Enter a valid working link (https://…) for the review file.',
+          };
+        }
+      }
+      let parsed;
+      try {
+        parsed = new URL(u);
+      } catch (_) {
+        return {
+          ok: false,
+          message: 'Enter a valid working link (https://…) for the review file.',
+        };
+      }
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return {
+          ok: false,
+          message: 'Review links must start with https://',
+        };
+      }
+      const host = String(parsed.hostname || '').toLowerCase();
+      if (!host || !host.includes('.') || host === 'localhost') {
+        return {
+          ok: false,
+          message: 'Paste the working link of the review file.',
+        };
+      }
+      if (
+        host === 'example.com'
+        || host.endsWith('.example.com')
+        || /\.example$/i.test(host)
+        || host === 'example.org'
+        || host === 'test.com'
+      ) {
+        return {
+          ok: false,
+          message: 'That looks like a placeholder — paste the real working link of the review file.',
+        };
+      }
+      return { ok: true, url: parsed.href };
     }
 
     function normalizeLinkEntry(x) {
@@ -1905,7 +2010,7 @@
       return ''
         + '<div class="fld" data-dfld="notes" data-efld="notes">'
         + '<label>Notes</label>'
-        + '<p class="hint-sm">Text only. Lines starting with - or * become bullets when you leave the field.</p>'
+        + '<p class="hint-sm">Lines starting with - or * become bullets.</p>'
         + '<div class="notes-smart">'
         + '<div class="notes-backdrop" data-f="notesBackdrop" aria-hidden="true"></div>'
         + '<textarea data-f="notes" rows="5" placeholder="" spellcheck="true" aria-label="Notes"></textarea>'
@@ -1920,13 +2025,13 @@
         + '<div class="task-link-list" data-f="linkList"></div>'
         + '<button type="button" class="btn" data-act="addLink">Add link</button>'
         + '<div class="add-link-inline" data-f="addLinkInline" hidden>'
-        + '<input type="text" data-f="addLinkName" placeholder="File name (required)" maxlength="80" autocomplete="off" />'
-        + '<input type="url" data-f="addLinkUrl" placeholder="https://" autocomplete="off" />'
+        + '<input type="text" data-f="addLinkName" placeholder="File name (required)" maxlength="80" autocomplete="off" required />'
+        + '<input type="url" data-f="addLinkUrl" placeholder="Working review file URL (required)" autocomplete="off" required />'
         + '<button type="button" class="btn primary" data-act="addLinkSave">Add</button>'
         + '<button type="button" class="btn" data-act="addLinkCancel">Cancel</button>'
         + '<p class="lri-err" data-f="addLinkErr" hidden></p>'
         + '</div>'
-        + '<p class="hint-sm" data-f="linksHint">Name + URL. The name is what everyone sees (clickable).</p>'
+        + '<p class="hint-sm" data-f="linksHint">Name and working URL required.</p>'
         + '<p class="hint-sm" data-f="linksLockHint" hidden>'
         + 'Rated files are locked here — use Submit Revision on the card for 1★/2★ changes.</p>'
         + '</div>';
@@ -2057,9 +2162,9 @@
       box.hidden = false;
       if (addBtn) addBtn.hidden = true;
       if (nameInp) nameInp.value = '';
-      urlInp.value = 'https://';
+      urlInp.value = '';
       if (nameInp) nameInp.focus();
-      else { urlInp.focus(); urlInp.select(); }
+      else urlInp.focus();
     }
 
     function cancelAddLinkInline(scope) {
@@ -2084,28 +2189,30 @@
       const nameInp = scope.querySelector('[data-f="addLinkName"]');
       const urlInp = scope.querySelector('[data-f="addLinkUrl"]');
       const errEl = scope.querySelector('[data-f="addLinkErr"]');
+      const setErr = (msg, focusEl) => {
+        if (errEl) {
+          errEl.hidden = !msg;
+          errEl.textContent = msg || '';
+        }
+        if (focusEl) try { focusEl.focus(); } catch (_) { /* */ }
+      };
       const name = String(nameInp && nameInp.value || '').trim();
-      const url = normalizeUrlInput(urlInp && urlInp.value);
+      const urlRaw = urlInp ? urlInp.value : '';
+      if (!name && (!String(urlRaw || '').trim() || /^https?:\/\/?$/i.test(String(urlRaw).trim()))) {
+        setErr('File name and working review-file link are both required.', nameInp || urlInp);
+        return;
+      }
       if (!name) {
-        if (errEl) {
-          errEl.hidden = false;
-          errEl.textContent = 'A file name is required.';
-        }
-        if (nameInp) nameInp.focus();
+        setErr('A file name is required.', nameInp);
         return;
       }
-      if (!url) {
-        if (errEl) {
-          errEl.hidden = false;
-          errEl.textContent = 'Enter a valid URL.';
-        }
+      const checked = checkWorkingReviewLink(urlRaw);
+      if (!checked.ok) {
+        setErr(checked.message, urlInp);
         return;
       }
-      if (!addLinkRow(scope, { url, name, tag: '', iter: 1 })) {
-        if (errEl) {
-          errEl.hidden = false;
-          errEl.textContent = 'Link limit reached (max ' + MAX_LINKS + ').';
-        }
+      if (!addLinkRow(scope, { url: checked.url, name, tag: '', iter: 1 })) {
+        setErr('Link limit reached (max ' + MAX_LINKS + ').');
         return;
       }
       cancelAddLinkInline(scope);
@@ -2786,6 +2893,64 @@
       return st ? statusDisplayLabel(st) : '—';
     }
 
+    function syncTaskDescOverflow(wrap) {
+      if (!wrap || wrap.hidden || wrap.classList.contains('is-empty')) return;
+      const body = wrap.querySelector('.task-desc-body');
+      const btn = wrap.querySelector('[data-act="descToggle"]');
+      if (!body || !btn) return;
+      if (wrap.classList.contains('is-open')) {
+        btn.hidden = false;
+        btn.textContent = '^ less';
+        return;
+      }
+      // Measure while clamped: overflow → show …more
+      btn.hidden = true;
+      btn.textContent = '...more';
+      const overflows = body.scrollHeight > body.clientHeight + 1;
+      btn.hidden = !overflows;
+    }
+
+    function cardDescriptionText(t) {
+      const desc = String((t && t.description) || '').trim();
+      if (desc) return desc;
+      // Many live tasks leave Description blank and put the body in Notes.
+      return notesWithoutTaskApprovalMark(String((t && t.notes) || '')).trim();
+    }
+
+    function fillTaskCardDesc(el, t) {
+      const wrap = el && el.querySelector('[data-f="taskDesc"]');
+      if (!wrap) return;
+      const body = wrap.querySelector('.task-desc-body');
+      const btn = wrap.querySelector('[data-act="descToggle"]');
+      const text = cardDescriptionText(t);
+      wrap.classList.remove('is-open', 'is-empty');
+      if (!text) {
+        // No empty placeholder — keep cards lean when description/notes are blank.
+        wrap.hidden = true;
+        if (body) body.textContent = '';
+        if (btn) btn.hidden = true;
+        return;
+      }
+      wrap.hidden = false;
+      if (body) body.textContent = text;
+      if (btn) {
+        btn.hidden = true;
+        btn.textContent = '...more';
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const open = wrap.classList.toggle('is-open');
+          btn.textContent = open ? '^ less' : '...more';
+          if (!open) {
+            requestAnimationFrame(() => syncTaskDescOverflow(wrap));
+          } else {
+            btn.hidden = false;
+          }
+        };
+      }
+      requestAnimationFrame(() => syncTaskDescOverflow(wrap));
+    }
+
     function renderTask(t, isSub, byRefMap) {
       const el = document.createElement('article');
       el.className = 'task' + (isSub ? ' sub' : '');
@@ -2817,7 +2982,12 @@
       el.innerHTML =
         '<div class="task-compact">'
         + '<div class="task-topline"></div>'
-        + '<h3></h3><div class="meta"></div><div class="subs-line" hidden></div><div class="chips"></div>'
+        + '<h3></h3>'
+        + '<div class="task-desc" data-f="taskDesc">'
+        + '<div class="task-desc-body"></div>'
+        + '<button type="button" class="task-desc-toggle" data-act="descToggle" hidden>...more</button>'
+        + '</div>'
+        + '<div class="meta"></div><div class="subs-line" hidden></div><div class="chips"></div>'
         + taskLinksCompactHtml(t)
         + renderBar(t.stages) + reviewHtml + '<div class="actions"></div>'
         + '<div class="history-body" hidden></div>'
@@ -2842,6 +3012,7 @@
       }
 
       el.querySelector('h3').textContent = t.name || '';
+      fillTaskCardDesc(el, t);
       const startDisp = displaySheetStamp(t.startDate);
       const endDisp = displaySheetStamp(t.endDate);
       el.querySelector('.meta').textContent =
@@ -2966,7 +3137,8 @@
       return true;
     }
     function isOverviewCompleted(t) {
-      return String(t && t.status || '') === 'Done';
+      // Same rule as Completed tab — avoid Overview counting Done-but-waiting as done.
+      return isDoneOnCompletedTab(t);
     }
     function overviewTaskList() {
       return state.allTasks || [];
@@ -3144,6 +3316,9 @@
       ensureTimerTicker();
       tickAllTimerPills();
       syncNeedsBulkUi();
+      requestAnimationFrame(() => {
+        document.querySelectorAll('#taskList .task-desc').forEach(syncTaskDescOverflow);
+      });
     }
 
     function renderLogs() {
@@ -3163,12 +3338,14 @@
         }
         if (l.hasLink || linksFromTask(l).length) {
           linksFromTask(l).forEach((entry) => {
+            const href = safeLinkHref(entry.url);
+            if (!href) return;
             const a = document.createElement('a');
             a.className = 'chip';
-            a.href = entry.url;
+            a.href = href;
             a.target = '_blank';
             a.rel = 'noopener';
-            a.title = entry.url;
+            a.title = href;
             a.textContent = linkDisplayName(entry);
             el.querySelector('.chips').appendChild(a);
           });
@@ -3548,10 +3725,9 @@
         + '<select data-f="project" required aria-label="Project"></select>'
         + '<p class="hint-sm" data-f="projectHint" hidden></p></div>'
         + '<div class="fld" data-dfld="assignee" hidden><label>Assign to</label>'
-        + '<select data-f="assignee" aria-label="Assign to"></select>'
-        + '<p class="hint-sm">Defaults to you — admins are users too.</p></div>'
+        + '<select data-f="assignee" aria-label="Assign to"></select></div>'
         + '<div class="fld"><label>Name</label><input data-f="name" placeholder="Task name" /></div>'
-        + '<div class="fld"><label>Description</label><textarea data-f="desc"></textarea></div>'
+        + '<div class="fld"><label>Description</label><textarea data-f="desc" placeholder="What is this task?"></textarea></div>'
         + notesFieldHtml()
         + linksFieldHtml()
         + '<div class="fld"><label>Start time</label>'
@@ -3577,7 +3753,6 @@
         + '<select data-f="parent"><option value="">— Select a Main —</option></select>'
         + '<p class="hint-sm" data-f="parentHint" hidden>Create a Main task first.</p></div>'
         + '<div class="fld" data-dfld="stages"><label>Stages</label>'
-        + '<p class="hint-sm">Type #tokens separated by spaces (e.g. #design #build #ship).</p>'
         + '<input data-f="stages" placeholder="#Design #Build #Ship" autocomplete="off" spellcheck="false" />'
         + '<input type="hidden" data-f="stageIdx" value="0" />'
         + '<p class="hint-sm" data-f="stagePickHint" hidden>Tap a stage chip to mark progress up to that point.</p>'
@@ -3663,8 +3838,15 @@
       const draftScope = dq(card, '.draft-body') || card;
       const notesVal = getNotesValue(draftScope);
       const collectedLinks = collectLinksFromScope(draftScope);
-      if (collectedLinks.some((l) => !String(l.name || '').trim())) {
-        errEl.textContent = 'Every link needs a file name.';
+      const badLink = collectedLinks.find((l) => {
+        if (!String(l.name || '').trim()) return true;
+        return !checkWorkingReviewLink(l.url).ok;
+      });
+      if (badLink) {
+        errEl.textContent = !String(badLink.name || '').trim()
+          ? 'Every link needs a file name and a working review-file URL.'
+          : (checkWorkingReviewLink(badLink.url).message
+            || 'Paste the working link of the review file.');
         setDummyCollapsed(card, false);
         return;
       }
@@ -5739,9 +5921,10 @@
       box.innerHTML = ''
         + '<label class="hint-sm">File name (required)</label>'
         + '<input type="text" data-f="lriName" value="' + escapeHtml(entry.name || '') + '"'
-        + ' placeholder="File name" maxlength="80" autocomplete="off" />'
-        + '<label class="hint-sm">' + (mode === 'update' ? 'Replace file URL' : 'New file URL') + '</label>'
-        + '<input type="url" data-f="lriUrl" value="' + escapeHtml(entry.url || 'https://') + '" autocomplete="off" />'
+        + ' placeholder="File name" maxlength="80" autocomplete="off" required />'
+        + '<label class="hint-sm">' + (mode === 'update' ? 'Replace file URL (required)' : 'New file URL (required)') + '</label>'
+        + '<input type="url" data-f="lriUrl" value="' + escapeHtml(entry.url || '') + '"'
+        + ' placeholder="Working review file URL" autocomplete="off" required />'
         + '<label class="hint-sm">' + (commentRequired ? 'Comment (required)' : 'Comment (optional)') + '</label>'
         + '<input type="text" data-f="lriComment" placeholder="'
         + (commentRequired ? 'Describe the update…' : 'Optional note…')
@@ -5784,16 +5967,24 @@
       if (mode === 'edit' && stars !== 1) return;
 
       const newName = String(nameInp && nameInp.value || '').trim();
+      const urlRaw = urlInp ? urlInp.value : '';
+      if (!newName && (!String(urlRaw || '').trim() || /^https?:\/\/?$/i.test(String(urlRaw).trim()))) {
+        setErr('File name and working review-file link are both required.');
+        if (nameInp) nameInp.focus();
+        return;
+      }
       if (!newName) {
         setErr('A file name is required.');
         if (nameInp) nameInp.focus();
         return;
       }
-      const newUrl = normalizeUrlInput(urlInp && urlInp.value);
-      if (!newUrl) {
-        setErr('A valid URL is required.');
+      const checked = checkWorkingReviewLink(urlRaw);
+      if (!checked.ok) {
+        setErr(checked.message);
+        if (urlInp) urlInp.focus();
         return;
       }
+      const newUrl = checked.url;
       const userComment = cmtInp ? String(cmtInp.value || '').trim() : '';
       if (mode === 'update' && !userComment) {
         setErr('A comment is required for Update.');
@@ -6135,8 +6326,15 @@
           const linksFld = notesScope.querySelector('[data-efld="links"]');
           if (linksFld && !linksFld.hidden) {
             const collected = collectLinksFromScope(notesScope);
-            if (collected.some((l) => !String(l.name || '').trim())) {
-              errEl.textContent = 'Every link needs a file name.';
+            const badLink = collected.find((l) => {
+              if (!String(l.name || '').trim()) return true;
+              return !checkWorkingReviewLink(l.url).ok;
+            });
+            if (badLink) {
+              errEl.textContent = !String(badLink.name || '').trim()
+                ? 'Every link needs a file name and a working review-file URL.'
+                : (checkWorkingReviewLink(badLink.url).message
+                  || 'Paste the working link of the review file.');
               setUpdating(false);
               return;
             }
@@ -6370,7 +6568,10 @@
           return;
         }
         if (a === 'delete') {
-          if (!confirm('Delete?')) return;
+          if (!confirm(
+            'Delete this task from the board?\n\n'
+            + 'Note: on live Sheets this may not remove the sheet row — confirm with an admin if it reappears after refresh.'
+          )) return;
           (async () => {
             try {
               await api('DELETE', '/api/tasks/' + encodeURIComponent(card.dataset.ref));

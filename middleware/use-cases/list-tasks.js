@@ -44,12 +44,9 @@ function createListTasks({ data }) {
           (t) => isLoggedKind(t.kind) && !isFinishedStatus(t.status)
         );
       } else if (board === 'active') {
-        // Same silhouette as UI Board: open work only (not Done).
+        // Same silhouette as UI Board: open work only (not Done), no diary rows.
+        // Keep file-approved Active tasks visible (matches client filterTasksForView).
         scoped = scoped.filter((t) => !isFinishedStatus(t.status));
-        // Hide file-approved + logged diary rows (legacy board=active contract)
-        scoped = scoped.filter(
-          (t) => normalizeReviewState(t.reviewState) !== 'approved'
-        );
         scoped = scoped.filter((t) => !isLoggedKind(t.kind));
       }
 

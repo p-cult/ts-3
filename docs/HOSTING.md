@@ -72,3 +72,24 @@ npm run build:pages   # writes dist/index.html → publish to p-cult/task
 ```
 
 Render blueprint: `render.yaml` (in-place service `param-task-middleware`).
+
+## Keep-alive (free tier, no Render dashboard changes)
+
+Free web services spin down after ~15 minutes idle. External pings reset that timer.
+
+| Item | Value |
+|------|--------|
+| Endpoint | `GET https://param-task-middleware.onrender.com/api/health` |
+| Window | Mon–Fri **09:00–23:59 Asia/Kolkata** |
+| Interval | every **10 minutes** (GitHub Actions) |
+| Script | `scripts/keep-render-awake.sh` |
+| Workflow | `.github/workflows/keep-render-awake.yml` |
+
+Manual / local:
+
+```bash
+./scripts/keep-render-awake.sh          # respects IST weekday window
+FORCE=1 ./scripts/keep-render-awake.sh  # ping anyway
+```
+
+Or run **workflow_dispatch** on “Keep Render awake” (optional force). Outside the window the job no-ops. This consumes Free instance hours while awake (~15h × weekdays); nights/weekends still sleep.

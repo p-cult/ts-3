@@ -1,0 +1,42 @@
+# Keep param-task-middleware awake on Render free tier during weekday hours.
+# Does not change Render dashboard settings — external GET /api/health only.
+#
+# Schedule: every 10 minutes Mon–Fri (UTC cron). Script enforces
+# Mon–Fri 09:00–23:59 Asia/Kolkata and no-ops outside that window.
+name: Keep Render awake
+
+on:
+  schedule:
+    # Every 10 min, Mon–Fri UTC. IST window filtered in scripts/keep-render-awake.sh
+    - cron: '*/10 * * * 1-5'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Ping even outside IST weekday window'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+concurrency:
+  group: keep-render-awake
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ping /api/health (IST window)
+        env:
+          HEALTH_URL: https://param-task-middleware.onrender.com/api/health
+          TZ_NAME: Asia/Kolkata
+          FORCE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.force == 'true' && '1' || '0' }}
+        run: |
+          chmod +x scripts/keep-render-awake.sh
+          ./scripts/keep-render-awake.sh

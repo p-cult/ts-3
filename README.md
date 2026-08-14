@@ -57,13 +57,15 @@ One-time: this folder must be a Git repo with `origin` pointing at GitHub.
 ## Folders
 
 ```text
-frontend/          one HTML UI (placeholder today)
-middleware/        Node control room
+frontend/          one HTML UI (board + inject) → bake to p-cult/task Pages
+middleware/        Node control room (Render: param-task-middleware)
 apps-script/       thin bridge (deploy for live Sheets)
 docs/reference/    requirements specs (from ts-2)
 docs/archive/      secondary guides (not day-to-day reading)
-data/              local runtime
+data/              local runtime (gitignored caches)
 ```
+
+**Git remotes:** only `origin` → `https://github.com/p-cult/ts-3` (no personal forks as push targets). Pages UI lives in `p-cult/task`.
 
 ## Hosting (locked)
 

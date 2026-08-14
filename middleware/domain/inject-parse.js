@@ -387,16 +387,7 @@ function matchProjectDetailed(hint, projects) {
   const exact = list.find((p) => projectMatchKeys(p).some((k) => k === nh));
   if (exact) return { project: exact, via: aliased ? 'alias' : 'exact' };
 
-  const includes = list.filter((p) =>
-    projectMatchKeys(p).some((k) => k.indexOf(nh) >= 0 || nh.indexOf(k) >= 0)
-  );
-  if (includes.length === 1) return { project: includes[0], via: aliased ? 'alias' : 'soft' };
-  if (includes.length > 1) {
-    const cult = includes.find((p) =>
-      projectMatchKeys(p).some((k) => /cult\s*edits/.test(k))
-    );
-    if (cult && /edit/i.test(nh)) return { project: cult, via: aliased ? 'alias' : 'soft' };
-  }
+  // Soft/substring match removed — overlapping edition names minted the wrong project.
   return { project: null, via: 'none' };
 }
 

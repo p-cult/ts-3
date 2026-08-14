@@ -16,9 +16,9 @@ function createGetDropdownData({ data }) {
         pseudoName: p.pseudoName || '',
       }));
       const statuses = ALL_STATUSES.slice();
-      // People list is account inventory — only for signed-in callers.
+      // Vocabulary inventory is signed-in only (cuts anonymous recon).
       if (!actor || !actor.authenticated) {
-        return { people: [], projects, statuses };
+        return { people: [], projects: [], statuses: [] };
       }
       const people = data.listUsers().map((u) => ({
         username: u.username,

@@ -83,7 +83,7 @@ Free web services spin down after ~15 minutes idle. External pings reset that ti
 | Window | Mon–Fri **09:00–23:59 Asia/Kolkata** |
 | Interval | every **10 minutes** (GitHub Actions) |
 | Script | `scripts/keep-render-awake.sh` |
-| Workflow | `.github/workflows/keep-render-awake.yml` (also live on **`p-cult/task`** Actions until `p-cult/ts-3` push access is restored) |
+| Workflow | `.github/workflows/keep-render-awake.yml` on **`p-cult/ts-3`** (also mirrored on **`p-cult/task`** if needed) |
 
 Manual / local:
 

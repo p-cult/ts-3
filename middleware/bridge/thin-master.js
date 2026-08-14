@@ -505,9 +505,24 @@ function createThinMasterApi(deps) {
       ]);
     }
 
+    // Fail closed: never claim success if no sheet line was cleared — otherwise
+    // the mirror delete would orphan a live Master row that rehydrates later.
+    if (!masterRow && !userRow && !mapRow) {
+      throw new Error('clearTaskSheets found no Master/vehicle/mapping row for ' + taskId);
+    }
+
     return {
       ok: true,
-      data: { taskId, masterRow, userRow, mappingRow: mapRow || 0, userSheet },
+      data: {
+        taskId,
+        masterRow,
+        userRow,
+        mappingRow: mapRow || 0,
+        userSheet,
+        masterCleared: !!masterRow,
+        vehicleCleared: !!userRow,
+        mappingCleared: !!mapRow,
+      },
     };
   }
 

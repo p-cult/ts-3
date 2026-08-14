@@ -157,6 +157,22 @@ function bootstrap(deps) {
         );
       }
     }
+    const hardcodedMaster =
+      '1v3rliP07LU_UEbALN64nWlUP7ut8SSDvuIEOAwM2B0E';
+    if (
+      cfg.useLiveBridge
+      && String(cfg.masterSheetId || '').trim() === hardcodedMaster
+      && !process.env.MASTER_ID
+      && !process.env.MASTER_SHEET_ID
+    ) {
+      issue(
+        'warn',
+        'master_id_default',
+        'MASTER_ID not set — using built-in live Master id fallback',
+        'Set MASTER_ID explicitly in .env / Render so the wrong sheet cannot be targeted silently'
+      );
+      runtime.recordNotice('MASTER_ID using hardcoded fallback');
+    }
   }
 
   // --- production session secret (hard require for public URL / sole-writer) ---

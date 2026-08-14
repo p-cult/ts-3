@@ -67,10 +67,9 @@ async function main() {
     assert.strictEqual(r.status, 200);
     assert.ok(Array.isArray(r.json.people));
     assert.strictEqual(r.json.people.length, 0);
-    assert.ok(Array.isArray(r.json.projects));
-    assert.ok(r.json.projects.some((p) => p.code === 'PRJ001'));
-    assert.deepStrictEqual(r.json.statuses, ALL_STATUSES.slice());
-    ok('dropdown-data anonymous: empty people + public projects/statuses');
+    assert.strictEqual(r.json.projects.length, 0);
+    assert.strictEqual(r.json.statuses.length, 0);
+    ok('dropdown-data anonymous: empty vocabulary');
 
     const login = await request(port, 'POST', '/api/login', {
       body: { username: 'ts3admin', password: 'ts3-98860' },
@@ -80,7 +79,9 @@ async function main() {
     const authed = await request(port, 'GET', '/api/dropdown-data', { token });
     assert.strictEqual(authed.status, 200);
     assert.ok(authed.json.people.some((p) => p.username === 'ts3admin'));
-    ok('dropdown-data authenticated includes people');
+    assert.ok(authed.json.projects.some((p) => p.code === 'PRJ001'));
+    assert.deepStrictEqual(authed.json.statuses, ALL_STATUSES.slice());
+    ok('dropdown-data authenticated includes people projects statuses');
   } catch (e) {
     fail('dropdown-data', e);
   } finally {

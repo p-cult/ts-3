@@ -8,6 +8,18 @@ GitHub is the durable remote copy:
 
 `https://github.com/p-cult/ts-3`
 
+**Canonical remotes only:**
+
+```bash
+git remote -v
+# origin  https://github.com/p-cult/ts-3.git (fetch/push)
+```
+
+Do not add personal forks (`vinod-gowda/ts-3`, etc.) as push remotes. Develop as `p-cult`, or as a collaborator with write access on **`p-cult/ts-3`** and **`p-cult/task`** (e.g. `vinod-gowda`; invite other accounts by their exact GitHub login).
+
+Pages UI: `https://github.com/p-cult/task` → `https://p-cult.github.io/task/`  
+API: Render service from `p-cult/ts-3`.
+
 ## First time on another Mac
 
 1. Connect the `bkp-01` drive.

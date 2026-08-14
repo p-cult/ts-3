@@ -262,9 +262,11 @@ async function main() {
       assert.strictEqual(r.status, 200);
       assert.strictEqual(r.json.ok, true);
       assert.ok(Array.isArray(r.json.routes));
+      assert.ok(r.json.routes.length >= 1);
+      assert.ok(r.json.routes.some((x) => String(x).includes('/api/health')));
       assert.ok(r.json.actor);
       assert.strictEqual(r.json.actor.role, 'P1');
-      ok('GET /api lists routes + actor baseline');
+      ok('GET /api lists slim anon routes + actor baseline');
     }
 
     {

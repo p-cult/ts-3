@@ -338,6 +338,35 @@ function startServer(overrides = {}) {
     }
   }
 
+  /**
+   * Keep Master project vocabulary fresh without re-hydrating depot/users.
+   * Default 5s — enough for dropdown rename/add without hammering Apps Script.
+   */
+  function scheduleProjectsPoll() {
+    if (!config.useLiveBridge) return;
+    if (!app.data || typeof app.data.refreshProjectsFromBridge !== 'function') return;
+    if (app._projectsPollTimer) return;
+    const envMs = Number(process.env.PROJECTS_POLL_MS);
+    const intervalMs =
+      Number.isFinite(envMs) && envMs >= 2000 ? envMs : 5000;
+    const tick = async () => {
+      try {
+        await app.data.refreshProjectsFromBridge();
+      } catch (err) {
+        log.warn('projects poll failed', {
+          err: String(err && err.message ? err.message : err),
+        });
+      }
+    };
+    const first = setTimeout(tick, Math.min(2500, intervalMs));
+    if (typeof first.unref === 'function') first.unref();
+    app._projectsPollTimer = setInterval(tick, intervalMs);
+    if (typeof app._projectsPollTimer.unref === 'function') {
+      app._projectsPollTimer.unref();
+    }
+    log.info('projects poll scheduled', { intervalMs });
+  }
+
   return hydrateIfNeeded().then(
     () =>
       new Promise((resolve, reject) => {
@@ -361,6 +390,7 @@ function startServer(overrides = {}) {
             hydrateOk: app.data.hydrateOk,
             hydrateFromCache: !!app.data.hydrateFromCache,
           });
+          scheduleProjectsPoll();
           if (require.main === module || overrides.banner) {
             printStartupBanner(app, addr);
           }
@@ -369,6 +399,10 @@ function startServer(overrides = {}) {
             if (app._hydrateRetryTimer) {
               clearTimeout(app._hydrateRetryTimer);
               app._hydrateRetryTimer = null;
+            }
+            if (app._projectsPollTimer) {
+              clearInterval(app._projectsPollTimer);
+              app._projectsPollTimer = null;
             }
             if (app.data && typeof app.data.stopSheetsWorker === 'function') {
               app.data.stopSheetsWorker();

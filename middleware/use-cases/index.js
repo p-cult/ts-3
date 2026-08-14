@@ -23,6 +23,7 @@ const { createGetJourneyReport } = require('./get-journey-report');
 const { createPreviewInject } = require('./preview-inject');
 const { createCommitInject } = require('./commit-inject');
 const { createRefreshBridge } = require('./refresh-bridge');
+const { createRefreshProjects } = require('./refresh-projects');
 
 function createUseCases(deps) {
   const { config, data, runtime, sessions, log } = deps;
@@ -67,6 +68,7 @@ function createUseCases(deps) {
     previewInject: createPreviewInject({ data }),
     commitInject,
     refreshBridge: createRefreshBridge({ data }),
+    refreshProjects: createRefreshProjects({ data }),
   };
 }
 

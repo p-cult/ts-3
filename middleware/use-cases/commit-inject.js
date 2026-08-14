@@ -113,7 +113,7 @@ function createCommitInject({ data, useCases }) {
         failed: results.filter((r) => !r.ok && !r.skipped).length,
         results,
         note:
-          'Birth goes through middleware mint → vehicle → depot → mapping; live Sheets follow when STAGING_WRITES + bridge are on.',
+          'Birth goes through middleware mint → vehicle → depot → mapping; live Sheets follow when the bridge write path is on.',
       };
     },
   };

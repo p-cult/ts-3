@@ -172,6 +172,56 @@ async function main() {
     fail('auto-fallback', e);
   }
 
+  try {
+    const writes = [];
+    const { createThinMasterApi } = require('./bridge/thin-master');
+    const thin = createThinMasterApi({
+      masterId: 'master-1',
+      call: async (action, payload) => {
+        if (action === 'read') {
+          if (payload.tab === 'task' && !payload.spreadsheetId) {
+            // Col-A slice from DATA_ROW
+            return { ok: true, data: { values: [['DEL0019001A01'], ['KEEP9001A01']] } };
+          }
+          if (payload.tab === 'mapping' && !payload.spreadsheetId) {
+            return { ok: true, data: { values: [['DEL0019001A01']] } };
+          }
+          if (payload.tab === 'users') {
+            return {
+              ok: true,
+              data: {
+                values: blankRows(DATA_ROW - 1).concat([
+                  ['user-01', 'sheet-u1', '', 'Ada', 'active', '', 'ada', 'pw', '4', ''],
+                ]),
+              },
+            };
+          }
+          if (payload.tab === 'task' && payload.spreadsheetId === 'sheet-u1') {
+            return { ok: true, data: { values: [['DEL0019001A01']] } };
+          }
+          return { ok: true, data: { values: [] } };
+        }
+        if (action === 'write') {
+          writes.push(payload);
+          return { ok: true };
+        }
+        throw new Error('unexpected ' + action);
+      },
+    });
+    const out = await thin.clearTaskSheets({
+      taskId: 'DEL0019001A01',
+      userSheet: 'user-01',
+    });
+    assert.strictEqual(out.ok, true);
+    assert.strictEqual(out.data.masterRow, DATA_ROW);
+    assert.ok(writes.some((w) => w.tab === 'task' && !w.spreadsheetId && /A11:N11/.test(w.range)));
+    assert.ok(writes.some((w) => w.spreadsheetId === 'sheet-u1' && /A11:K11/.test(w.range)));
+    assert.ok(writes.some((w) => w.tab === 'mapping'));
+    ok('clearTaskSheets blanks Master + vehicle + mapping');
+  } catch (e) {
+    fail('clearTaskSheets', e);
+  }
+
   console.log('\n' + passed + ' passed, ' + failed + ' failed');
   process.exit(failed ? 1 : 0);
 }

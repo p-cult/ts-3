@@ -86,9 +86,9 @@ function createDataAccess(deps) {
         })
       : null;
 
-  function deleteByTaskId(id) {
+  async function deleteByTaskId(id) {
     const row = inner.findByTaskId(id);
-    const ok = inner.deleteByTaskId(id);
+    const ok = await Promise.resolve(inner.deleteByTaskId(id));
     if (ok && row) {
       history.clearStages(row.taskId);
       history.clearReviews(row.taskId);
@@ -96,7 +96,7 @@ function createDataAccess(deps) {
     return ok;
   }
 
-  function deleteByRef(r) {
+  async function deleteByRef(r) {
     const row = inner.findByRef(r);
     if (!row) return false;
     return deleteByTaskId(row.taskId);
@@ -180,6 +180,10 @@ function createDataAccess(deps) {
     refreshFromBridge:
       typeof inner.refreshFromBridge === 'function'
         ? () => inner.refreshFromBridge()
+        : async () => ({ ok: false, reason: 'not sheets' }),
+    refreshProjectsFromBridge:
+      typeof inner.refreshProjectsFromBridge === 'function'
+        ? () => inner.refreshProjectsFromBridge()
         : async () => ({ ok: false, reason: 'not sheets' }),
     loadMirrorCache:
       typeof inner.loadMirrorCache === 'function'

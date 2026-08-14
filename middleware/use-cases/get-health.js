@@ -46,6 +46,7 @@ function createGetHealth(deps) {
     async execute() {
       const rt = runtime.snapshot();
 
+      let softDataPingWarn = null;
       let dataStatus = { ok: false, kind: data.kind || 'unknown' };
       try {
         dataStatus = await Promise.race([
@@ -55,11 +56,21 @@ function createGetHealth(deps) {
           ),
         ]);
       } catch (err) {
+        // Live bridge mode: serve from mirror even if ping races — degrade, don't 503.
+        const soft = !!config.useLiveBridge;
         dataStatus = {
-          ok: false,
+          ok: soft,
           kind: data.kind || 'unknown',
           error: String(err && err.message ? err.message : err),
         };
+        if (soft) {
+          softDataPingWarn = {
+            severity: 'warn',
+            code: 'data_ping',
+            message: dataStatus.error,
+            hint: 'In-memory mirror still serving; ping will retry',
+          };
+        }
       }
 
       let bridgeStatus = {
@@ -98,6 +109,7 @@ function createGetHealth(deps) {
           code: 'notice',
           message,
         }));
+      if (softDataPingWarn) configIssues.push(softDataPingWarn);
 
       // Re-surface bootstrap blockers as config issues for the report
       for (const b of rt.blockers || []) {

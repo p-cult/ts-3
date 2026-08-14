@@ -345,6 +345,16 @@ function createThinMasterApi(deps) {
     );
   }
 
+  /** Like resolveWriteRow but never falls through to a blank row (delete must hit the real line). */
+  async function resolveExistingRow(spreadsheetId, tab, taskId, hintRow) {
+    const hint = Number(hintRow) || 0;
+    const values = await readColA(spreadsheetId, tab);
+    const found = findRowByTaskIdFrom(values, taskId, DATA_ROW);
+    if (found) return found;
+    if (hint >= DATA_ROW) return hint;
+    throw new Error('task row not found for clear: ' + taskId + ' @ ' + tab);
+  }
+
   async function writeVehicle(payload) {
     const row = (payload && payload.row) || {};
     const userSheet = String(row.userSheet || (payload && payload.userSheet) || '').trim();
@@ -441,6 +451,66 @@ function createThinMasterApi(deps) {
     };
   }
 
+  /**
+   * Clear Master task + user vehicle + mapping cells for a Task ID so rehydrate
+   * cannot resurrect a “deleted” board row.
+   */
+  async function clearTaskSheets(payload) {
+    const taskId = String((payload && payload.taskId) || '').trim();
+    if (!taskId) throw new Error('clearTaskSheets needs taskId');
+    const userSheet = String((payload && payload.userSheet) || '').trim();
+    const masterHint = Number(payload && payload.masterRow) || 0;
+    const userHint = Number(payload && payload.userRow) || 0;
+
+    let masterRow = 0;
+    try {
+      masterRow = await resolveExistingRow(masterId, 'task', taskId, masterHint);
+      await writeTab(masterId, 'task', 'A' + masterRow + ':N' + masterRow, [
+        Array(14).fill(''),
+      ]);
+    } catch (err) {
+      log.warn('clearTaskSheets Master miss', {
+        taskId,
+        err: String(err && err.message),
+      });
+    }
+
+    let userRow = 0;
+    if (userSheet) {
+      const users = (await getUsers()).users || [];
+      const meta = users.find(
+        (u) => String(u.userSheet || '').toLowerCase() === userSheet.toLowerCase()
+      );
+      if (meta && meta.sheetId) {
+        try {
+          userRow = await resolveExistingRow(meta.sheetId, 'task', taskId, userHint);
+          await writeTab(meta.sheetId, 'task', 'A' + userRow + ':K' + userRow, [
+            Array(11).fill(''),
+          ]);
+        } catch (err) {
+          log.warn('clearTaskSheets vehicle miss — continuing', {
+            taskId,
+            userSheet,
+            err: String(err && err.message),
+          });
+        }
+      }
+    }
+
+    const mapValues = await readColA(masterId, 'mapping');
+    const mapRow = findRowByTaskIdFrom(mapValues, taskId, DATA_ROW);
+    if (mapRow) {
+      await writeTab(masterId, 'mapping', 'A' + mapRow + ':D' + mapRow, [
+        ['', '', '', ''],
+      ]);
+    }
+
+    return {
+      ok: true,
+      data: { taskId, masterRow, userRow, mappingRow: mapRow || 0, userSheet },
+    };
+  }
+
   async function ping() {
     const r = await call('listen', { spreadsheetIds: [masterId] });
     return { ok: true, state: 'ok', message: 'thin bridge reachable', detail: r, protocol: 'thin' };
@@ -456,6 +526,7 @@ function createThinMasterApi(deps) {
     writeDepot,
     writeMapping,
     writeBatch,
+    clearTaskSheets,
     ping,
     HEADER_ROW,
     DATA_ROW,

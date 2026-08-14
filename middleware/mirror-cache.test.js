@@ -93,6 +93,75 @@ async function main() {
   assert.strictEqual(cold.listDepot()[0].taskId, 'PRJ0011001A01');
   ok('boot from mirror cache after bridge failure');
 
+  // Projects-only poll: rename without touching depot.
+  let projectPhase = 0;
+  let depotCalls = 0;
+  const renameBridge = {
+    configured: true,
+    async getUsers() {
+      return {
+        users: [
+          {
+            username: 'admin',
+            displayName: 'Admin',
+            userSheet: 'user-01',
+            role: 'admin',
+          },
+        ],
+      };
+    },
+    async getProjects() {
+      projectPhase += 1;
+      if (projectPhase === 1) {
+        return {
+          projects: [
+            { code: 'ALPHA1', name: 'Alpha Old', label: 'Alpha Old', pseudoName: '' },
+          ],
+        };
+      }
+      return {
+        projects: [
+          { code: 'ALPHA1', name: 'Alpha Renamed', label: 'Alpha Renamed', pseudoName: '' },
+          { code: 'BETA01', name: 'Beta New', label: 'Beta New', pseudoName: '' },
+        ],
+      };
+    },
+    async getDepot() {
+      depotCalls += 1;
+      return {
+        rows: [
+          {
+            taskId: 'ALPHA11001A01',
+            name: 'Cached task',
+            status: 'Active',
+            userSheet: 'user-01',
+            assignedTo: 'user-01',
+          },
+        ],
+      };
+    },
+  };
+  const live = createSheetsData({
+    useLiveBridge: true,
+    bridge: renameBridge,
+    dataDir: dir,
+    appMode: 'production',
+    writerOfRecord: 'ts3',
+    log: { info() {}, warn() {}, debug() {} },
+  });
+  await live.refreshFromBridge();
+  assert.strictEqual(live.findProject('ALPHA1').name, 'Alpha Old');
+  const beforeDepot = live.listDepot().length;
+  const depotBeforePoll = depotCalls;
+  const projOnly = await live.refreshProjectsFromBridge();
+  assert.strictEqual(projOnly.ok, true);
+  assert.strictEqual(projOnly.changed, true);
+  assert.strictEqual(live.findProject('ALPHA1').name, 'Alpha Renamed');
+  assert.ok(live.findProject('BETA01'));
+  assert.strictEqual(live.listDepot().length, beforeDepot);
+  assert.strictEqual(depotCalls, depotBeforePoll, 'projects-only must not call getDepot');
+  ok('refreshProjectsFromBridge renames without depot touch');
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

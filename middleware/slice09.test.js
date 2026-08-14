@@ -20,10 +20,17 @@ function fail(n, e) {
   console.error('  FAIL — ' + n, e && e.message ? e.message : e);
 }
 
-function request(port, method, pathName) {
+function request(port, method, pathName, { body, token } = {}) {
   return new Promise((resolve, reject) => {
+    const payload = body ? JSON.stringify(body) : null;
+    const headers = {};
+    if (payload) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(payload);
+    }
+    if (token) headers.Authorization = 'Bearer ' + token;
     const req = http.request(
-      { hostname: '127.0.0.1', port, path: pathName, method, headers: {} },
+      { hostname: '127.0.0.1', port, path: pathName, method, headers },
       (res) => {
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
@@ -40,6 +47,7 @@ function request(port, method, pathName) {
       }
     );
     req.on('error', reject);
+    if (payload) req.write(payload);
     req.end();
   });
 }
@@ -58,11 +66,21 @@ async function main() {
     const r = await request(port, 'GET', '/api/dropdown-data');
     assert.strictEqual(r.status, 200);
     assert.ok(Array.isArray(r.json.people));
-    assert.ok(r.json.people.some((p) => p.username === 'ts3admin'));
+    assert.strictEqual(r.json.people.length, 0);
     assert.ok(Array.isArray(r.json.projects));
     assert.ok(r.json.projects.some((p) => p.code === 'PRJ001'));
     assert.deepStrictEqual(r.json.statuses, ALL_STATUSES.slice());
-    ok('dropdown-data people projects statuses');
+    ok('dropdown-data anonymous: empty people + public projects/statuses');
+
+    const login = await request(port, 'POST', '/api/login', {
+      body: { username: 'ts3admin', password: 'ts3-98860' },
+    });
+    assert.strictEqual(login.status, 200);
+    const token = login.json.token;
+    const authed = await request(port, 'GET', '/api/dropdown-data', { token });
+    assert.strictEqual(authed.status, 200);
+    assert.ok(authed.json.people.some((p) => p.username === 'ts3admin'));
+    ok('dropdown-data authenticated includes people');
   } catch (e) {
     fail('dropdown-data', e);
   } finally {

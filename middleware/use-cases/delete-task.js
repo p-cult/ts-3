@@ -14,7 +14,8 @@ function createDeleteTask({ data }) {
       }
       const row = data.findByRef(id);
       if (!row) throw notFound('task not found');
-      data.deleteByRef(id);
+      const ok = await Promise.resolve(data.deleteByRef(id));
+      if (!ok) throw notFound('task not found');
       return { ok: true };
     },
   };

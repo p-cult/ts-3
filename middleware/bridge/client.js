@@ -233,6 +233,19 @@ function createBridgeClient(opts) {
         () => call('writeBatch', payload),
         (api) => api.writeBatch(payload)
       ),
+    clearTaskSheets: (payload) =>
+      withProtocol(
+        async () => {
+          // Semantic bridge may not expose clearTaskSheets — fall through to thin.
+          try {
+            return await call('clearTaskSheets', payload);
+          } catch (err) {
+            if (!isUnknownAction(err)) throw err;
+            return ensureThin().clearTaskSheets(payload);
+          }
+        },
+        (api) => api.clearTaskSheets(payload)
+      ),
   };
 }
 

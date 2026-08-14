@@ -552,6 +552,8 @@
     </span>
     <div class="toolbar auth-tools">
       <span class="auth-who" id="whoLine" hidden></span>
+      <button class="btn" type="button" id="btnUpdateProjects" hidden
+        title="Pull the project list from Master admin now (Active / rename / order)">Update projects</button>
       <button class="btn" type="button" id="btnLogin">Log in</button>
       <button class="btn" type="button" id="btnLogout" hidden>Log out</button>
     </div>
@@ -755,7 +757,7 @@
   <dialog id="loginDlg">
     <form class="dlg" id="loginForm" method="dialog">
       <h2>Log in</h2>
-      <p class="muted" id="loginHint">Primary: ts3admin / ts3-98860 (P4) · ts3usr1 / ts3-98860 (P2)</p>
+      <p class="muted" id="loginHint">Use the username / password from the Master users sheet (live). Fixture demo logins only work in offline memory mode.</p>
       <label>Username</label><input id="lu" autocomplete="username" required />
       <label>Password</label><input id="lp" type="password" autocomplete="current-password" required />
       <div class="err" id="loginErr"></div>
@@ -1379,7 +1381,7 @@
           label: 'project: ' + (name ? (name + ' (' + c + ')') : c),
         });
       }
-      (state.projects || []).forEach((p) => add(p.code, p.name));
+      (state.projects || []).forEach((p) => add(p.code, p.pseudoName || p.name));
       (state.viewTasks || []).forEach((t) => add(t.projectCode, t.projectName));
       return Array.from(seen.values());
     }
@@ -3369,6 +3371,7 @@
         $('whoLine').textContent = m.user.displayName || m.user.username || '';
         $('whoLine').hidden = !$('whoLine').textContent;
         $('btnLogin').hidden = true; $('btnLogout').hidden = false;
+        if ($('btnUpdateProjects')) $('btnUpdateProjects').hidden = !perms().canAdmin;
         $('tabLogs').hidden = !perms().canViewLogs;
         if ($('tabLogged')) $('tabLogged').hidden = !perms().canViewLogs;
         $('reportsPanel').hidden = !perms().canViewReports;
@@ -3381,6 +3384,7 @@
         $('whoLine').textContent = '';
         $('whoLine').hidden = true;
         $('btnLogin').hidden = false; $('btnLogout').hidden = true;
+        if ($('btnUpdateProjects')) $('btnUpdateProjects').hidden = true;
         $('tabLogs').hidden = true;
         if ($('tabLogged')) $('tabLogged').hidden = true;
         $('reportsPanel').hidden = true;
@@ -3667,7 +3671,7 @@
       state.projects.forEach((p) => {
         const o = document.createElement('option');
         o.value = p.code;
-        o.textContent = p.name || p.label || p.code;
+        o.textContent = p.pseudoName || p.name || p.label || p.code;
         sel.appendChild(o);
       });
       if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
@@ -3675,7 +3679,7 @@
       if (hint) {
         if (!state.projects.length) {
           hint.hidden = false;
-          hint.textContent = 'No projects yet — open Inject → Refresh from master, or reload after login.';
+          hint.textContent = 'No projects yet — waiting for master list (auto-refreshes), or use Inject → Refresh from master.';
         } else {
           hint.hidden = false;
           hint.textContent = 'Required — pick a project before SUBMIT.';
@@ -4109,12 +4113,61 @@
       }
     }
 
+    function projectsFingerprint(list) {
+      return (list || [])
+        .map((p) =>
+          [p.code || '', p.name || p.label || '', p.pseudoName || ''].join('\t')
+        )
+        .sort()
+        .join('\n');
+    }
+
+    function applyProjectsToOpenSelects() {
+      document.querySelectorAll('#draftList .task.draft').forEach((card) => {
+        refreshDummyProjects(card);
+      });
+      fillInjectBulkProjectSelect();
+      document.querySelectorAll('#injectGroups select[aria-label^="Map project"]').forEach((sel) => {
+        const prev = sel.value;
+        sel.innerHTML = injectMasterProjectOptions(prev);
+        if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+        else sel.value = '';
+      });
+      syncInjectProjectsSourceMeta();
+    }
+
+    async function quietRefreshProjects() {
+      if (!state.me) return;
+      const before = projectsFingerprint(state.projects);
+      await refreshProjects();
+      const after = projectsFingerprint(state.projects);
+      if (before !== after) applyProjectsToOpenSelects();
+    }
+
+    let projectsPollTimer = null;
+    const PROJECTS_UI_POLL_MS = 5000;
+    function stopProjectsPoll() {
+      if (projectsPollTimer) {
+        clearInterval(projectsPollTimer);
+        projectsPollTimer = null;
+      }
+    }
+    function startProjectsPoll() {
+      stopProjectsPoll();
+      if (!state.me) return;
+      projectsPollTimer = setInterval(() => {
+        if (!state.me) return;
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        quietRefreshProjects().catch(() => {});
+      }, PROJECTS_UI_POLL_MS);
+    }
+
     function syncInjectProjectsSourceMeta() {
       const el = $('injectProjectsSource');
       if (!el) return;
       const src = state.projectsSource || '';
       el.textContent = src
-        ? ('projects: ' + src + ' · ' + (state.projects || []).length)
+        ? ('projects: ' + src + ' · ' + (state.projects || []).length + ' · live')
         : '';
     }
 
@@ -4154,6 +4207,39 @@
       } catch (e) {
         flashInject('');
         alert(e.message || String(e));
+      }
+    }
+
+    /** Admin: pull Master admin project list now (stays on current view). */
+    async function updateProjectsFromMasterNow() {
+      const btn = $('btnUpdateProjects');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Updating…';
+      }
+      try {
+        const r = await api('POST', '/api/projects/refresh', {});
+        if (!r.ok) {
+          alert(r.reason || 'Could not update projects from Master');
+          return;
+        }
+        state.projects = r.projectList || [];
+        state.projectsSource = 'bridge';
+        applyProjectsToOpenSelects();
+        alert(
+          'Project list updated'
+          + (r.changed ? ' (changed)' : ' (already current)')
+          + ' — '
+          + (state.projects || []).length
+          + ' active projects.\n\nOther signed-in users get the same list within a few seconds.'
+        );
+      } catch (e) {
+        alert(e.message || String(e));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Update projects';
+        }
       }
     }
 
@@ -4471,13 +4557,11 @@
       const opts = ['<option value="">— choose from master list —</option>'];
       injectMasterProjects().forEach((p) => {
         const sel = selectedCode && String(p.code) === String(selectedCode) ? ' selected' : '';
-        const label = p.label || p.name || p.code;
-        const pseudo = p.pseudoName && String(p.pseudoName) !== String(label)
-          ? ' · ' + p.pseudoName
-          : '';
+        // Display = admin Pseudo Name (col F); fall back to dropdown label / name.
+        const display = p.pseudoName || p.label || p.name || p.code;
         opts.push(
           '<option value="' + escapeHtml(p.code) + '"' + sel + '>'
-          + escapeHtml(label) + escapeHtml(pseudo) + ' (' + escapeHtml(p.code) + ')</option>'
+          + escapeHtml(display) + '</option>'
         );
       });
       return opts.join('');
@@ -6570,7 +6654,7 @@
         if (a === 'delete') {
           if (!confirm(
             'Delete this task from the board?\n\n'
-            + 'Note: on live Sheets this may not remove the sheet row — confirm with an admin if it reappears after refresh.'
+            + 'This also clears the matching live Sheets rows when the bridge is connected.'
           )) return;
           (async () => {
             try {
@@ -6674,6 +6758,11 @@
 
     // events
     $('btnLogin').onclick = () => { $('loginErr').textContent = ''; $('loginDlg').showModal(); };
+    if ($('btnUpdateProjects')) {
+      $('btnUpdateProjects').onclick = () => {
+        updateProjectsFromMasterNow().catch((e) => alert(e.message || String(e)));
+      };
+    }
     if ($('summaryToggle')) {
       $('summaryToggle').addEventListener('click', () => setSummaryOpen(!state.summaryOpen));
     }
@@ -6697,6 +6786,7 @@
     };
     $('btnLogout').onclick = async () => {
       try { await api('POST', '/api/logout', {}); } catch (e) {}
+      stopProjectsPoll();
       setAuth(null, null); clearAllDummies(); await boot();
     };
     $('btnAddDraft').onclick = () => addDummyDraft();
@@ -6891,6 +6981,13 @@
         const h = await res.json();
         const b = h && h.banner;
         const staging = !!(b && b.staging);
+        const live = !!(h && h.mode && h.mode.liveBridge);
+        const hint = $('loginHint');
+        if (hint) {
+          hint.textContent = live
+            ? 'Live Master: use username / password from the users sheet (e.g. admin, vinod, jois…). Not the offline demo logins.'
+            : 'Offline demo: ts3admin / ts3-98860 (P4) · ts3usr1 / ts3-98860 (P2)';
+        }
         if (badge) badge.hidden = !staging;
         if (!el) return;
         if (!staging) {
@@ -6928,6 +7025,8 @@
           refreshUsers().catch(() => {}),
           scheduleFullTasksRefresh(),
         ]).catch(() => {});
+        if (state.me) startProjectsPoll();
+        else stopProjectsPoll();
         setTimeout(() => { syncStagingBanner(); }, 0);
       } catch (err) {
         clearTimeout(wakeHint);

@@ -25,7 +25,7 @@ function createBulkTasks({ data }) {
         }
         try {
           if (action === 'delete') {
-            data.deleteByTaskId(row.taskId);
+            await Promise.resolve(data.deleteByTaskId(row.taskId));
             results.push({ id, ok: true, action: 'delete' });
           } else if (action === 'set_kind') {
             const kind = normalizeKind(body.kind);

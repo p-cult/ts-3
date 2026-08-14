@@ -469,6 +469,65 @@ function createSheetsData(opts = {}) {
   }
 
   /**
+   * Lightweight projects vocabulary refresh (Master admin tab only).
+   * Does not touch depot/users — safe to poll every few seconds.
+   */
+  let projectsRefreshInFlight = null;
+  async function refreshProjectsFromBridge() {
+    if (!useLiveBridge) return { ok: false, reason: 'bridge off' };
+    if (projectsRefreshInFlight) return projectsRefreshInFlight;
+    projectsRefreshInFlight = (async () => {
+      try {
+        const projectsRes = await bridge.getProjects();
+        const raw = (projectsRes && (projectsRes.projects || projectsRes.rows)) || [];
+        if (!Array.isArray(raw)) {
+          return { ok: false, reason: 'bad projects payload' };
+        }
+        const before = inner
+          .listProjects()
+          .map((p) =>
+            [p.code, p.name || '', p.label || '', p.pseudoName || ''].join('\t')
+          )
+          .sort()
+          .join('\n');
+        const applied = applyProjects(raw);
+        const after = inner
+          .listProjects()
+          .map((p) =>
+            [p.code, p.name || '', p.label || '', p.pseudoName || ''].join('\t')
+          )
+          .sort()
+          .join('\n');
+        const changed = before !== after;
+        if (applied.replaced) saveMirrorCache();
+        if (changed) {
+          log.info('projects vocabulary refreshed', {
+            count: applied.count,
+            replaced: applied.replaced,
+          });
+        }
+        return {
+          ok: true,
+          projects: applied.count,
+          replaced: applied.replaced,
+          changed,
+        };
+      } catch (err) {
+        log.warn('projects refresh failed — keeping prior list', {
+          err: String(err && err.message),
+        });
+        return {
+          ok: false,
+          reason: String(err && err.message ? err.message : err),
+        };
+      } finally {
+        projectsRefreshInFlight = null;
+      }
+    })();
+    return projectsRefreshInFlight;
+  }
+
+  /**
    * Live birth: vehicle → depot → mapping (law order).
    * Bridge returns row coords; mapping write needs masterRow + userRow.
    */
@@ -546,6 +605,35 @@ function createSheetsData(opts = {}) {
         userSheet,
       });
     }
+    return { ok: true };
+  }
+
+  async function pushLiveDelete(row) {
+    if (!useLiveBridge || !row || !row.taskId) return { ok: true, skipped: true };
+    if (typeof bridge.clearTaskSheets !== 'function') {
+      throw new Error('bridge cannot clear sheet rows for delete');
+    }
+    const users = inner.listUsers();
+    const userSheet = resolveUserSheet(row, users) || row.userSheet || '';
+    const cached = outbox && typeof outbox.getRowCache === 'function'
+      ? outbox.getRowCache(row.taskId)
+      : null;
+    await bridge.clearTaskSheets({
+      taskId: row.taskId,
+      userSheet: (cached && cached.userSheet) || userSheet,
+      masterRow: cached && cached.masterRow,
+      userRow: cached && cached.userRow,
+    });
+    if (outbox && typeof outbox.clearRowCache === 'function') {
+      outbox.clearRowCache(row.taskId);
+    } else if (outbox && typeof outbox.setRowCache === 'function') {
+      // Best-effort drop: overwrite with zeros so future patches don't reuse stale coords.
+      outbox.setRowCache(row.taskId, { masterRow: 0, userRow: 0, userSheet: '' });
+    }
+    log.info('live bridge delete cleared sheet rows', {
+      taskId: row.taskId,
+      userSheet,
+    });
     return { ok: true };
   }
 
@@ -695,6 +783,7 @@ function createSheetsData(opts = {}) {
     },
 
     refreshFromBridge,
+    refreshProjectsFromBridge,
     loadMirrorCache,
     saveMirrorCache,
 
@@ -769,8 +858,21 @@ function createSheetsData(opts = {}) {
         if (!useLiveBridge || !saved || !outbox) return saved;
         return enqueueLive('patch', saved);
       }),
-    deleteByTaskId: (id) => gateWrite('deleteByTaskId', () => inner.deleteByTaskId(id)),
-    deleteByRef: (r) => gateWrite('deleteByRef', () => inner.deleteByRef(r)),
+    deleteByTaskId: (id) =>
+      gateWrite('deleteByTaskId', () => {
+        const row = inner.findByTaskId(id);
+        if (!row) return false;
+        if (!useLiveBridge) return inner.deleteByTaskId(id);
+        // Clear Sheets first — never leave ghosts that rehydrate after refresh.
+        return pushLiveDelete(row).then(() => inner.deleteByTaskId(id));
+      }),
+    deleteByRef: (r) =>
+      gateWrite('deleteByRef', () => {
+        const row = inner.findByRef(r);
+        if (!row) return false;
+        if (!useLiveBridge) return inner.deleteByRef(r);
+        return pushLiveDelete(row).then(() => inner.deleteByRef(r));
+      }),
 
     getMapping: (id) => inner.getMapping(id),
     partitionsFor: (id) => inner.partitionsFor(id),
@@ -779,6 +881,7 @@ function createSheetsData(opts = {}) {
     /** Used by sync worker — flush one outbox row to Sheets. */
     pushLiveBirth,
     pushLivePatch,
+    pushLiveDelete,
     resolveUserSheet: (row) => resolveUserSheet(row, inner.listUsers()),
 
     _outbox: outbox,

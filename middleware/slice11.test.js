@@ -20,10 +20,15 @@ function fail(n, e) {
   console.error('  FAIL — ' + n, e && e.message ? e.message : e);
 }
 
-function request(port, method, pathName, { origin } = {}) {
+function request(port, method, pathName, { origin, body } = {}) {
   return new Promise((resolve, reject) => {
+    const payload = body ? JSON.stringify(body) : null;
     const headers = {};
     if (origin) headers.Origin = origin;
+    if (payload) {
+      headers['Content-Type'] = 'application/json';
+      headers['Content-Length'] = Buffer.byteLength(payload);
+    }
     const req = http.request(
       { hostname: '127.0.0.1', port, path: pathName, method, headers },
       (res) => {
@@ -33,11 +38,13 @@ function request(port, method, pathName, { origin } = {}) {
           resolve({
             status: res.statusCode,
             headers: res.headers,
+            raw: Buffer.concat(chunks).toString('utf8'),
           });
         });
       }
     );
     req.on('error', reject);
+    if (payload) req.write(payload);
     req.end();
   });
 }
@@ -95,6 +102,16 @@ async function main() {
     assert.strictEqual(plain.headers['access-control-allow-origin'], undefined);
     ok('no CORS header when CORS_ORIGIN unset');
     await new Promise((r) => noCors.close(r));
+
+    const login = await request(port, 'POST', '/api/login', {
+      origin: allowed,
+      body: { username: 'ts3admin', password: 'ts3-98860' },
+    });
+    assert.strictEqual(login.status, 200);
+    const setCookie = String(login.headers['set-cookie'] || '');
+    assert.ok(/SameSite=None/i.test(setCookie), setCookie);
+    assert.ok(/Secure/i.test(setCookie), setCookie);
+    ok('login cookie SameSite=None; Secure when CORS_ORIGIN set');
   } catch (e) {
     fail('CORS', e);
   } finally {

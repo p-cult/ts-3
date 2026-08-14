@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Param Task Board — Admin guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1c1917;
+      --muted: #57534e;
+      --paper: #faf7f2;
+      --card: #ffffff;
+      --line: #e7e0d5;
+      --accent: #c43c3c;
+      --accent-soft: #f3e0dc;
+      --ok: #3f6b4a;
+      --warn: #9a6b16;
+      --max: 42rem;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      font-size: 1.05rem;
+      line-height: 1.55;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 500px at 10% -10%, #f6ebe3 0%, transparent 55%),
+        radial-gradient(900px 400px at 100% 0%, #efe8dc 0%, transparent 50%),
+        var(--paper);
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+    header.hero {
+      padding: 1.75rem 0 1.25rem;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 1.75rem;
+    }
+    .brand {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 700;
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    .brand span { color: var(--accent); }
+    .lede { color: var(--muted); max-width: 36rem; margin: 0; }
+    .live {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.45rem 0.75rem;
+      background: var(--accent-soft);
+      color: var(--ink);
+      border-radius: 4px;
+      font-size: 0.95rem;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .live:hover { outline: 2px solid var(--accent); }
+    nav.toc {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      margin-bottom: 2rem;
+    }
+    nav.toc strong { display: block; margin-bottom: 0.5rem; font-family: Fraunces, Georgia, serif; }
+    nav.toc ol { margin: 0; padding-left: 1.2rem; }
+    nav.toc a { color: var(--ink); text-underline-offset: 2px; }
+    nav.toc a:hover { color: var(--accent); }
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 1.35rem 1.35rem 1.5rem;
+      margin-bottom: 1.15rem;
+    }
+    h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.35rem;
+      margin: 0 0 0.75rem;
+      letter-spacing: -0.01em;
+    }
+    h3 {
+      font-size: 1.05rem;
+      margin: 1.15rem 0 0.4rem;
+      color: var(--ink);
+    }
+    p { margin: 0 0 0.75rem; }
+    ul, ol { margin: 0 0 0.75rem; padding-left: 1.25rem; }
+    li { margin-bottom: 0.35rem; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.98rem;
+      margin: 0.5rem 0 0.85rem;
+    }
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      padding: 0.55rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    th { color: var(--muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: #fcf8f4;
+      padding: 0.75rem 0.9rem;
+      margin: 0.85rem 0;
+    }
+    .callout.warn { border-left-color: var(--warn); }
+    .callout.ok { border-left-color: var(--ok); }
+    .callout p:last-child { margin-bottom: 0; }
+    .steps { counter-reset: step; list-style: none; padding-left: 0; }
+    .steps li {
+      position: relative;
+      padding-left: 2.4rem;
+      margin-bottom: 0.65rem;
+    }
+    .steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1.7rem;
+      height: 1.7rem;
+      border-radius: 999px;
+      background: var(--ink);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+    }
+    kbd, .ui {
+      font-family: inherit;
+      font-weight: 700;
+      background: #f0ebe3;
+      padding: 0.05rem 0.35rem;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    footer {
+      margin-top: 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--line);
+      padding-top: 1rem;
+    }
+    @media print {
+      body { background: #fff; }
+      section, nav.toc { break-inside: avoid; box-shadow: none; }
+      .live { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1 class="brand"><span>Param</span> Task Board</h1>
+      <p class="lede">Admin guide for day-to-day use — no technical jargon. Use this page for knowledge transfer and training.</p>
+      <a class="live" href="https://p-cult.github.io/task/" target="_blank" rel="noopener">Open the live Task Board</a>
+    </header>
+
+    <nav class="toc" aria-label="Contents">
+      <strong>Contents</strong>
+      <ol>
+        <li><a href="#what">What this system is</a></li>
+        <li><a href="#roles">Who can do what</a></li>
+        <li><a href="#login">Getting in</a></li>
+        <li><a href="#tabs">The main tabs</a></li>
+        <li><a href="#projects">Managing projects</a></li>
+        <li><a href="#create">Creating and editing tasks</a></li>
+        <li><a href="#review">Links, review, and approval</a></li>
+        <li><a href="#inject">Bulk Inject</a></li>
+        <li><a href="#checklist">Everyday checklist</a></li>
+        <li><a href="#avoid">Things to avoid</a></li>
+        <li><a href="#help">Where to get help</a></li>
+      </ol>
+    </nav>
+
+    <section id="what">
+      <h2>What this system is</h2>
+      <p>The Task Board is the shared place where Param work is listed, updated, reviewed, and closed.</p>
+      <p>It stays in sync with your Google Sheets. Day to day, people work in the <strong>website</strong> — not by typing into every sheet cell by hand.</p>
+    </section>
+
+    <section id="roles">
+      <h2>Who can do what</h2>
+      <table>
+        <thead><tr><th>Role</th><th>Typical use</th></tr></thead>
+        <tbody>
+          <tr><td>Team member</td><td>Own work, updates, file links, submit for review</td></tr>
+          <tr><td>Moderator / lead</td><td>Review files, approve finished work, help across people</td></tr>
+          <tr><td>Admin</td><td>Everything above, plus Inject, project updates, reassign, delete</td></tr>
+        </tbody>
+      </table>
+      <div class="callout">
+        <p>On the live site, your password comes from the Master spreadsheet <strong>users</strong> list. Training/demo passwords from a local practice machine are not live passwords unless that person also exists on the Master users list.</p>
+      </div>
+    </section>
+
+    <section id="login">
+      <h2>Getting in</h2>
+      <ol class="steps">
+        <li>Open the Task Board website.</li>
+        <li>Click <span class="ui">Log in</span>.</li>
+        <li>Enter username and password.</li>
+        <li>Click <span class="ui">Sign in</span>.</li>
+      </ol>
+      <p>When finished, use <span class="ui">Log out</span>.</p>
+      <p>If login fails: check Caps Lock, then confirm your row still exists on the Master users sheet and the password matches.</p>
+    </section>
+
+    <section id="tabs">
+      <h2>The main tabs</h2>
+      <table>
+        <thead><tr><th>Tab</th><th>What it’s for</th></tr></thead>
+        <tbody>
+          <tr><td><span class="ui">Board</span></td><td>Active work you create and edit</td></tr>
+          <tr><td><span class="ui">Logged</span></td><td>Diary / routine notes off the main board</td></tr>
+          <tr><td><span class="ui">Needs attention</span></td><td>Waiting approval, file review, or rework</td></tr>
+          <tr><td><span class="ui">Completed</span></td><td>Finished work</td></tr>
+          <tr><td><span class="ui">Activity</span></td><td>Searchable history and export</td></tr>
+          <tr><td><span class="ui">Inject</span></td><td>Admin only — paste a batch of tasks in</td></tr>
+        </tbody>
+      </table>
+      <p>Admins also see <span class="ui">Update projects</span> in the top bar after signing in.</p>
+    </section>
+
+    <section id="projects">
+      <h2>Managing projects</h2>
+      <p>Projects are the buckets people pick when creating work (for example Social Media or a grant name).</p>
+      <h3>Where the list lives</h3>
+      <p>On the Master Google Sheet, open the <strong>admin</strong> tab.</p>
+      <table>
+        <thead><tr><th>Change</th><th>Result on the website</th></tr></thead>
+        <tbody>
+          <tr><td>Set <strong>Active</strong> to <code>No</code></td><td>Project disappears from the dropdown (row can stay on the sheet)</td></tr>
+          <tr><td>Set <strong>Active</strong> to <code>Yes</code></td><td>Project appears again</td></tr>
+          <tr><td>Edit <strong>Pseudo Name</strong> (column F)</td><td>That friendly name is what people see in the dropdown</td></tr>
+          <tr><td>Reorder rows</td><td>Changes the order of the list</td></tr>
+        </tbody>
+      </table>
+      <div class="callout warn">
+        <p>If Active keeps jumping back to Yes, the cell still has a formula. Replace it with plain text <code>No</code> or <code>Yes</code>. Google may warn that the area is protected — choose OK if you are allowed to edit.</p>
+      </div>
+      <h3>After you change the sheet</h3>
+      <ol class="steps">
+        <li>Save the Google Sheet.</li>
+        <li>On the website (as admin), click <span class="ui">Update projects</span>.</li>
+        <li>Open <span class="ui">+ Add task</span> and confirm the list.</li>
+      </ol>
+      <p>The list also refreshes by itself within a short time. The button is for “I need it right now.”</p>
+      <div class="callout">
+        <p>Do not casually edit the Project code formula columns. Wrong codes break how new work IDs are created.</p>
+      </div>
+    </section>
+
+    <section id="create">
+      <h2>Creating and editing tasks</h2>
+      <h3>Create</h3>
+      <ol class="steps">
+        <li>Go to <span class="ui">Board</span>.</li>
+        <li>Click <span class="ui">+ Add task</span>.</li>
+        <li>Choose a <span class="ui">Project</span> (required).</li>
+        <li>Enter a clear <span class="ui">Name</span> (and notes if useful).</li>
+        <li>Click <span class="ui">SUBMIT</span>.</li>
+      </ol>
+      <p>The system assigns the official ID in the background — you never type that ID.</p>
+      <h3>Edit</h3>
+      <p>Open a card → <span class="ui">EDIT</span> → change fields → <span class="ui">UPDATE</span>.</p>
+      <p>Admins can also reassign people, change status, or delete a task when needed.</p>
+    </section>
+
+    <section id="review">
+      <h2>Links, review, and approval</h2>
+      <p>People can add up to four review links on a task (<span class="ui">Add link</span>). Each needs a name and a working URL.</p>
+      <p>Reviewers use <span class="ui">Needs attention</span> and the card’s <span class="ui">Review</span> / <span class="ui">Submit Feedback</span> tools.</p>
+      <table>
+        <thead><tr><th>Stars</th><th>Simple meaning</th></tr></thead>
+        <tbody>
+          <tr><td>3★</td><td>Approved</td></tr>
+          <tr><td>2★</td><td>Acceptable with a tag</td></tr>
+          <tr><td>1★</td><td>Needs rework (comment required)</td></tr>
+        </tbody>
+      </table>
+      <h3>Approving finished work</h3>
+      <p>When main work is Done, it may show <span class="ui">Waiting for approval</span>.</p>
+      <ol class="steps">
+        <li>Open <span class="ui">Needs attention</span>.</li>
+        <li>Focus <span class="ui">Waiting approval</span> if helpful.</li>
+        <li>Click <span class="ui">Approve task</span> — or select several and use <span class="ui">Approve tasks</span>.</li>
+      </ol>
+    </section>
+
+    <section id="inject">
+      <h2>Bulk Inject (admins)</h2>
+      <p>Use <span class="ui">Inject</span> when you have a list from chat or a spreadsheet export.</p>
+      <ol class="steps">
+        <li>Paste into <span class="ui">Bulk text</span>.</li>
+        <li>Click <span class="ui">Process</span>.</li>
+        <li>Filter and select the rows you want.</li>
+        <li>Set Project / Kind if needed → <span class="ui">Apply to selected</span>.</li>
+        <li>Click <span class="ui">Inject into system</span>.</li>
+      </ol>
+      <p>Unmapped projects must be chosen from the Master list before inject. Prefer fixing the Master project list and clicking <span class="ui">Update projects</span> first.</p>
+    </section>
+
+    <section id="checklist">
+      <h2>Everyday checklist</h2>
+      <ul>
+        <li>Board loads and people can log in</li>
+        <li>Project list matches what you want (Active + Pseudo Name)</li>
+        <li><span class="ui">Needs attention</span> is cleared or assigned</li>
+        <li>After Master sheet project edits → <span class="ui">Update projects</span> → spot-check <span class="ui">+ Add task</span></li>
+      </ul>
+    </section>
+
+    <section id="avoid">
+      <h2>Things to avoid</h2>
+      <ul>
+        <li>Editing Task IDs in Google Sheets by hand</li>
+        <li>Running an old writing system and this board against the same sheets at the same time</li>
+        <li>Inventing projects only on a personal sheet instead of the Master <strong>admin</strong> tab</li>
+        <li>Leaving Active stuck as an auto-Yes formula so you cannot turn projects off</li>
+        <li>Expecting offline demo logins to work on the live website</li>
+      </ul>
+    </section>
+
+    <section id="help">
+      <h2>Where to get help</h2>
+      <table>
+        <thead><tr><th>Question</th><th>Who</th></tr></thead>
+        <tbody>
+          <tr><td>Password / who can log in</td><td>Sheet admin (Master users tab)</td></tr>
+          <tr><td>Which projects should appear</td><td>Sheet admin (admin tab) + Update projects</td></tr>
+          <tr><td>Website errors / outages</td><td>Developer with GitHub + hosting access</td></tr>
+        </tbody>
+      </table>
+      <div class="callout ok">
+        <p>This page is designed to embed into your organisation’s knowledge-transfer site. You can iframe it, copy the HTML, or link it as a standalone guide.</p>
+      </div>
+    </section>
+
+    <footer>
+      Param Task Board · Admin guide · For knowledge transfer · Live board:
+      <a href="https://p-cult.github.io/task/">p-cult.github.io/task</a>
+    </footer>
+  </div>
+</body>
+</html>

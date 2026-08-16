@@ -1,0 +1,67 @@
+# CI — one-box memory verify + Docker image smoke
+
+name: one-box-verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'middleware/**'
+      - 'frontend/**'
+      - 'deploy/one-box/**'
+      - 'scripts/run-one-box.sh'
+      - 'scripts/verify-one-box.sh'
+      - 'package.json'
+      - '.github/workflows/one-box-verify.yml'
+  pull_request:
+    paths:
+      - 'middleware/**'
+      - 'frontend/**'
+      - 'deploy/one-box/**'
+      - 'scripts/run-one-box.sh'
+      - 'scripts/verify-one-box.sh'
+      - 'package.json'
+      - '.github/workflows/one-box-verify.yml'
+  workflow_dispatch:
+
+jobs:
+  native-memory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify one-box (memory)
+        run: |
+          chmod +x scripts/run-one-box.sh scripts/verify-one-box.sh
+          ./scripts/verify-one-box.sh
+
+  docker-memory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compose up (memory env)
+        working-directory: deploy/one-box
+        run: |
+          cp env.memory.example .env
+          docker compose up --build -d
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:4303/api/health >/dev/null; then
+              echo ready
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f deploy/one-box/docker-compose.yml logs
+          exit 1
+      - name: Verify against container
+        run: |
+          chmod +x scripts/verify-one-box.sh
+          BASE_URL=http://127.0.0.1:4303 ./scripts/verify-one-box.sh
+      - name: Compose down
+        if: always()
+        working-directory: deploy/one-box
+        run: docker compose down -v

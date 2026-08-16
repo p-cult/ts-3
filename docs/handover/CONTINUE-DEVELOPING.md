@@ -60,6 +60,18 @@ npm test
 
 Demo logins (memory fixture only): `ts3admin` / `ts3-98860`.
 
+### 3.2b One-box deploy (UI + API together)
+
+Portable mirror of staging: one process (or Docker) serves the board and `/api`. Sheets still use the Apps Script bridge.
+
+```bash
+./scripts/verify-one-box.sh          # automated smoke (memory)
+./scripts/run-one-box.sh --memory    # leave running → http://127.0.0.1:4303/
+# Docker: see docs/handover/ONE-BOX-DEPLOY.md  (deploy/one-box/)
+```
+
+For AI-assisted continuation, start with **[AI-HANDOFF.md](AI-HANDOFF.md)**.
+
 ### 3.3 Local against live Master (read-only recommended)
 
 Requires a local `.env` (gitignored) with `BRIDGE_URL`, `BRIDGE_SECRET`, `MASTER_ID`:

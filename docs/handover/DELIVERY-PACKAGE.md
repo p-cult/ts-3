@@ -19,6 +19,8 @@ A web Task Board that:
 
 It replaces the older “ts-2” public writing role when Render is set as the sole writer (`WRITER_OF_RECORD=ts3`). Do not run two writers against the same sheets at once.
 
+**Optional portable deploy:** UI + API on one host (Docker/VPS) is documented in **[ONE-BOX-DEPLOY.md](ONE-BOX-DEPLOY.md)**. Google Sheets + bridge stay the same; only hosting of the app changes.
+
 ---
 
 ## 2. Delivery map (systems)

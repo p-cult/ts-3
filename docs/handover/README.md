@@ -5,6 +5,8 @@ Package for transferring ownership of the live Task Board system to the client o
 | Document | Audience | Purpose |
 |----------|----------|---------|
 | **[DELIVERY-PACKAGE.md](DELIVERY-PACKAGE.md)** | Client lead / IT | What you receive, URLs, accounts, checklist |
+| **[ONE-BOX-DEPLOY.md](ONE-BOX-DEPLOY.md)** | IT / operators | Portable UI+API deploy (Docker or Node) with Sheets bridge intact |
+| **[AI-HANDOFF.md](AI-HANDOFF.md)** | Developers + AI tools | Short architecture map so any AI/assistant can continue safely |
 | **[CONTINUE-DEVELOPING.md](CONTINUE-DEVELOPING.md)** | Developers | How to run, change, test, and ship |
 | **[ADMIN-GUIDE.md](ADMIN-GUIDE.md)** | Admins / operators | Plain-language how to use the board |
 | **[kt-site/admin-guide.html](kt-site/admin-guide.html)** | KT website | Same admin guide as a self-contained page (embed or open as-is) |

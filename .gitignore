@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.local
+deploy/one-box/.env
 bridge-credentials.txt
 *.secrets.txt
 *.log

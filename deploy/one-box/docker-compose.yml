@@ -1,0 +1,32 @@
+# One-box deploy — frontend + middleware on one host (same-origin).
+# Bridge / Google Sheets remain external (paste secrets into .env).
+#
+# From this directory:
+#   cp env.memory.example .env    # offline demo
+#   # or: cp env.live.example .env && edit BRIDGE_* / MASTER_ID / SESSION_SECRET
+#   docker compose up --build -d
+#   open http://127.0.0.1:4303/
+
+name: ts3-one-box
+
+services:
+  ts3:
+    build:
+      context: ../..
+      dockerfile: deploy/one-box/Dockerfile
+    image: ts3-one-box:local
+    ports:
+      - "${ONE_BOX_PORT:-4303}:4303"
+    env_file:
+      - .env
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "4303"
+      # Same-origin UI+API — leave CORS empty (do not set CORS_ORIGIN here).
+      CORS_ORIGIN: ""
+    volumes:
+      - ts3-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  ts3-data:
